@@ -10,6 +10,7 @@ rebox-worker workers list          worker identities with claim and run counts
 rebox-worker workers register <c>  resolve (create on first use) a connector's worker id
 rebox-worker workers show <id>     one worker and its recent runs
 rebox-worker coverage FILE.csv     which rows of a list Rebox knows (S14)
+rebox-worker raw reindex <source>  index raw files a crashed run left out of raw_record (S16)
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ from collections.abc import Sequence
 from contextlib import contextmanager
 from typing import Any
 
-from . import __version__, coverage, identity, jobs
+from . import __version__, coverage, identity, jobs, rawstore
 from .client import ClaimsClient
 from .config import ConfigError, Settings
 from .connectors import REGISTRY, Ctx, UnknownConnector, get_connector
@@ -340,6 +341,7 @@ def build_parser() -> argparse.ArgumentParser:
     ws.set_defaults(func=cmd_workers_show)
 
     coverage.add_parser(sub)  # rebox-worker coverage FILE.csv (S14)
+    rawstore.add_parser(sub)  # rebox-worker raw reindex SOURCE [--dry-run] (S16)
     return p
 
 
