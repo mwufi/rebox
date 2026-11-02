@@ -556,6 +556,7 @@ def test_name_candidate_query_uses_trigram_index(db, owner):
     # Bulk-inserted names sit in the GIN pending list until vacuum, which the planner prices
     # as a full scan; a live table is vacuumed by autovacuum.
     owner.execute("vacuum analyze search_name")
+    owner.execute("analyze entity")  # else stale stats (1 company) make the planner drive from entity
     one = name_candidates_sql(1, NAME_CANDIDATE_LIMIT)
     with db.view() as conn:
         cur = ClientCursor(conn)
