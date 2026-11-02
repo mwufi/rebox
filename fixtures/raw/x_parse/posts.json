@@ -1,0 +1,347 @@
+{
+ "_fixture": "Synthetic inputs (invented people and companies) and recorded model outputs.",
+ "inputs": [
+  {
+   "payload": {
+    "author": {
+     "id": "850896361599",
+     "username": "tallyhq_ex"
+    },
+    "post": {
+     "author_id": "850896361599",
+     "created_at": "2026-10-21T17:30:00.000Z",
+     "id": "1800000000000000001",
+     "text": "Today we're launching Tally Close: month-end close in a day, not a week. Live for every customer now."
+    },
+    "type": "x_post"
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "author": {
+     "id": "850896361599",
+     "username": "tallyhq_ex"
+    },
+    "post": {
+     "author_id": "850896361599",
+     "created_at": "2026-10-21T17:30:00.000Z",
+     "id": "1800000000000000002",
+     "text": "We raised a $9M seed led by @harborvc_ex to build the AI controller for startups 🚀"
+    },
+    "type": "x_post"
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "author": {
+     "id": "850896361599",
+     "username": "tallyhq_ex"
+    },
+    "post": {
+     "author_id": "850896361599",
+     "created_at": "2026-10-21T17:30:00.000Z",
+     "id": "1800000000000000003",
+     "text": "Welcome @ivy_ml_ex to @tallyhq_ex as our first ML engineer!"
+    },
+    "type": "x_post"
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "author": {
+     "id": "89919925208",
+     "username": "zoe_founder_ex"
+    },
+    "post": {
+     "author_id": "89919925208",
+     "created_at": "2026-10-21T17:30:00.000Z",
+     "id": "1800000000000000004",
+     "text": "lol our office plant has more uptime than our staging env"
+    },
+    "type": "x_post"
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "author": {
+     "id": "850896361599",
+     "username": "tallyhq_ex"
+    },
+    "post": {
+     "author_id": "850896361599",
+     "created_at": "2026-10-21T17:30:00.000Z",
+     "id": "1800000000000000005",
+     "text": "We're hiring founding engineers in SF! Apply via the link in bio."
+    },
+    "type": "x_post"
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "author": {
+     "id": "427276596704",
+     "username": "fernhill_ex"
+    },
+    "post": {
+     "author_id": "427276596704",
+     "created_at": "2026-10-21T17:30:00.000Z",
+     "id": "1800000000000000006",
+     "text": "Fernhill has acquired @sprocket_ex. Their team is joining us to build the future of supply chains."
+    },
+    "type": "x_post"
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "author": {
+     "id": "506352568602",
+     "username": "marc_vc_ex"
+    },
+    "post": {
+     "author_id": "506352568602",
+     "created_at": "2026-10-21T17:30:00.000Z",
+     "id": "1800000000000000007",
+     "text": "Personal news: I'm joining @harborvc_ex as a Partner!"
+    },
+    "type": "x_post"
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "author": {
+     "id": "850896361599",
+     "username": "tallyhq_ex"
+    },
+    "post": {
+     "author_id": "850896361599",
+     "created_at": "2026-10-21T17:30:00.000Z",
+     "id": "1800000000000000008",
+     "text": "Tally 2.0 is out: multi-entity books, audit trails and a brand new API."
+    },
+    "type": "x_post"
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "author": {
+     "id": "89919925208",
+     "username": "zoe_founder_ex"
+    },
+    "post": {
+     "author_id": "89919925208",
+     "created_at": "2026-10-21T17:30:00.000Z",
+     "id": "1800000000000000009",
+     "text": "Unpopular opinion: most startups should not raise a seed round. Thread 🧵"
+    },
+    "type": "x_post"
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "author": {
+     "id": "850896361599",
+     "username": "tallyhq_ex"
+    },
+    "post": {
+     "author_id": "850896361599",
+     "created_at": "2026-10-21T17:30:00.000Z",
+     "id": "1800000000000000010",
+     "text": "Tally won Fintech Startup of the Year at the Bay Fintech Awards! 🏆"
+    },
+    "type": "x_post"
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "author": {
+     "id": "850896361599",
+     "username": "tallyhq_ex"
+    },
+    "post": {
+     "author_id": "850896361599",
+     "created_at": "2026-10-21T17:30:00.000Z",
+     "id": "1800000000000000011",
+     "text": "Questions about billing? Call our team at +1 415 555 0100 any weekday."
+    },
+    "type": "x_post"
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "author": {
+     "id": "943949883967",
+     "username": "harborvc_ex"
+    },
+    "post": {
+     "author_id": "943949883967",
+     "created_at": "2026-10-21T17:30:00.000Z",
+     "id": "1800000000000000012",
+     "text": "Proud to lead the $9M seed for @tallyhq_ex. Welcome to the Harbor family, @zoe_founder_ex!"
+    },
+    "type": "x_post"
+   },
+   "source": "x_spider"
+  }
+ ],
+ "model": "claude-haiku-5-5",
+ "outputs": {
+  "Fernhill has acquired @sprocket_ex. Their team is joining us to build the future of supply chains.": {
+   "account": "company",
+   "facts": [
+    {
+     "acquirer": "Fernhill",
+     "acquirer_handle": "fernhill_ex",
+     "quote": "Fernhill has acquired @sprocket_ex",
+     "target": "sprocket_ex",
+     "target_handle": "sprocket_ex",
+     "type": "acquisition"
+    },
+    {
+     "first_person": true,
+     "kind": "acquisition",
+     "org": "Fernhill",
+     "org_handle": "fernhill_ex",
+     "quote": "Fernhill has acquired @sprocket_ex",
+     "title": "Acquired sprocket_ex to build supply chain products",
+     "type": "milestone"
+    }
+   ]
+  },
+  "Personal news: I'm joining @harborvc_ex as a Partner!": {
+   "account": "person",
+   "facts": [
+    {
+     "founder": false,
+     "investor": true,
+     "org": "",
+     "org_handle": "harborvc_ex",
+     "quote": "I'm joining @harborvc_ex as a Partner!",
+     "status": "current",
+     "title": "Partner",
+     "type": "role"
+    },
+    {
+     "first_person": true,
+     "kind": "hire",
+     "org": "",
+     "org_handle": "harborvc_ex",
+     "quote": "I'm joining @harborvc_ex as a Partner!",
+     "title": "Joined harborvc_ex as Partner",
+     "type": "milestone"
+    }
+   ]
+  },
+  "Proud to lead the $9M seed for @tallyhq_ex. Welcome to the Harbor family, @zoe_founder_ex!": {
+   "account": "other",
+   "facts": [
+    {
+     "first_person": true,
+     "kind": "funding",
+     "org": "Tally",
+     "org_handle": "tallyhq_ex",
+     "quote": "Proud to lead the $9M seed for @tallyhq_ex.",
+     "title": "Led $9M seed round for Tally",
+     "type": "milestone"
+    }
+   ]
+  },
+  "Questions about billing? Call our team at +1 415 555 0100 any weekday.": {
+   "account": "company",
+   "facts": []
+  },
+  "Tally 2.0 is out: multi-entity books, audit trails and a brand new API.": {
+   "account": "company",
+   "facts": [
+    {
+     "first_person": true,
+     "kind": "product",
+     "org": "Tally",
+     "org_handle": "tallyhq_ex",
+     "quote": "Tally 2.0 is out: multi-entity books, audit trails and a brand new API.",
+     "title": "Released Tally 2.0 with multi-entity books and API",
+     "type": "milestone"
+    }
+   ]
+  },
+  "Tally won Fintech Startup of the Year at the Bay Fintech Awards! 🏆": {
+   "account": "company",
+   "facts": [
+    {
+     "first_person": true,
+     "kind": "award",
+     "org": "Tally",
+     "org_handle": "tallyhq_ex",
+     "quote": "Tally won Fintech Startup of the Year at the Bay Fintech Awards!",
+     "title": "Won Fintech Startup of the Year at Bay Fintech Awards",
+     "type": "milestone"
+    }
+   ]
+  },
+  "Today we're launching Tally Close: month-end close in a day, not a week. Live for every customer now.": {
+   "account": "company",
+   "facts": [
+    {
+     "first_person": true,
+     "kind": "launch",
+     "org": "Tally",
+     "org_handle": "tallyhq_ex",
+     "quote": "Today we're launching Tally Close: month-end close in a day, not a week. Live for every customer now.",
+     "title": "Launched Tally Close, month-end close product for all customers",
+     "type": "milestone"
+    }
+   ]
+  },
+  "Unpopular opinion: most startups should not raise a seed round. Thread 🧵": {
+   "account": "person",
+   "facts": []
+  },
+  "We raised a $9M seed led by @harborvc_ex to build the AI controller for startups 🚀": {
+   "account": "company",
+   "facts": [
+    {
+     "first_person": true,
+     "kind": "funding",
+     "org": "Tally",
+     "org_handle": "tallyhq_ex",
+     "quote": "We raised a $9M seed led by @harborvc_ex",
+     "title": "Raised $9M seed led by Harbor VC",
+     "type": "milestone"
+    }
+   ]
+  },
+  "We're hiring founding engineers in SF! Apply via the link in bio.": {
+   "account": "company",
+   "facts": []
+  },
+  "Welcome @ivy_ml_ex to @tallyhq_ex as our first ML engineer!": {
+   "account": "company",
+   "facts": [
+    {
+     "first_person": false,
+     "kind": "hire",
+     "org": "Tally",
+     "org_handle": "tallyhq_ex",
+     "quote": "Welcome @ivy_ml_ex to @tallyhq_ex as our first ML engineer!",
+     "title": "Welcomed ivy_ml_ex as first ML engineer",
+     "type": "milestone"
+    }
+   ]
+  },
+  "lol our office plant has more uptime than our staging env": {
+   "account": "person",
+   "facts": []
+  }
+ },
+ "prompt_version": "2026-11-02.1"
+}

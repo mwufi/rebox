@@ -1,0 +1,82 @@
+{
+ "_fixture": "Synthetic inputs (invented people and companies) and recorded model outputs.",
+ "inputs": [
+  {
+   "payload": {
+    "homepage": false,
+    "published_date": "2026-10-21T00:00:00.000Z",
+    "text": "San Francisco-based Tally has raised a $9 million seed round led by Harbor Ventures. The startup, founded by Zoe Hart, automates month-end close for startups.",
+    "title": "Tally raises $9M seed for AI accounting",
+    "type": "exa_result",
+    "url": "https://news.example/2026/10/tally-seed"
+   },
+   "source": "exa"
+  },
+  {
+   "payload": {
+    "homepage": false,
+    "published_date": "2026-10-19T00:00:00.000Z",
+    "text": "Supply-chain software maker Fernhill has acquired Sprocket, a logistics API startup, for an undisclosed amount.",
+    "title": "Fernhill buys Sprocket",
+    "type": "exa_result",
+    "url": "https://news.example/2026/10/fernhill-sprocket"
+   },
+   "source": "exa"
+  },
+  {
+   "payload": {
+    "homepage": false,
+    "published_date": "2026-10-18T00:00:00.000Z",
+    "text": "I think agents are the new apps. Here is why.",
+    "title": "On agents",
+    "type": "exa_result",
+    "url": "https://essays.example/agents"
+   },
+   "source": "exa"
+  }
+ ],
+ "model": "claude-haiku-5-5",
+ "outputs": {
+  "Fernhill buys Sprocket\nSupply-chain software maker Fernhill has acquired Sprocket, a logistics API startup, for an undisclosed amount.": {
+   "account": "other",
+   "facts": [
+    {
+     "acquirer": "Fernhill",
+     "acquirer_handle": "",
+     "quote": "Fernhill has acquired Sprocket",
+     "target": "Sprocket",
+     "target_handle": "",
+     "type": "acquisition"
+    },
+    {
+     "first_person": false,
+     "kind": "acquisition",
+     "org": "Fernhill",
+     "org_handle": "",
+     "quote": "Fernhill has acquired Sprocket",
+     "title": "Acquired logistics API startup Sprocket",
+     "type": "milestone"
+    }
+   ]
+  },
+  "On agents\nI think agents are the new apps. Here is why.": {
+   "account": "other",
+   "facts": []
+  },
+  "Tally raises $9M seed for AI accounting\nSan Francisco-based Tally has raised a $9 million seed round led by Harbor Ventures. The startup, founded by Zoe Hart, automates month-end close for startups.": {
+   "account": "other",
+   "facts": [
+    {
+     "first_person": false,
+     "kind": "funding",
+     "org": "Tally",
+     "org_handle": "",
+     "quote": "Tally has raised a $9 million seed round led by Harbor Ventures",
+     "title": "Tally raised $9M seed led by Harbor Ventures",
+     "type": "milestone"
+    }
+   ]
+  }
+ },
+ "prompt_version": "2026-11-02.1"
+}

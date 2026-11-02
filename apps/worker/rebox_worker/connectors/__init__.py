@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from .base import Connector, Ctx, fixtures_root, is_enabled, is_scheduled
+from .exa_parse import ExaParse
 from .example import Example
 from .github import GitHub
+from .github_parse import GitHubParse
 from .hn import Hn
 from .wikidata import Wikidata
 from .x import X
+from .x_parse import XParse, XParsePosts
 
 
 class UnknownConnector(KeyError):
@@ -21,6 +24,10 @@ REGISTRY: dict[str, type] = {
     Hn.name: Hn,
     GitHub.name: GitHub,
     X.name: X,
+    XParse.name: XParse,
+    XParsePosts.name: XParsePosts,
+    GitHubParse.name: GitHubParse,
+    ExaParse.name: ExaParse,
 }
 
 

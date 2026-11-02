@@ -1,0 +1,270 @@
+{
+ "_fixture": "Synthetic inputs (invented people and companies) and recorded model outputs.",
+ "inputs": [
+  {
+   "payload": {
+    "type": "x_user",
+    "user": {
+     "description": "co-founder & CEO @tallyhq_ex (YC S24). ex-@stripe_ex, prev PM at Plaidly",
+     "id": "9000000001",
+     "location": "San Francisco, CA",
+     "name": "Zoe Hart",
+     "username": "zoe_founder_ex"
+    }
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "type": "x_user",
+    "user": {
+     "description": "investing at @harborvc_ex. formerly eng @looptech_ex",
+     "id": "9000000002",
+     "location": "SF",
+     "name": "Marc Bell",
+     "username": "marc_vc_ex"
+    }
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "type": "x_user",
+    "user": {
+     "description": "ML eng @tallyhq_ex · DM for collabs · call 415-555-0199",
+     "id": "9000000003",
+     "location": "Bay Area",
+     "name": "Ivy Tran",
+     "username": "ivy_ml_ex"
+    }
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "type": "x_user",
+    "user": {
+     "description": "Tally is the AI controller for startups. Backed by @harborvc_ex.",
+     "id": "9000000004",
+     "location": "San Francisco",
+     "name": "Tally",
+     "username": "tallyhq_ex"
+    }
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "type": "x_user",
+    "user": {
+     "description": "just vibes ✨ she/her",
+     "id": "9000000005",
+     "location": "🌍",
+     "name": "N.",
+     "username": "nobody_ex"
+    }
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "type": "x_user",
+    "user": {
+     "description": "Building @fernhill_ex. Previously founded Bramble (acq. by Shopwise). NYC → SF",
+     "id": "9000000006",
+     "location": "",
+     "name": "Hugo Lam",
+     "username": "hugo_ex"
+    }
+   },
+   "source": "x_spider"
+  },
+  {
+   "payload": {
+    "orgs": {},
+    "user": {
+     "bio": "Staff engineer. Previously at Heroku.",
+     "company": "Vercel",
+     "location": "San Francisco",
+     "login": "octo-ex-9",
+     "name": "Rosa Diaz",
+     "type": "User"
+    }
+   },
+   "source": "github"
+  }
+ ],
+ "model": "claude-haiku-5-5",
+ "outputs": {
+  "Hugo Lam\nBuilding @fernhill_ex. Previously founded Bramble (acq. by Shopwise). NYC → SF": {
+   "account": "person",
+   "facts": [
+    {
+     "founder": true,
+     "investor": false,
+     "org": "Fernhill",
+     "org_handle": "fernhill_ex",
+     "quote": "Building @fernhill_ex",
+     "status": "current",
+     "title": "",
+     "type": "role"
+    },
+    {
+     "founder": true,
+     "investor": false,
+     "org": "Bramble",
+     "org_handle": "",
+     "quote": "Previously founded Bramble",
+     "status": "past",
+     "title": "founder",
+     "type": "role"
+    },
+    {
+     "place": "New York City",
+     "quote": "NYC → SF",
+     "type": "location"
+    },
+    {
+     "place": "San Francisco",
+     "quote": "NYC → SF",
+     "type": "location"
+    }
+   ]
+  },
+  "Ivy Tran\nBay Area\nML eng @tallyhq_ex · DM for collabs · call 415-555-0199": {
+   "account": "person",
+   "facts": [
+    {
+     "place": "San Francisco",
+     "quote": "Bay Area",
+     "type": "location"
+    },
+    {
+     "founder": false,
+     "investor": false,
+     "org": "Tally",
+     "org_handle": "tallyhq_ex",
+     "quote": "ML eng @tallyhq_ex",
+     "status": "current",
+     "title": "ML eng",
+     "type": "role"
+    }
+   ]
+  },
+  "Marc Bell\nSF\ninvesting at @harborvc_ex. formerly eng @looptech_ex": {
+   "account": "person",
+   "facts": [
+    {
+     "place": "San Francisco",
+     "quote": "SF",
+     "type": "location"
+    },
+    {
+     "founder": false,
+     "investor": true,
+     "org": "Harbor VC",
+     "org_handle": "harborvc_ex",
+     "quote": "investing at @harborvc_ex",
+     "status": "current",
+     "title": "investing",
+     "type": "role"
+    },
+    {
+     "founder": false,
+     "investor": false,
+     "org": "Looptech",
+     "org_handle": "looptech_ex",
+     "quote": "formerly eng @looptech_ex",
+     "status": "past",
+     "title": "eng",
+     "type": "role"
+    }
+   ]
+  },
+  "N.\n🌍\njust vibes ✨ she/her": {
+   "account": "person",
+   "facts": []
+  },
+  "Rosa Diaz\nVercel\nSan Francisco\nStaff engineer. Previously at Heroku.": {
+   "account": "person",
+   "facts": [
+    {
+     "founder": false,
+     "investor": false,
+     "org": "Vercel",
+     "org_handle": "",
+     "quote": "Staff engineer.",
+     "status": "current",
+     "title": "Staff engineer",
+     "type": "role"
+    },
+    {
+     "founder": false,
+     "investor": false,
+     "org": "Heroku",
+     "org_handle": "",
+     "quote": "Previously at Heroku.",
+     "status": "past",
+     "title": "",
+     "type": "role"
+    },
+    {
+     "place": "San Francisco",
+     "quote": "San Francisco",
+     "type": "location"
+    }
+   ]
+  },
+  "Tally\nSan Francisco\nTally is the AI controller for startups. Backed by @harborvc_ex.": {
+   "account": "company",
+   "facts": [
+    {
+     "place": "San Francisco",
+     "quote": "San Francisco",
+     "type": "location"
+    }
+   ]
+  },
+  "Zoe Hart\nSan Francisco, CA\nco-founder & CEO @tallyhq_ex (YC S24). ex-@stripe_ex, prev PM at Plaidly": {
+   "account": "person",
+   "facts": [
+    {
+     "place": "San Francisco",
+     "quote": "San Francisco, CA",
+     "type": "location"
+    },
+    {
+     "founder": true,
+     "investor": false,
+     "org": "Tally",
+     "org_handle": "tallyhq_ex",
+     "quote": "co-founder & CEO @tallyhq_ex",
+     "status": "current",
+     "title": "co-founder & CEO",
+     "type": "role"
+    },
+    {
+     "founder": false,
+     "investor": false,
+     "org": "Stripe",
+     "org_handle": "stripe_ex",
+     "quote": "ex-@stripe_ex",
+     "status": "past",
+     "title": "",
+     "type": "role"
+    },
+    {
+     "founder": false,
+     "investor": false,
+     "org": "Plaidly",
+     "org_handle": "",
+     "quote": "prev PM at Plaidly",
+     "status": "past",
+     "title": "PM",
+     "type": "role"
+    }
+   ]
+  }
+ },
+ "prompt_version": "2026-11-02.1"
+}
