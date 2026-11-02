@@ -10,7 +10,14 @@ import pytest
 from conftest import load_recorded
 
 from rebox_worker.models import RawRecord
-from rebox_worker.parsers.extract import extract_claims, has_private_data
+from rebox_worker.parsers import relevance
+from rebox_worker.parsers.extract import (
+    DUPLICATE_MILESTONE,
+    IRRELEVANT,
+    Extraction,
+    extract_claims,
+    has_private_data,
+)
 from rebox_worker.parsers.inputs import doc_for
 from rebox_worker.parsers.places import canonical_city
 from rebox_worker.parsers.prompt import PROMPT_VERSION, InputDoc
@@ -567,3 +574,98 @@ def test_article_company_name_resolution():
     # unknown, but the article links its site: a company with that domain identity
     (m,) = by_pred(_article_claims({}, "Ditto raised a $9M seed (https://www.getditto.com)."), "milestone")
     assert m.subject.identity == {"domain": "getditto.com"}
+
+
+# ── relevance and extract-time dedupe (S18) ──
+
+
+def _article(title: str, text: str, facts: list[dict[str, Any]], url: str = "https://news.example/a/1"):
+    payload = {"type": "exa_result", "url": url, "title": title, "published_date": "2026-09-05",
+               "homepage": False, "text": text}  # fmt: skip
+    doc = _doc("exa", payload)
+    ex = Extraction("exa_parse", parsed(doc, {"account": "other", "facts": facts}))
+    return ex.run(), ex.dropped
+
+
+def _ms(org: str, quote: str, kind: str = "funding", title: str = "Known raised $9.7M") -> dict[str, Any]:
+    return {"type": "milestone", "kind": kind, "title": title, "org": org, "org_handle": "",
+            "first_person": False, "quote": quote}  # fmt: skip
+
+
+LISTICLE = (
+    "The Waggle: what SF talked about this week\n\nEveryone was talking about hot girls, the fog and a "
+    "new taqueria in the Mission. The heat wave did not help. Dating apps came up a lot. "
+    + "Filler about the city and its weather. " * 12
+    + "Known, the voice AI dating app backed by $9.7 million in funding, hosted a party."
+)
+
+
+def test_listicle_passing_mention_is_dropped():
+    claims, dropped = _article(
+        "The Waggle: Why everyone was talking about hot girls in SF this week",
+        LISTICLE,
+        [_ms("Known", "Known, the voice AI dating app backed by $9.7 million in funding")],
+    )
+    assert by_pred(claims, "milestone") == [] and by_pred(claims, "name") == []  # nothing minted
+    assert [r for r, _ in dropped] == [IRRELEVANT]
+
+
+def test_on_topic_article_is_kept():
+    text = (
+        "Known uses voice AI to help you go on more in-person dates. Known raised $9.7M from Forerunner, "
+        "NFX and Pear VC, the company said on Friday."
+    )
+    claims, dropped = _article(
+        "Known uses voice AI to help you go on more in-person dates",
+        text,
+        [_ms("Known", "Known raised $9.7M from Forerunner, NFX and Pear VC")],
+    )
+    (m,) = by_pred(claims, "milestone")
+    assert m.subject.name == "Known" and dropped == []
+
+
+def test_quote_must_name_the_company_unless_the_title_does():
+    lead = "Known, a voice AI dating app, is growing fast. The startup was founded by two Stanford dropouts."
+    other = "Overtone raised $5M from Lux."
+    # the company is in the lead but the quote is about another company's round: dropped
+    claims, dropped = _article("Dating apps are back", lead + " " + other, [_ms("Known", other)])
+    assert by_pred(claims, "milestone") == [] and [r for r, _ in dropped] == [IRRELEVANT]
+    # the title names it: an unnamed quote ("The startup raised...") is fine
+    text = lead + " The startup raised $9.7M."
+    claims, _ = _article("Known raises $9.7M", text, [_ms("Known", "The startup raised $9.7M.")])
+    assert len(by_pred(claims, "milestone")) == 1
+
+
+def test_lowercase_word_is_not_the_company_name():
+    text = (
+        "A different approach to marketing. " + "x " * 300 + "Different raised $48M, led by General Catalyst."
+    )
+    claims, dropped = _article(
+        "Ten marketing tools to try", text, [_ms("Different", "Different raised $48M", title="Raised $48M")]
+    )
+    assert claims == [] and [r for r, _ in dropped] == [IRRELEVANT]
+
+
+def test_same_milestone_twice_in_one_article_is_one_claim():
+    text = "Fragment raises $56M. Fragment, Inc. raised $56M from 8VC and General Catalyst."
+    facts = [
+        _ms("Fragment", "Fragment raises $56M", title="Fragment raised $56M from 8VC"),
+        _ms("Fragment, Inc.", "Fragment, Inc. raised $56M", title="Fragment  raised $56M, from 8VC!"),
+        _ms("Fragment", "Fragment raises $56M", kind="launch", title="Fragment launched"),
+    ]
+    claims, dropped = _article("Fragment raises $56M", text, facts)
+    assert sorted(m.value["kind"] for m in by_pred(claims, "milestone")) == ["funding", "launch"]
+    assert [r for r, _ in dropped] == [DUPLICATE_MILESTONE]
+
+
+def test_relevance_names():
+    assert relevance.names("Known", "Known's round") and relevance.names("Known", "KNOWN RAISES $9.7M")
+    assert not relevance.names("Known", "well known for its parties") and not relevance.names(
+        "Known", "Unknown"
+    )
+    assert relevance.names("Ditto", "920万ドル調達のDittoが描く") and relevance.names(
+        "디토", "AI 데이팅 앱 디토의 실험"
+    )
+    assert relevance.names("Rocker, Inc.", "Rocker launches") and relevance.names("fal", "fal raised")
+    assert relevance.names("Notion (Notion Labs)", "Notion ships AI")
+    assert not relevance.names("", "anything")

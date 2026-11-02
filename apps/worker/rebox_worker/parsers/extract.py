@@ -14,6 +14,10 @@ Guards, applied to every fact before it becomes a claim:
   in the text.
 - **grounding**: organization names must appear in the text (case-insensitive) and ``@handles``
   must be written in the text; a role title that is not in the text is dropped (the role is kept).
+- **relevance** (articles, S18): a milestone is kept only when the company is named in the
+  article title or lead and its quote (or the title) names it (``relevance.about``); else it is
+  dropped as ``irrelevant article``. One article never yields the same (kind, normalized title,
+  date) milestone twice (``duplicate milestone``).
 
 Entities:
 
@@ -36,6 +40,7 @@ from typing import Any
 
 from ..models import ClaimInput, EntityRef
 from ..normalize import normalize_name
+from . import relevance
 from .places import canonical_city
 from .prompt import InputDoc
 from .schema import Acquisition, Hire, Location, Milestone, Role, parse_facts
@@ -57,6 +62,9 @@ PAST_MARKER = re.compile(
 )
 FOUNDER_TITLE = re.compile(r"(?i)(co-?\s?)?founder|founding (ceo|team)|cofounder")
 _HANDLE_RE = re.compile(r"^[A-Za-z0-9_-]{1,39}$")
+# ``Extraction.dropped`` reasons that ``exa_parse`` counts in its run stats.
+IRRELEVANT = "irrelevant article"
+DUPLICATE_MILESTONE = "duplicate milestone"
 
 
 def has_private_data(*texts: str) -> bool:
@@ -92,6 +100,7 @@ class Extraction:
         self.claims: list[ClaimInput] = []
         self.dropped: list[tuple[str, str]] = []  # (reason, quote) — for tests and eval
         self._named: set[str] = set()
+        self._milestones: set[tuple[str, str, str]] = set()  # (kind, normalized title, date), articles
         m = self.doc.meta
         self.url = str(m.get("url") or "")
         self.author = m.get("author")
@@ -395,6 +404,19 @@ class Extraction:
     def _milestone(self, f: Milestone) -> None:
         if not self.date:
             return
+        if self.doc.kind == "article":
+            # Relevance (S18): only articles *about* the company, quoted naming it.
+            company_name = f.org or f.org_handle
+            fields = self.doc.fields
+            if company_name and not relevance.about(
+                company_name, title=fields.get("title") or "", text=fields.get("text") or "", quote=f.quote
+            ):
+                return self._drop(IRRELEVANT, f.quote)
+            # The same milestone twice from one article (e.g. once per spelling of the company): one.
+            key = (f.kind, _norm_title(f.title), str(self.date))
+            if key in self._milestones:
+                return self._drop(DUPLICATE_MILESTONE, f.quote)
+            self._milestones.add(key)
         value = {"title": f.title, "kind": f.kind, "url": self.url}
         subjects: list[EntityRef] = []
         company = self.org(f.org, f.org_handle, quote=f.quote) if (f.org or f.org_handle) else None
@@ -485,6 +507,11 @@ def _city_prefix(s: str) -> tuple[str, str] | None:
     return None
 
 
+def _norm_title(title: str) -> str:
+    """Lowercase, punctuation to spaces (amounts keep their dot: "$9.7M" -> "9.7m"), collapsed."""
+    return " ".join(re.sub(r"[^\w.]+|(?<!\d)\.|\.(?!\d)", " ", title.casefold()).split())
+
+
 def _ref_key(ref: EntityRef) -> str:
     if ref.id is not None:
         return ref.id
@@ -497,3 +524,12 @@ def _ref_key(ref: EntityRef) -> str:
 
 def extract_claims(source: str, payload: dict[str, Any]) -> list[ClaimInput]:
     return Extraction(source, payload).run()
+
+
+def extract_with_drops(
+    source: str, payload: dict[str, Any]
+) -> tuple[list[ClaimInput], list[tuple[str, str]]]:
+    """The claims and the dropped facts ``(reason, quote)``, for run stats."""
+    ex = Extraction(source, payload)
+    claims = ex.run()
+    return claims, ex.dropped
