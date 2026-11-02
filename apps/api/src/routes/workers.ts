@@ -7,7 +7,7 @@
  *   PATCH /internal/runs/:id      status / stats (merged) / error
  * Admin:
  *   POST  /v0/admin/workers       create an external worker → {id, token} (token shown once)
- *   PATCH /v0/admin/workers/:id   trust / status / description / layers
+ *   PATCH /v0/admin/workers/:id   trust / status / description / layers / config (shallow merge)
  * Read (anonymous):
  *   GET /v0/workers, GET /v0/workers/:id, GET /v0/stats/timeseries
  *
@@ -63,6 +63,11 @@ const adminPatchBody = z
     status: z.enum(['active', 'paused', 'revoked']).optional(),
     description: z.string().max(2000).nullable().optional(),
     layers: z.array(layerId).min(1).max(50).optional(),
+    // Merged shallowly into the stored config (a key set to null is stored as null).
+    config: z
+      .record(z.string().max(100), z.unknown())
+      .refine((o) => JSON.stringify(o).length <= 32_000, 'config too large')
+      .optional(),
   })
   .strict();
 const runBody = z.object({ worker: z.string().regex(WORKER_ID_RE), kind: z.enum(RUN_KINDS) }).strict();
@@ -357,7 +362,8 @@ export function workerRoutes(deps: Deps) {
           trust = coalesce(${b.trust ?? null}::real, trust),
           status = coalesce(${b.status ?? null}, status),
           description = case when ${b.description !== undefined} then ${b.description ?? null} else description end,
-          layers = coalesce(${b.layers ?? null}::text[], layers)
+          layers = coalesce(${b.layers ?? null}::text[], layers),
+          config = config || ${tx.json((b.config ?? {}) as never)}::jsonb
         where id = ${id}
         returning *`;
       if (!row) throw notFound(`worker ${id} not found`);
