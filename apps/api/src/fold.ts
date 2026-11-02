@@ -103,22 +103,28 @@ export async function foldFacts(tx: Tx, opts: FoldOptions): Promise<FoldedRow[]>
       left join canon oc on oc.member = ${otherCol}
       where true ${predicateFilter} ${edgeFilter}
     ),
+    -- Support in one pass with window functions (a join back to an aggregate of cand gets a
+    -- nested-loop plan, since cand is estimated at one row, and turns quadratic on hubs).
+    -- dup = 1 marks the first live row per (layer, source_ref) within a support group.
+    ranked as (
+      select *, row_number() over (partition by root, predicate, fold_key, support_key, layer_id, source_ref, retract
+                                   order by id) as dup
+      from cand
+    ),
+    counted as (
+      select *, count(*) filter (where not retract and dup = 1)
+                  over (partition by root, predicate, fold_key, support_key)::int as support
+      from ranked
+    ),
     winners as (
       select distinct on (root, predicate, fold_key) *
-      from cand
+      from counted
       order by root, predicate, fold_key, scope desc, trust desc, updated_at desc, direct desc, id desc
-    ),
-    support as (
-      select root, predicate, fold_key, support_key, count(distinct (layer_id, source_ref))::int as n
-      from cand where not retract
-      group by root, predicate, fold_key, support_key
     )
     select w.root, w.id::text as claim_id, w.predicate, w.subject, w.object_id, w.other, w.value,
            w.valid_from, w.valid_to, w.layer_id, w.source, w.source_ref, w.updated_at,
-           w.worker_id, w.evidence, coalesce(s.n, 1) as support
+           w.worker_id, w.evidence, w.support
     from winners w
-    left join support s on s.root = w.root and s.predicate = w.predicate and s.fold_key = w.fold_key
-                       and s.support_key = w.support_key
     where not w.retract
       and (w.other is null or exists (select 1 from entity oe where oe.id = w.other))
       ${after}
