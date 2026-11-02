@@ -30,17 +30,16 @@ A working v0 of the open graph. It has:
 | S16 | Resolver convergence: company names with a safe-target guard, `x_id` key, raw reindex, per-claim DB errors |
 | S17 | Source trust table (`config/trust.yaml`), legacy claim workers (migration 0008) |
 | S18 | Quality: mention-only merges, clustered milestones with sources, article relevance, handle identity claims |
+| S19 | Follow-ups: import uses table trust, `replay --retract-stale`, parser domain/wikidata identity claims, cleaner entity sidebar |
 
-S19 (follow-ups: import trust, `replay --retract-stale`, parser domain/wikidata identity claims) is in progress.
-
-Suites on main: worker 804, api 229, web 42. All green.
+Suites on main: worker 816, api 230, web 43. All green.
 
 ## The overnight graph (`rebox_live`, cloud workspace)
 
 | | Count |
 | --- | --- |
 | Entities | 10,718: 5,295 companies, 4,285 people, 1,086 launches, 52 places |
-| Claims | 63,431, of which 8,960 carry quoted evidence |
+| Claims | 64,221, of which 9,682 carry quoted evidence |
 | Edges | 3,621 `based_in` (2,849 into San Francisco), 2,436 `founded`, 2,252 `worked_at`, 2,799 `follows`, 1,086 `launched`, 107 `milestone` |
 | Layers | wikidata 18.6k, hn 11.9k, x_spider 23.8k, x_ai 8.7k, exa 84, exa_ai 244 |
 | Merges | 63 automatic (dedupe); 2 wrong ones split by hand (Ditto, Homebase), which led to S18's rule |
@@ -74,9 +73,8 @@ How it was built:
 ## Next
 
 1. Import the overnight bundle into the OrbStack graph (`docs/MERGE.md`).
-2. Merge S19.
-3. Spend the remaining ~$10 of X credit:
+2. Spend the remaining ~$10 of X credit:
    - yoni_michael's following list (about $5 at $0.01 per user);
    - or a `lookup` of coverage misses (Retool, Rippling, Deel, Supabase, Harvey, Glean founders).
-4. Run the coverage checker on a real reference list and enqueue the misses.
-5. Work the review queue in the explorer.
+3. Run the coverage checker on a real reference list and enqueue the misses.
+4. Work the review queue in the explorer.
