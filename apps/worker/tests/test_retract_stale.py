@@ -245,3 +245,42 @@ def test_against_the_real_writer(real_api, db, owner, tmp_path):  # noqa: F811
         assert (c, ch, x) == (before[0], before[1], before[3])
     finally:
         client.close()
+
+
+def test_last_name_of_an_entity_with_facts_is_kept(deps, owner):
+    """A stale name that is an entity's only name while the entity still has live facts (an
+    on-topic article references it by id) is kept; a stale name of an otherwise empty entity goes."""
+    from rebox_worker.models import MintRef, MintSpec
+
+    exa = seed(deps, 10, set())
+    ev = [{"url": "https://n.example/l", "quote": "Keptco and Orphanco"}]
+    names = [
+        ClaimWrite(
+            subject=MintRef(mint=MintSpec(id=f"rbx:company:{n.lower()}", kind="company")),
+            predicate="name",
+            value=n,
+            source_ref=f"exa_parse:exa:listicle:name:name={n.lower()}",
+            evidence=ev,
+        )
+        for n in ("Keptco", "Orphanco")
+    ]
+    _write(deps, exa, names)
+    _write(deps, exa, [_ms("rbx:company:keptco", "exa_parse:exa:a1:milestone:funding:rbx:company:keptco")])
+    # That milestone is not emitted either, so make it current: another worker's live fact on Keptco.
+    other = deps.client.register_worker(name="other", kind="parser", source="other_parse", layers=[LAYER])
+    _write(deps, other, [_ms("rbx:company:keptco", "other:keptco")])
+    dry = replay_retract_stale(ExaParse(model=NoModel()), deps, RetractStale(dry_run=True))
+    assert dry.kept_names == 1 and dict(dry.by_predicate) == {"name": 1, "milestone": 1}
+    assert "kept 1 stale name claims" in dry.render()
+    report = replay_retract_stale(ExaParse(model=NoModel()), deps)
+    assert report.retracted == 2
+    rows = owner.execute(
+        "select subject, predicate, retract from claim where subject in ('rbx:company:keptco', 'rbx:company:orphanco')"
+        " and worker_id = %s order by 1, 2",
+        (exa,),
+    ).fetchall()
+    assert [tuple(r.values()) for r in rows] == [
+        ("rbx:company:keptco", "milestone", True),
+        ("rbx:company:keptco", "name", False),
+        ("rbx:company:orphanco", "name", True),
+    ]

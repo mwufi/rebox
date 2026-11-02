@@ -347,8 +347,10 @@ class StaleReport:
     (internal) workers, whose ``source_ref`` the current extract no longer emits for any stored
     raw record. Never stale: claims of other workers in the same layer (``x_parse`` and
     ``x_parse_posts`` share ``public/x_ai``), claims an ``import`` wrote (their raw records are on
-    another instance), and the name claims the resolver adds for entities it mints
-    (``<source>:entity:<id>:name``: emitted only when the entity is first minted).
+    another instance), the name claims the resolver adds for entities it mints
+    (``<source>:entity:<id>:name``: emitted only when the entity is first minted), and a ``name``
+    claim that is the last live name of an entity that still has other live facts (counted as
+    ``kept_names``; retracting it would leave the entity nameless).
     """
 
     source: str
@@ -363,6 +365,7 @@ class StaleReport:
     by_predicate: Counter = field(default_factory=Counter)
     by_worker: Counter = field(default_factory=Counter)
     examples: list[dict[str, Any]] = field(default_factory=list)
+    kept_names: int = 0  # stale name claims kept: an entity's last name while it has other facts
     refused: str | None = None
     retracted: int = 0
     rejected: int = 0
@@ -391,6 +394,10 @@ class StaleReport:
             n, k = self.considered.get(layer, 0), self.stale.get(layer, 0)
             share = f" ({k / n:.1%})" if n else ""
             lines.append(f"  {layer}: {n} claims of these workers, stale {k}{share}")
+        if self.kept_names:
+            lines.append(
+                f"  kept {self.kept_names} stale name claims: the last name of an entity that still has facts"
+            )
         if self.by_predicate:
             lines.append(
                 "  stale by predicate: " + ", ".join(f"{p} {n}" for p, n in self.by_predicate.most_common())
@@ -490,11 +497,15 @@ def _stale_step(
             for r in conn.execute(_STALE_IDS_SQL, params):
                 report.considered[r["layer_id"]] += 1
                 if r["source_ref"] not in emitted:
-                    report.stale[r["layer_id"]] += 1
-                    report.by_predicate[r["predicate"]] += 1
-                    report.by_worker[r["worker_id"]] += 1
                     stale_ids.append(r["id"])
         rows = conn.execute(_STALE_ROWS_SQL, (stale_ids,)).fetchall() if stale_ids else []
+        keep = _last_names(conn, rows, stale_ids)
+    report.kept_names = len(keep)
+    rows = [r for r in rows if r["id"] not in keep]
+    for r in rows:
+        report.stale[r["layer_id"]] += 1
+        report.by_predicate[r["predicate"]] += 1
+        report.by_worker[r["worker_id"]] += 1
     report.examples = [{k: _jsonable(r[k]) for k in _EXAMPLE_KEYS} for r in rows[: opts.examples]]
     for layer in report.layers:
         n, k = report.considered[layer], report.stale[layer]
@@ -535,6 +546,31 @@ def _stale_step(
         if result.rejected:
             u["retract_rejected"] = u.get("retract_rejected", 0) + len(result.rejected)
         log.info("%s: %s retracted %d stale claims in %s", connector.name, worker_id, result.written, layer)
+
+
+_LAST_NAMES_SQL = """
+select s.subject,
+       exists (select 1 from claim o where o.subject = s.subject and o.predicate = 'name' and not o.retract
+                 and o.id <> all(%(stale)s)) as other_name,
+       exists (select 1 from claim o where o.subject = s.subject and o.predicate <> 'name' and not o.retract
+                 and o.id <> all(%(stale)s))
+       or exists (select 1 from claim o where o.object_id = s.subject and not o.retract
+                 and o.id <> all(%(stale)s)) as other_facts
+  from unnest(%(subjects)s::text[]) as s(subject)
+"""
+
+
+def _last_names(conn: Any, rows: list[dict[str, Any]], stale_ids: list[int]) -> set[int]:
+    """Stale ``name`` claims to keep: the last live name of an entity that keeps other live facts
+    (e.g. a company an on-topic article references by id, named only by a dropped listicle).
+    Retracting it would leave a nameless entity."""
+    names = [r for r in rows if r["predicate"] == "name" and r["object_id"] is None]
+    if not names:
+        return set()
+    subjects = sorted({r["subject"] for r in names})
+    hits = conn.execute(_LAST_NAMES_SQL, {"subjects": subjects, "stale": stale_ids}).fetchall()
+    keep_subjects = {h["subject"] for h in hits if not h["other_name"] and h["other_facts"]}
+    return {r["id"] for r in names if r["subject"] in keep_subjects}
 
 
 def _retraction(r: dict[str, Any]) -> ClaimWrite:
