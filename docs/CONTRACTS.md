@@ -12,7 +12,7 @@ These are the interfaces between services. Every slice builds against this file.
 | Predicate | the vocabulary: which kinds of facts exist | `predicate` |
 
 - A predicate with `object_kind` set is an **edge** type; claims using it must have `object_id`. With `object_kind` null it is an **attribute** type; claims must have `value` and no `object_id`.
-- Attribute `value` is a JSON scalar (or array). Edge `value` is an object of edge props, or null.
+- Attribute `value` is a JSON scalar (or array) — except predicates with `meta.value_type = "json"` (e.g. `milestone`), whose value is a JSON object. Edge `value` is an object of edge props, or null.
 - Every entity has a `name` claim (predicate `name`, value a JSON string). Search uses it.
 - `cardinality = 'one'`: the fold keeps one winner per subject+predicate. `'many'`: keeps every distinct object/value.
 
@@ -224,6 +224,7 @@ Every write comes from a **worker** (a named, accountable writer) inside a **run
 - **Registration** (ingest token): `POST /internal/workers {name, kind, source, layers, config?, description?, id?}` → `{id}`; idempotent on `(name, kind, source)` when `id` is omitted (returns the existing worker). External workers: `POST /v0/admin/workers` (admin token) → `{id, token}`, token shown once, format `rbxw_<worker id>_<32 hex>`, stored as sha256 in `worker.token_hash`.
 - **Runs:** `POST /internal/runs {worker, kind}` → `{run_id}`; `PATCH /internal/runs/:id {status?, stats?, error?}` (stats merge). The worker pipeline opens a run per sync/replay/parse and closes it with final stats (`fetched, claims, written, minted, matched, review, rejected, api_calls, cost_usd`).
 - **Writer (§5) additions:** request body gains `"worker": "<id>"` (required) and `"run_id"` (optional); each claim may carry `"evidence": [{"url", "author"?, "quote"?, "observed_at"?}]`. Validation: worker exists and is `active`; `layer` ∈ `worker.layers` (a `public/<source>` layer is still auto-created); evidence is **required** when the worker kind is `parser`, `enricher` or `external`. The ingest token may act as any internal worker (`owner = 'rebox'`); an external token acts only as its own worker. `last_seen_at` is updated on every write.
+- **Worker models:** `ClaimInput` gains `evidence: list[{url, author?, quote?, observed_at?}] | None`; the resolver copies it onto the `ClaimWrite` it sends.
 - **Fold tie-break within a scope:** higher `worker.trust` first, then newest `updated_at`.
 - **Fact view (§6) additions:** `worker` (id), `evidence` (array or null), and `support` = number of distinct (layer, source_ref) rows across the viewer's visible layers that back the same fact key (corroboration).
 - **Predicates:** `object_kind = '*'` means any entity kind (used by `follows`). New in the seed: `x_id` (identity), `avatar`, `milestone` (attribute, many, value `{title, kind, url}`, dated by `valid_from`), `follows` (→ `*`), `acquired` (company → company). `meta.timeline = true` marks predicates that belong on timelines.
