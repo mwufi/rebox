@@ -116,3 +116,86 @@ describe('S10 plans under RLS (rebox_app)', () => {
     expect(plan).not.toMatch(/Seq Scan on entity/);
   });
 });
+
+describe('S13 hub plans under RLS (rebox_app)', () => {
+  const HUB = 'rbx:place:bulk-hub';
+  const DEGREE = 1500;
+  beforeAll(async () => {
+    // A layer the anonymous viewer cannot see, so entity visibility must be probed per key (the
+    // all-layers-visible shortcut does not apply).
+    await t.owner`insert into layer (id, scope, owner, source) values ('user/s13x/gmail', 'user', 's13x', 'gmail') on conflict do nothing`;
+    await t.owner`insert into entity (id, kind, home_layer) values (${HUB}, 'place', 'public/bulk') on conflict do nothing`;
+    await t.owner`
+      insert into claim (layer_id, subject, predicate, object_id, source_ref)
+      select 'public/bulk', 'rbx:company:bulk-' || i, 'based_in', ${HUB}, 'bulk:' || i || ':based_in'
+      from generate_series(1, ${DEGREE}) i
+      on conflict do nothing`;
+    await t.owner`vacuum analyze claim`;
+  });
+
+  /**
+   * EXPLAIN ANALYZE of the generic plan (what the API runs: views and edges set plan_cache_mode =
+   * force_generic_plan) for each statement of a request that mentions `marker`.
+   */
+  async function genericPlans(path: string, marker: string): Promise<string[]> {
+    captured.length = 0;
+    const res = await app.request(path);
+    expect(res.status).toBe(200);
+    const statements = [...captured];
+    const lit = (v: unknown) =>
+      Array.isArray(v) ? `'{${v.map((x) => JSON.stringify(String(x))).join(',')}}'` : `'${String(v).replace(/'/g, "''")}'`;
+    const plans: string[] = [];
+    let setView: { query: string; params: unknown[] } | null = null;
+    for (const s of statements) {
+      if (s.query.includes('rebox_set_view')) setView = s;
+      if (!setView || !s.query.includes(marker)) continue;
+      const view = setView;
+      const rows = await db.sql.begin(async (tx) => {
+        await tx.unsafe(view.query, view.params as never[]);
+        await tx.unsafe(`set local plan_cache_mode = force_generic_plan`);
+        await tx.unsafe(`prepare s13_plan as ${s.query}`);
+        try {
+          return await tx.unsafe(`explain (analyze, costs off) execute s13_plan(${s.params.map(lit).join(', ')})`);
+        } finally {
+          await tx.unsafe(`deallocate s13_plan`);
+        }
+      });
+      plans.push(rows.map((r) => r['QUERY PLAN']).join('\n'));
+    }
+    return plans;
+  }
+
+  /** Total rows the fold read from claim by primary key (the claims behind the picked keys). */
+  const pkeyReads = (plan: string) =>
+    [...plan.matchAll(/Index Scan using claim_pkey on claim c .*?rows=(\d+) loops=(\d+)/g)].reduce(
+      (n, m) => n + Number(m[1]) * Number(m[2]),
+      0,
+    );
+
+  it('an edges page folds only the page, not the hub', async () => {
+    const plans = await genericPlans(`/v0/entities/${encodeURIComponent(HUB)}/edges?dir=in&limit=5`, 'picked');
+    expect(plans).toHaveLength(1);
+    const plan = plans[0]!;
+    expect(plan).toMatch(/(Index|Bitmap Index) Scan (using|on) claim_object_idx/); // one pass over the hub's keys
+    expect(plan).not.toMatch(/Seq Scan on entity/); // visibility is probed per key, never by reading every entity
+    expect(pkeyReads(plan)).toBe(6); // limit + 1 keys, one claim each
+    // Visibility is probed key by key and stops with the page.
+    const probes = [...plan.matchAll(/Index Scan using entity_pkey on entity e_\d+ .*?loops=(\d+)/g)].map((m) => Number(m[1]));
+    expect(probes.length).toBeGreaterThan(0);
+    for (const loops of probes) expect(loops).toBeLessThanOrEqual(6);
+  });
+
+  it('the entity view folds at most 12 keys per predicate and counts the rest', async () => {
+    const plans = await genericPlans(`/v0/entities/${encodeURIComponent(HUB)}`, 'numbered');
+    const incoming = plans.find((p) => /claim_object_idx/.test(p))!;
+    expect(incoming, plans.join('\n----\n')).toBeTruthy();
+    expect(pkeyReads(incoming)).toBe(12);
+    expect(incoming).not.toMatch(/Seq Scan on entity/);
+    const body = (await (await app.request(`/v0/entities/${encodeURIComponent(HUB)}`)).json()) as {
+      incoming: unknown[];
+      incoming_counts: Record<string, number>;
+    };
+    expect(body.incoming).toHaveLength(12);
+    expect(body.incoming_counts).toEqual({ based_in: DEGREE });
+  });
+});
