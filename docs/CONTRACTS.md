@@ -16,7 +16,7 @@ These are the interfaces between services. Every slice builds against this file.
 - Every entity has a `name` claim (predicate `name`, value a JSON string). Search uses it.
 - `cardinality = 'one'`: the fold keeps one winner per subject+predicate. `'many'`: keeps every distinct object/value.
 
-Schema: `db/migrations/0001_core.sql`. Operational tables (change feed, jobs, connector state, raw index, resolution log, review queue, merge log): `db/migrations/0002_ops.sql`. Vocabulary: `db/seed/0001_vocabulary.sql`.
+Schema: `db/migrations/0001_core.sql` (+ `0004_rls_indexes.sql`, see §2a). Operational tables (change feed, jobs, connector state, raw index, resolution log, review queue, merge log): `db/migrations/0002_ops.sql`. Vocabulary: `db/seed/0001_vocabulary.sql`.
 
 ## 2. Layers and access
 
@@ -30,6 +30,12 @@ Schema: `db/migrations/0001_core.sql`. Operational tables (change feed, jobs, co
   - admin token: visible = all `public/*`; writable = all `public/*` (merge/split only).
   - `REBOX_ENV=dev` only: header `X-Rebox-Viewer: <user id>` adds `user/<id>/*` and their teams' layers (for testing private layers).
 - Compute "all public layers" as `select id from layer where scope = 'public'`.
+
+### 2a. Querying under RLS (indexes)
+
+Under RLS, Postgres uses an index only when the operator is leakproof. `value #>> '{}'` and pg_trgm `%` are not. Therefore:
+- **Compare attribute values with `claim.value_text`** (a stored generated column = `value #>> '{}'`), never with `value #>> '{}'` or `value->>...`. Index: `(predicate, value_text) where object_id is null`. Use it for hard-key lookups and `attr eq` filters.
+- **Name search uses `search_name`** (entity_id, layer_id, name; trigram-indexed; no RLS because it only holds names from `public/*` layers, maintained by trigger). Search = trigram match on `search_name` for public names, unioned with an RLS-filtered scan of `claim where predicate = 'name' and layer_id not like 'public/%'` for the viewer's private names. Exclude merged entities via `entity.merged_into is null`.
 
 ## 3. Entity ids (deterministic minting)
 
