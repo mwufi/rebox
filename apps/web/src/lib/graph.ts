@@ -5,6 +5,8 @@ export interface GNode {
   id: string;
   kind: string;
   name: string | null;
+  avatar?: string;
+  handle?: 'hn' | 'x';
   hop: 0 | 1 | 2;
   /** "+N more" placeholder for a capped predicate group. */
   more?: { count: number; predicate: string; dir: 'out' | 'in'; owner: string };
@@ -89,7 +91,10 @@ function addCapped(
 /** Builds the graph for `center`, optionally adding 2-hop neighbors from `second` views. */
 export function buildGraph(center: EntityView, second: EntityView[] = [], caps = { perGroup: PER_GROUP_CAP, hop2: HOP2_CAP }): Graph {
   const g = { nodes: new Map<string, GNode>(), links: [] as GLink[], linkKeys: new Set<string>() };
-  g.nodes.set(center.id, { id: center.id, kind: center.kind, name: center.name, hop: 0 });
+  const centerNode: GNode = { id: center.id, kind: center.kind, name: center.name, hop: 0 };
+  const avatar = center.facts.find((f) => f.predicate === 'avatar')?.value;
+  if (typeof avatar === 'string' && /^https?:\/\//i.test(avatar)) centerNode.avatar = avatar;
+  g.nodes.set(center.id, centerNode);
   // Dedupe edges to the same neighbor+predicate+dir (several date ranges).
   const seen = new Set<string>();
   const first = edgesOf(center).filter((e) => {

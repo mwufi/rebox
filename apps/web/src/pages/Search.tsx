@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import type { SearchHit } from '../api';
-import { KindGlyph, KindTag, SkelRows, entityPath } from '../components/bits';
-import { KINDS, displayName, kindLabel } from '../lib/format';
+import { Avatar, EntityName, KindGlyph, KindTag, SkelRows, entityPath } from '../components/bits';
+import { KINDS, avatarOf, handleOf, kindLabel } from '../lib/format';
 import { useApi, useAsync, useTitle } from '../lib/hooks';
 
 const LIMIT = 60;
@@ -157,8 +157,8 @@ export function SearchPage() {
                       aria-current={i === active ? 'true' : undefined}
                     >
                       <span className="elink" data-kind={h.kind}>
-                        <KindGlyph kind={h.kind} />
-                        <span className={`elink-name${h.name ? '' : ' unnamed'}`}>{displayName(h)}</span>
+                        {avatarOf(h) ? <Avatar entity={h} size={22} /> : <KindGlyph kind={h.kind} />}
+                        <EntityName entity={h} handle={handleOf(h)} />
                       </span>
                       <span className="id" title={`score ${h.score}`}>
                         {h.id}

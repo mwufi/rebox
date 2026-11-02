@@ -216,7 +216,13 @@ function matchCondition(tx: Tx, cf: CompiledFilter) {
   if (cf.type === 'edge') {
     const { to, during } = cf.f;
     // The other side must be visible (RLS on entity), as in the fold.
-    const parts = [tx`c.other is not null`, tx`exists (select 1 from entity oe where oe.id = ${canonOf(tx, tx`c.other`)})`];
+    // Equivalent to `exists (entity where id = canon(c.other))`: canon only holds members whose
+    // root is visible, so this is either a canon hit or a visible un-merged entity. Written as two
+    // probes so each is a primary-key / CTE lookup instead of a hash join over every entity.
+    const parts = [
+      tx`c.other is not null`,
+      tx`(exists (select 1 from canon cn where cn.member = c.other) or exists (select 1 from entity oe where oe.id = c.other))`,
+    ];
     if (to) {
       const toCanon = canonOf(tx, tx`${to}::text`);
       // `c.other = any(group)` lets the planner use claim_object_idx / claim_subject_idx.
@@ -270,13 +276,29 @@ function attrCondition(tx: Tx, p: Predicate, a: AttrFilter) {
 }
 
 /**
- * Canonical ids of entities with a visible `eq` claim: an index lookup on claim_value_text_idx
- * that drives the query. The fold check in filterSource still decides whether it is effective.
+ * Canonical ids of entities that have at least one visible claim the filter could match: a
+ * superset of the filter's results, read straight from an index (claim_value_text_idx for
+ * attributes, claim_object_idx / claim_subject_idx for edges). The per-row fold check in
+ * filterSource decides whether the matching claim is effective and its other side visible.
  */
-function attrEqCandidates(tx: Tx, p: Predicate, eq: string | number | boolean) {
+function claimCandidates(tx: Tx, cf: Exclude<CompiledFilter, { type: 'name' }>) {
+  if (cf.type === 'attr') {
+    return tx`(
+      select ${canonOf(tx, tx`c.subject`)} from claim c
+      where c.predicate = ${cf.p.id} and c.object_id is null and ${attrCondition(tx, cf.p, cf.f)})`;
+  }
+  const { to, during, dir } = cf.f;
+  const [anchor, other] = dir === 'out' ? [tx`c.subject`, tx`c.object_id`] : [tx`c.object_id`, tx`c.subject`];
+  const parts: Frag[] = [];
+  if (to) parts.push(tx`and ${other} = any(${groupOf(tx, canonOf(tx, tx`${to}::text`))})`);
+  if (during?.to) {
+    const ub = upperBound(during.to);
+    parts.push(ub.op === 'lt' ? tx`and (c.valid_from is null or c.valid_from < ${ub.at}::timestamptz)` : tx`and (c.valid_from is null or c.valid_from <= ${ub.at}::timestamptz)`);
+  }
+  if (during?.from) parts.push(tx`and (c.valid_to is null or c.valid_to >= ${during.from}::timestamptz)`);
   return tx`(
-    select ${canonOf(tx, tx`c.subject`)} from claim c
-    where c.predicate = ${p.id} and c.object_id is null and c.value_text = ${scalarText(eq)})`;
+    select ${canonOf(tx, anchor)} from claim c
+    where c.predicate = ${cf.p.id} and c.object_id is not null ${parts.reduce((acc, p) => tx`${acc} ${p}`, tx``)})`;
 }
 
 /**
@@ -317,39 +339,49 @@ interface Row {
 }
 
 export async function runQuery(tx: Tx, plan: QueryPlan): Promise<QueryResult> {
-  // Selective filters (name, attr eq) also contribute an index-driven candidate set. Each set is a
-  // MATERIALIZED CTE so it is planned on its own (an index lookup on search_name_trgm_idx /
-  // claim_value_text_idx) instead of being folded into the outer plan, where the planner may
-  // prefer walking claim_layer_idx for the RLS condition.
+  // Plan shape (S10, measured on the live graph): every filter contributes an index-driven
+  // candidate set (a MATERIALIZED CTE, planned on its own). Their intersection, in id order,
+  // drives a nested loop over `entity`; each row then runs the per-filter fold checks as
+  // correlated subplans (`offset 0` keeps Postgres from flattening them into hash joins over
+  // every claim of the predicate), so the work stops once `limit + 1` rows have matched.
   const candidateCtes: Frag[] = [];
-  const conditions = plan.filters.map((cf, i) => {
-    const check = tx`and exists (select 1 ${filterSource(tx, cf, tx`e.id`)})`;
-    const cand =
-      cf.type === 'name'
-        ? nameCandidates(tx, cf.text)
-        : cf.type === 'attr' && cf.f.eq !== undefined
-          ? attrEqCandidates(tx, cf.p, cf.f.eq)
-          : null;
-    if (!cand) return check;
-    const cte = tx(`cand_${i}`);
-    candidateCtes.push(tx`, ${cte}(id) as materialized ${cand}`);
-    return tx`and e.id in (select id from ${cte}) ${check}`;
+  const checks = plan.filters.map((cf, i) => {
+    const cand = cf.type === 'name' ? nameCandidates(tx, cf.text) : claimCandidates(tx, cf);
+    candidateCtes.push(tx`, ${tx(`cand_${i}`)}(id) as materialized ${cand}`);
+    return tx`and exists (select 1 ${filterSource(tx, cf, tx`e.id`)} offset 0)`;
   });
   const reasonCols = plan.filters.map((cf) => reasonColumn(tx, cf));
   const reasonsSql = reasonCols.length
     ? tx`jsonb_build_array(${reasonCols.reduce((acc, col) => tx`${acc}, ${col}`)})`
     : tx`'[]'::jsonb`;
-  const after = plan.after ? tx`and e.id > ${plan.after}` : tx``;
+  const allChecks = checks.reduce((acc, c) => tx`${acc} ${c}`, tx``);
+
+  let inner: Frag;
+  if (plan.filters.length === 0) {
+    const after = plan.after ? tx`and e.id > ${plan.after}` : tx``;
+    inner = tx`
+      select e.id, e.kind from entity e
+      where e.kind = ${plan.find} and e.merged_into is null ${after}
+      order by e.id
+      limit ${plan.limit + 1}`;
+  } else {
+    const driver = plan.filters
+      .map((_, i) => tx`select id from ${tx(`cand_${i}`)}`)
+      .reduce((acc, sel) => tx`${acc} intersect ${sel}`);
+    const after = plan.after ? tx`where k.id > ${plan.after}` : tx``;
+    inner = tx`
+      select e.id, e.kind
+      from (select k.id from (${driver}) k ${after} order by k.id) k
+      join entity e on e.id = k.id
+      where e.kind = ${plan.find} and e.merged_into is null ${allChecks}
+      order by k.id
+      limit ${plan.limit + 1}`;
+  }
 
   const rows = await tx<Row[]>`
     with recursive ${canonCte(tx)} ${candidateCtes.reduce((acc, cte) => tx`${acc} ${cte}`, tx``)}
     select e.id, e.kind, ${reasonsSql} as reasons
-    from (
-      select e.id, e.kind from entity e
-      where e.kind = ${plan.find} and e.merged_into is null ${after} ${conditions.reduce((acc, c) => tx`${acc} ${c}`, tx``)}
-      order by e.id
-      limit ${plan.limit + 1}
-    ) e
+    from (${inner}) e
     order by e.id`;
 
   const page = rows.slice(0, plan.limit);
@@ -370,12 +402,20 @@ export async function runQuery(tx: Tx, plan: QueryPlan): Promise<QueryResult> {
 
 const year = (ts: string | null) => (ts ? ts.slice(0, 4) : null);
 
-export function formatSpan(from: string | null, to: string | null): string {
+/**
+ * Edge predicates that happen at one moment (a launch, a post, an acquisition): their validity
+ * is a single date, never a range that runs on to "now".
+ */
+export const POINT_IN_TIME: ReadonlySet<string> = new Set(['launched', 'posted', 'attended', 'milestone', 'acquired']);
+
+/** " 2019–2021", " 2019", " since 2019", " until 2021", or "" — never a dangling dash. */
+export function formatSpan(from: string | null, to: string | null, pointInTime = false): string {
   const a = year(from);
   const b = year(to);
+  if (pointInTime) return a ? ` ${a}` : b ? ` ${b}` : '';
   if (!a && !b) return '';
   if (a && b) return a === b ? ` ${a}` : ` ${a}–${b}`;
-  return a ? ` ${a}–` : ` –${b}`;
+  return a ? ` since ${a}` : ` until ${b}`;
 }
 
 function valueText(v: unknown): string {
@@ -388,6 +428,6 @@ export function formatReason(cf: CompiledFilter, m: Matched | null, nameOf: (id:
   if (!m) return cf.p.id;
   if (cf.type === 'attr') return `${cf.p.id} ${valueText(m.value)}`;
   const other = m.other ? nameOf(m.other) : '?';
-  const span = formatSpan(m.from, m.to);
+  const span = formatSpan(m.from, m.to, POINT_IN_TIME.has(cf.p.id));
   return cf.f.dir === 'out' ? `${cf.p.id} ${other}${span}` : `${other} ${cf.p.id}${span}`;
 }

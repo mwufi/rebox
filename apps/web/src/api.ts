@@ -9,6 +9,10 @@ export interface EntityRef {
   id: string;
   kind: Kind;
   name: string | null;
+  /** S10, optional: folded avatar URL. */
+  avatar?: string;
+  /** S10, optional: the name is only an HN / X handle. */
+  handle?: 'hn' | 'x';
 }
 
 export interface Fact {
@@ -83,6 +87,55 @@ export interface TimeseriesBucket {
   t: string;
   key: string;
   n: number;
+}
+
+export type TimelineKind =
+  | 'founded'
+  | 'joined'
+  | 'left'
+  | 'started'
+  | 'ended'
+  | 'launched'
+  | 'posted'
+  | 'attended'
+  | 'acquired'
+  | 'invested'
+  | 'milestone'
+  | 'first_seen'
+  | (string & {});
+
+/** GET /v0/entities/:id/timeline (§14). Fields beyond the contract are optional. */
+export interface TimelineEvent {
+  at: string;
+  kind: TimelineKind;
+  title: string;
+  predicate: string | null;
+  other: EntityRef | null;
+  fact: Fact | null;
+  key?: string;
+  dir?: 'out' | 'in' | null;
+  precision?: 'year' | 'day' | 'time';
+  headline?: boolean;
+  others?: EntityRef[];
+  layer?: string;
+}
+
+export interface Timeline {
+  id?: string;
+  events: TimelineEvent[];
+  next?: string | null;
+}
+
+/** GET/POST /v0/entities/:id/wiki (§14). */
+export interface Wiki {
+  content_md: string;
+  model: string;
+  generated_at: string;
+  input_seq: number;
+  stale: boolean;
+  sources?: { n: number; url: string; label: string }[];
+  can_generate?: boolean;
+  public?: boolean;
 }
 
 export interface EntityView {
@@ -174,6 +227,9 @@ export interface ReviewItem {
 export interface ErrorBody {
   error: string;
   message?: string;
+  can_generate?: boolean;
+  public?: boolean;
+  retry_after?: number;
   details?: { index: number; message: string }[];
 }
 
@@ -244,6 +300,11 @@ export function createClient(opts: ClientOptions = {}) {
         `/v0/entities/${enc(id)}/edges${qs({ predicate: p.predicate, dir: p.dir, limit: p.limit, cursor: p.cursor })}`,
         p,
       ),
+    timeline: (id: string, p: { limit?: number; cursor?: string | null } & Sig = {}) =>
+      call<Timeline>('GET', `/v0/entities/${enc(id)}/timeline${qs({ limit: p.limit, cursor: p.cursor })}`, p),
+    wiki: (id: string, o: Sig = {}) => call<Wiki>('GET', `/v0/entities/${enc(id)}/wiki`, o),
+    generateWiki: (id: string, p: { token?: string; force?: boolean } = {}) =>
+      call<Wiki>('POST', `/v0/entities/${enc(id)}/wiki${qs({ force: p.force ? 'true' : undefined })}`, { token: p.token || undefined, body: {} }),
     query: (q: Query, o: Sig = {}) => call<QueryResult>('POST', '/v0/query', { body: q, ...o }),
     changes: (p: { after?: number; limit?: number } & Sig = {}) =>
       call<{ changes: Change[]; next: number }>('GET', `/v0/changes${qs({ after: p.after, limit: p.limit })}`, p),

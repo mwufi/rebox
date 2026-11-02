@@ -61,7 +61,7 @@ describe('POST /v0/query', () => {
   it('open-ended validity and edge without `to`', async () => {
     const r = await q({ find: 'person', where: [{ edge: { predicate: 'worked_at', to: stripe, during: { from: '2024-06-01' } } }] });
     expect(ids(r)).toEqual([li]);
-    expect(r.body.results[0].reasons).toEqual(['worked_at QX Stripe 2022–']);
+    expect(r.body.results[0].reasons).toEqual(['worked_at QX Stripe since 2022']);
     const any = await q({ find: 'person', where: [{ name: 'qxchen' }, { edge: { predicate: 'founded' } }] });
     expect(ids(any)).toEqual([maya]);
   });

@@ -98,7 +98,7 @@ describe('EntityPage', () => {
     await waitFor(() => expect(decodeURIComponent(screen.getByTestId('where').textContent!)).toBe('/e/rbx:person:odile'));
     expect(screen.getByText(/was merged into this entity/).textContent).toContain('rbx:person:odile-hn');
     // The target view was primed from the redirect body: no second fetch.
-    expect(m.calls.filter((c) => c.url.startsWith('/v0/entities/')).length).toBe(1);
+    expect(m.calls.filter((c) => /^\/v0\/entities\/[^/]+$/.test(c.url)).length).toBe(1);
   });
 
   it('shows a not-found page for unknown ids', async () => {

@@ -12,6 +12,8 @@ export interface SearchHit {
   id: string;
   kind: string;
   name: string | null;
+  avatar?: string;
+  handle?: 'hn' | 'x';
   score: number;
 }
 
@@ -51,10 +53,15 @@ export async function search(
     order by s.score desc, e.id
     limit ${opts.limit}`;
   const refs = await entityRefs(tx, rows.map((r) => r.id));
-  return rows.map((r) => ({
-    id: r.id,
-    kind: r.kind,
-    name: refs.get(r.id)?.name ?? null,
-    score: Math.round(r.score * 1000) / 1000,
-  }));
+  return rows.map((r) => {
+    const ref = refs.get(r.id);
+    return {
+      id: r.id,
+      kind: r.kind,
+      name: ref?.name ?? null,
+      ...(ref?.avatar ? { avatar: ref.avatar } : {}),
+      ...(ref?.handle ? { handle: ref.handle } : {}),
+      score: Math.round(r.score * 1000) / 1000,
+    };
+  });
 }
