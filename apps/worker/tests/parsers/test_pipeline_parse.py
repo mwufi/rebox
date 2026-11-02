@@ -420,3 +420,60 @@ def test_x_parse_replay_writes_handle_identity_idempotently(deps, owner):
         owner.execute("select (select count(*) from claim) c, (select count(*) from entity) e").fetchone()
         == counts
     )
+
+
+def test_replay_writes_domain_and_wikidata_identity_idempotently(deps, owner):
+    """S19: a company minted from an article's domain and a place minted from its QID carry that
+    key as an identity claim in the parser's layer (with evidence); replays are idempotent."""
+    article = {"input_ref": "exa:d1", "input_hash": "", "model": "claude-haiku-5-5", "prompt_version": PROMPT_VERSION,
+               "input": {"kind": "article", "fields": {"title": "Ditto raises $9M", "text": "Ditto raised a $9M seed (https://www.getditto.com)."},
+                         "meta": {"date": "2026-10-02", "url": "https://news.example/d1", "author": "news.example", "host": "news.example"}},
+               "output": {"account": "other", "facts": [
+                   {"type": "milestone", "kind": "funding", "title": "Ditto raised $9M seed", "org": "Ditto", "org_handle": "",
+                    "first_person": False, "quote": "Ditto raised a $9M seed"}]},
+               "graph": {}}  # fmt: skip
+    bio = {"input_ref": "x_spider:u:78", "input_hash": "", "model": "claude-haiku-5-5", "prompt_version": PROMPT_VERSION,
+           "input": {"kind": "x_bio", "fields": {"name": "Eve", "location": "SF", "bio": "eng"},
+                     "meta": {"handle": "eve_ex", "x_id": "78", "url": "https://x.com/eve_ex", "author": "@eve_ex",
+                              "observed": "2026-10-25", "graph_kinds": []}},
+           "output": {"account": "person", "facts": [{"type": "location", "place": "SF", "quote": "SF"}]},
+           "graph": {}}  # fmt: skip
+    deps.raw.put(RawRecord.new("exa_parse", "exa:d1", article, fetched_at=T0))
+    deps.raw.put(RawRecord.new("x_parse", "x_spider:u:78", bio, fetched_at=T0))
+
+    class NoModel:
+        name = "claude-haiku-5-5"
+
+        def parse(self, docs, usage):
+            raise AssertionError("replay must not call the model")
+
+    def ident():
+        return owner.execute(
+            """select c.layer_id, c.predicate, c.value_text, c.evidence->0->>'quote' as quote, e.kind
+                 from claim c join entity e on e.id = c.subject
+                where c.predicate in ('domain', 'wikidata') order by c.predicate"""
+        ).fetchall()
+
+    for connector in (ExaParse(model=NoModel(), raw=deps.raw), XParse(model=NoModel(), raw=deps.raw)):
+        assert run_replay(connector, deps).rejected == 0
+    assert [tuple(r.values()) for r in ident()] == [
+        ("public/exa_ai", "domain", "getditto.com", "Ditto raised a $9M seed", "company"),
+        ("public/x_ai", "wikidata", "Q62", "SF", "place"),
+    ]
+    based_in = owner.execute("select object_id from claim where predicate = 'based_in'").fetchone()[
+        "object_id"
+    ]
+    assert (
+        based_in
+        == owner.execute("select subject from claim where predicate = 'wikidata'").fetchone()["subject"]
+    )
+    counts = owner.execute(
+        "select (select count(*) from claim) c, (select count(*) from entity) e"
+    ).fetchone()
+    for connector in (ExaParse(model=NoModel(), raw=deps.raw), XParse(model=NoModel(), raw=deps.raw)):
+        again = run_replay(connector, deps)
+        assert again.minted == 0 and again.rejected == 0
+    assert (
+        owner.execute("select (select count(*) from claim) c, (select count(*) from entity) e").fetchone()
+        == counts
+    )

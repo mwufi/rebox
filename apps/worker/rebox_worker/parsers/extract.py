@@ -34,6 +34,9 @@ so the resolver never has to add an evidence-less name claim for it; known entit
 One referenced by ``@handle`` also gets its handle as an identity claim (``x_handle``, or
 ``github`` for a GitHub org; never the profile's own handle), with the same evidence: the
 resolver mints it from that key, and without the claim it would look name-only forever (S18).
+The same holds for a company minted from an article's ``domain`` (unless a same-named company in
+the graph already has that domain) and a place minted from its ``wikidata`` QID (unless the graph
+had it at fetch time): the key is written as an identity claim (S19).
 """
 
 from __future__ import annotations
@@ -193,6 +196,8 @@ class Extraction:
                 return EntityRef(id=hit[0]["id"])
             ref = EntityRef(kind="company", identity={"domain": domain}, name=name)
             self._name(ref, name, quote, key=f"domain={domain}")
+            if not hit and not self.graph.get(f"domain:{domain}"):
+                self._identity(ref, "domain", domain, quote)  # minted from a domain the graph lacks
             return ref
         if len(cands) == 1:
             return EntityRef(id=cands[0]["id"])
@@ -240,8 +245,9 @@ class Extraction:
         ref = EntityRef(
             kind="place", identity={"wikidata": qid}, name=None if self.graph.get(f"wikidata:{qid}") else name
         )
-        if ref.name:
+        if ref.name:  # a place new to the graph: minted from its QID, which it now carries
             self._name(ref, name, quote, key=f"wikidata={qid}")
+            self._identity(ref, "wikidata", qid, quote)
         return ref
 
     def person_by_handle(self, handle: str, quote: str) -> EntityRef | None:
@@ -300,11 +306,17 @@ class Extraction:
         own = {str(m.get("handle") or "").lower(), str(m.get("github") or "").lower()} - {""}
         if handle.lower() in own:
             return
-        key = f"{platform}={handle.lower()}"
+        self._identity(ref, platform, handle, quote)
+
+    def _identity(self, ref: EntityRef, predicate: str, value: str, quote: str) -> None:
+        """Write the key a new entity is minted from as its identity claim (once per key), with
+        the referencing quote as evidence: ``x_handle``/``github`` (@handles), ``domain`` (an
+        article's company site) and ``wikidata`` (a city's QID). The resolver normalizes it."""
+        key = f"{predicate}={value if predicate == 'wikidata' else value.lower()}"
         if f"id:{key}" in self._named:
             return
         self._named.add(f"id:{key}")
-        self.add(ref, platform, key, quote, value=handle)
+        self.add(ref, predicate, key, quote, value=value)
 
     def _strip_label(self, quote: str) -> str:
         """Models sometimes quote the rendered field label ("location: SF"); the value is the quote."""

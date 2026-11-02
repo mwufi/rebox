@@ -271,8 +271,8 @@ def test_company_account_gets_no_roles_but_a_place():
     own = [c for c in claims if c.subject.kind == "company"]
     assert [c.predicate for c in own] == ["based_in"]
     assert own[0].subject.name is None  # known account: no name claim
-    # SF is not in this (empty) graph, so the place gets a name claim with evidence
-    assert [c.predicate for c in claims if c.subject.kind == "place"] == ["name"]
+    # SF is not in this (empty) graph, so the place gets a name and its QID claim with evidence (S19)
+    assert [c.predicate for c in claims if c.subject.kind == "place"] == ["name", "wikidata"]
 
 
 def test_unknown_account_gets_identity_and_name_with_evidence():
@@ -734,3 +734,43 @@ def test_github_org_handle_writes_a_github_identity():
     claims = run("github", payload, [_role("tinyrocket-ex", "eng @tinyrocket-ex", title="eng")])
     (g,) = [c for c in by_pred(claims, "github") if c.subject.identity == {"github": "tinyrocket-ex"}]
     assert g.value == "tinyrocket-ex" and _ev(g)["quote"] == "eng @tinyrocket-ex"
+
+
+# ── domain and Wikidata keys carry their identity claim too (S19) ──
+
+
+def test_company_minted_from_an_article_domain_writes_the_domain_identity():
+    claims = _article_claims({}, "Ditto raised a $9M seed (https://www.getditto.com).")
+    (m,) = by_pred(claims, "milestone")
+    (d,) = by_pred(claims, "domain")
+    assert d.subject == m.subject and d.value == "getditto.com"
+    assert _ev(d)["quote"] == "Ditto raised a $9M seed" and _ev(d)["url"] == "https://news.example/2026/10/x"
+    assert d.source_ref.endswith(":domain:domain=getditto.com") and d.source_ref.startswith("exa_parse:")
+    # a same-named company in the graph already has the domain: matched, no claim
+    known = {"name:ditto": [{"id": "rbx:company:aaa", "domains": ["getditto.com"]}]}
+    assert (
+        by_pred(_article_claims(known, "Ditto raised a $9M seed (https://www.getditto.com)."), "domain") == []
+    )
+    # two same-named companies share it: the key is known (resolver picks one), no claim either
+    two = {"name:ditto": [{"id": f"rbx:company:{x}", "domains": ["getditto.com"]} for x in "ab"]}
+    claims = _article_claims(two, "Ditto raised a $9M seed (https://www.getditto.com).")
+    assert by_pred(claims, "domain") == [] and by_pred(claims, "milestone")[0].subject.identity == {
+        "domain": "getditto.com"
+    }
+    # the article's host is the company's own site: same thing
+    claims = _article_claims({}, "Ditto raised a $9M seed.", url="https://getditto.com/blog/seed")
+    assert [c.value for c in by_pred(claims, "domain")] == ["getditto.com"]
+
+
+def test_place_minted_from_its_qid_writes_the_wikidata_identity():
+    loc = {"type": "location", "place": "SF", "quote": "SF"}
+    claims = _bio("eng. SF", [loc])
+    (b,) = by_pred(claims, "based_in")
+    (w,) = by_pred(claims, "wikidata")
+    assert w.subject == b.object and w.value == "Q62" and _ev(w)["quote"] == "SF"
+    assert w.source_ref.endswith(":wikidata:wikidata=Q62")
+    # the graph had the place at fetch time: neither name nor identity claim
+    claims = _bio("eng. SF", [loc], graph={"wikidata:Q62": ["place"]})
+    assert by_pred(claims, "wikidata") == []
+    assert [c for c in claims if c.subject.kind == "place"] == []
+    assert by_pred(claims, "based_in")[0].object.identity == {"wikidata": "Q62"}
