@@ -1,0 +1,38 @@
+{
+ "content_hash": "sha256:7209e9c1f9ce817538fe48c71f02d18f552c1c81f7bfc41d1bb1ed9a35c5573d",
+ "external_id": "user:33521530",
+ "fetched_at": "2026-11-02T10:48:34Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2009-04-20T14:04:41.000Z",
+   "description": "achieve ambition with intentionality, intensity, integrity & insanity.\n\naffiliations:\n- @smol_ai\n- @cognition\n- @temporalio\n- @aidotengineer\n- @latentspacepod",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "display_url": "swyx.io",
+       "end": 23,
+       "expanded_url": "https://swyx.io",
+       "start": 0,
+       "url": "https://t.co/Q5067iwtXU"
+      }
+     ]
+    }
+   },
+   "id": "33521530",
+   "location": "san francisco / singapore",
+   "name": "swyx",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/2073162797354217472/hNny55eF_normal.jpg",
+   "public_metrics": {
+    "followers_count": 209722,
+    "following_count": 3984
+   },
+   "url": "https://t.co/Q5067iwtXU",
+   "username": "swyx",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/swyx"
+}

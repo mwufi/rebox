@@ -1,0 +1,63 @@
+{
+ "content_hash": "sha256:893605b078ef17746b2d3928b238c560d39bb5ce1ad6d72c97141e95a4b819dd",
+ "external_id": "user:1209960539390201864",
+ "fetched_at": "2026-11-02T10:48:34Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2019-12-25T22:14:46.000Z",
+   "description": "Host of @dwarkeshpodcast\n\nhttps://t.co/3SXlu7fy6N\nhttps://t.co/4DPAxODFYi\nhttps://t.co/hQfIWdM1Un",
+   "entities": {
+    "description": {
+     "urls": [
+      {
+       "display_url": "youtube.com/DwarkeshPatel",
+       "end": 49,
+       "expanded_url": "https://www.youtube.com/DwarkeshPatel",
+       "start": 26,
+       "url": "https://t.co/3SXlu7fy6N"
+      },
+      {
+       "display_url": "open.spotify.com/show/4JH4tybY1…",
+       "end": 73,
+       "expanded_url": "https://open.spotify.com/show/4JH4tybY1zX6e5hjCwU6gF",
+       "start": 50,
+       "url": "https://t.co/4DPAxODFYi"
+      },
+      {
+       "display_url": "apple.co/3ujLQkZ",
+       "end": 97,
+       "expanded_url": "https://apple.co/3ujLQkZ",
+       "start": 74,
+       "url": "https://t.co/hQfIWdM1Un"
+      }
+     ]
+    },
+    "url": {
+     "urls": [
+      {
+       "display_url": "dwarkesh.com",
+       "end": 23,
+       "expanded_url": "https://www.dwarkesh.com/",
+       "start": 0,
+       "url": "https://t.co/WeFXM1OkQQ"
+      }
+     ]
+    }
+   },
+   "id": "1209960539390201864",
+   "location": "San Francisco ",
+   "name": "Dwarkesh Patel",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/1925260306684813315/NjNQZmhZ_normal.jpg",
+   "public_metrics": {
+    "followers_count": 283418,
+    "following_count": 1097
+   },
+   "url": "https://t.co/WeFXM1OkQQ",
+   "username": "dwarkesh_sp",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/dwarkesh_sp"
+}

@@ -1,0 +1,37 @@
+{
+ "content_hash": "sha256:5894cb7e30943d88b24391dd4248d5f7cc3b86b4c525273f1d3fee7de32b48d8",
+ "external_id": "user:1788993144991916032",
+ "fetched_at": "2026-11-02T10:48:32Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2024-05-10T18:03:08.000Z",
+   "description": "a social computing lab\n\njoin the waitlist👇",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "display_url": "commonfabric.com",
+       "end": 23,
+       "expanded_url": "https://commonfabric.com",
+       "start": 0,
+       "url": "https://t.co/800XmYco2Z"
+      }
+     ]
+    }
+   },
+   "id": "1788993144991916032",
+   "name": "Common Fabric",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/2100449275713052672/fjvL4RV__normal.jpg",
+   "public_metrics": {
+    "followers_count": 265,
+    "following_count": 44
+   },
+   "url": "https://t.co/800XmYco2Z",
+   "username": "common_fabric",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/common_fabric"
+}

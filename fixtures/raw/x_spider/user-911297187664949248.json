@@ -1,0 +1,37 @@
+{
+ "content_hash": "sha256:e7ca6e3dbda9ab7cfcd474e7a9597639b656097de6e41e41241204238b183f66",
+ "external_id": "user:911297187664949248",
+ "fetched_at": "2026-11-02T10:48:32Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2017-09-22T18:32:35.000Z",
+   "description": "Co-founder & CEO of Discovery Loop. Former Chief Scientist, Google. Helped build many Google products, TPUs, Gemini, TensorFlow, MapReduce, Bigtable, ...",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "display_url": "discoveryloop.com",
+       "end": 23,
+       "expanded_url": "https://discoveryloop.com",
+       "start": 0,
+       "url": "https://t.co/24LnBVHOYD"
+      }
+     ]
+    }
+   },
+   "id": "911297187664949248",
+   "name": "Jeff Dean",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/935325968280907776/AcBo6zJc_normal.jpg",
+   "public_metrics": {
+    "followers_count": 533915,
+    "following_count": 6456
+   },
+   "url": "https://t.co/24LnBVHOYD",
+   "username": "JeffDean",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/JeffDean"
+}

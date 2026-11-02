@@ -267,6 +267,9 @@ def test_pipeline_writes_profiles_and_follows(deps, owner):
     }
     assert facts["domain"] == "acme.com" and facts["name"] == "Acme" and facts["x_followers"] == 5000
     assert owner.execute("select count(distinct layer_id) n from claim").fetchone()["n"] == 1
+    # one name per entity, whatever record minted it
+    dup = owner.execute("select subject from claim where predicate='name' group by 1 having count(*) > 1")
+    assert dup.fetchall() == []
 
 
 def test_matches_existing_entity_by_x_handle(deps, owner, writer):
@@ -310,7 +313,8 @@ def test_posts_after_following_companies_only_within_budget(deps, owner):
     sp = XSpider(transport=fx.transport(), sleep=lambda s: None, seeds={"a": ["seed_a"], "b": ["seed_b"]})
     run_sync(sp, deps)
     post_calls = [c for c in fx.calls if "/tweets" in c]
-    # acme (score 2) first with 20, then zed (score 1) with the 5 left; people never
+    # acme (score 2) first with 20, then zed (score 1) with the 5 left; people never.
+    # (sfco, score 1 and in SF, would come before zed: see test_posts_prefer_sf_within_score)
     assert [c.split("?")[0] for c in post_calls] == ["/2/users/11/tweets", "/2/users/14/tweets"]
     assert "max_results=20" in post_calls[0] and "max_results=5" in post_calls[1]
     assert fx.post_objects == 21 and sp.run_stats["post_reads"] == 21
@@ -396,3 +400,37 @@ def test_budget_math():
     b.charge(users=5)
     assert b.users_allowed(1) == 0 and b.posts_allowed(5) == 0
     assert b.run.api_calls == 1 and round(b.total.usd, 4) == 1.0
+
+
+def test_replay_writes_the_same_claims(deps, owner):
+    """Replay iterates records in external_id order (following:* before user:*): same claims."""
+    from rebox_worker.pipeline import run_replay
+
+    fx = world()
+    deps.ctx.env = {**ENV, "X_SPIDER_PHASES": "following"}
+    run_sync(
+        XSpider(transport=fx.transport(), sleep=lambda s: None, seeds={"a": ["seed_a"], "b": ["seed_b"]}),
+        deps,
+    )
+    q = "select subject, predicate, object_id, value_text, source_ref from claim order by 1,2,3,4,5"
+    before = owner.execute(q).fetchall()
+    owner.execute("truncate claim, entity cascade")
+    run_replay(XSpider(seeds={}), deps)
+    assert owner.execute(q).fetchall() == before
+
+
+def test_posts_prefer_sf_within_score(deps):
+    fx = world()
+    sfco = user("16", "sfco", name="SF Co", verified_type="business", location="San Francisco", followers=1)
+    fx.following["1"].append(sfco)
+    fx.tweets["16"] = [tweet("990", "launching today")]
+    deps.ctx.env = {**ENV, "X_SPIDER_PHASES": "following,posts", "X_MAX_POST_READS_PER_RUN": "40"}
+    run_sync(
+        XSpider(transport=fx.transport(), sleep=lambda s: None, seeds={"a": ["seed_a"], "b": ["seed_b"]}),
+        deps,
+    )
+    assert [c.split("?")[0] for c in fx.calls if "/tweets" in c] == [
+        "/2/users/11/tweets",  # acme: score 2
+        "/2/users/16/tweets",  # sfco: score 1, SF, few followers
+        "/2/users/14/tweets",  # zed: score 1, more followers, not SF
+    ]

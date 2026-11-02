@@ -16,12 +16,14 @@ seeds:
 
 exa:
   queries:
-    # Named hot SF startups (domains checked by hand; one query each, pinned to their own site).
+    # Named hot SF startups (domains checked by hand, Nov 2026; one query each, pinned to their own site).
     - q: "Ditto, the AI social agent and matchmaker for college students"
       include_domains: [ditto.ai]
       num: 3
-    - q: "Known, the AI voice dating app from San Francisco"
-      include_domains: [knowndating.com]
+    # Known (X @dateknown; $9.7M seed Dec 2025) moved from knowndating.com, which Exa does not
+    # index, to known.com.
+    - q: "Known, the swipeless dating app that gets to know you with one short call"
+      include_domains: [known.com]
       num: 3
     # Fresh activity.
     - q: "San Francisco startup that launched in the last 30 days"

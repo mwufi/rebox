@@ -42,7 +42,7 @@ from .. import frontier
 from ..models import ClaimInput, CursorUpdate, EntityRef, RawRecord
 from ..normalize import url as normalize_url
 from .base import Ctx
-from .hn import PLATFORM_HOSTS, HttpGiveUp, name_matches_host, retry_after_s, site_domain
+from .hn import _BATCH_RE, PLATFORM_HOSTS, HttpGiveUp, name_matches_host, retry_after_s, site_domain
 
 API = "https://api.exa.ai/search"
 TOKEN_ENV = "EXA_API_KEY"
@@ -70,6 +70,9 @@ NEWS_HOSTS = frozenset(
     }
 )  # fmt: skip
 LANG_ROOTS = re.compile(r"^/(?:[a-z]{2}(?:-[a-z]{2})?|home|index\.html?)?/?$", re.I)
+_YC_TAG_RE = re.compile(r"\s*\((?:YC|Y Combinator)\s+[WSFXP]\d{2}\)", re.I)
+# Exa categories with dedicated indices that reject date filters (HTTP 400).
+UNDATED_CATEGORIES = frozenset({"company", "people", "linkedin profile"})
 TITLE_SPLIT = re.compile(r"\s+[|–—\-:·•]\s+|\s*[|–—·•]\s*")
 
 
@@ -132,15 +135,20 @@ class Exa:
         with ctx.http(transport=self.transport, headers={"x-api-key": key}) as client:
             for done, qi in enumerate(order, start=1):
                 q = queries[qi]
-                data = post_json(
-                    client,
-                    API,
-                    self._body(q),
-                    log=ctx.log,
-                    sleep=self.sleep,
-                    min_interval_s=self.min_interval_s,
-                )
                 stats["api_calls"] += 1
+                try:
+                    data = post_json(
+                        client,
+                        API,
+                        self._body(q),
+                        log=ctx.log,
+                        sleep=self.sleep,
+                        min_interval_s=self.min_interval_s,
+                    )
+                except ExaBadRequest as e:  # one bad query must not sink the run
+                    ctx.log.warning("exa: query %r rejected: %s", q.q, e)
+                    stats.setdefault("failed_queries", []).append(q.q)
+                    data = {}
                 stats["cost_usd"] = round(stats["cost_usd"] + _cost(data), 5)
                 items: list[frontier.Item] = []
                 records: list[RawRecord] = []
@@ -192,7 +200,7 @@ class Exa:
         if q.include_domains:
             body["includeDomains"] = list(q.include_domains)
         days = q.days if q.days is not None else (None if q.include_domains else DEFAULT_DAYS)
-        if days:
+        if days and q.category not in UNDATED_CATEGORIES:
             since = self.now() - timedelta(days=days)
             body["startPublishedDate"] = since.strftime("%Y-%m-%dT00:00:00.000Z")
         return body
@@ -223,6 +231,7 @@ class Exa:
         add("domain", dom)
         add("name", name)
         add("website", f"https://{dom}")
+        add("yc_batch", homepage_batch(p))
         return out
 
 
@@ -262,11 +271,18 @@ def result_payload(r: dict[str, Any], q: frontier.ExaQuery) -> dict[str, Any] | 
     }
 
 
+def homepage_batch(p: dict[str, Any]) -> str | None:
+    """``Kebra (YC S26)`` -> ``S26``."""
+    m = _BATCH_RE.search(_clean(p.get("title")) or "")
+    return f"{m.group('b').upper()}{m.group('y')}" if m else None
+
+
 def homepage_name(p: dict[str, Any]) -> str | None:
     """The company name from a homepage title: the title segment that matches the host
-    ("Home | Acme AI" on acme.ai -> "Acme AI"); else the host's label capitalized."""
+    ("Home | Acme AI" on acme.ai -> "Acme AI"), without a "(YC S26)" tag; else the host's label
+    capitalized."""
     dom = str(p.get("domain") or "")
-    title = _clean(p.get("title")) or ""
+    title = _YC_TAG_RE.sub(" ", _clean(p.get("title")) or "")
     segments = [s.strip() for s in TITLE_SPLIT.split(title) if s and s.strip()]
     for s in segments:
         if 1 <= len(s) <= 40 and dom and name_matches_host(s, dom):
@@ -285,6 +301,10 @@ def homepage_name(p: dict[str, Any]) -> str | None:
         return None
     label = dom.split(".")[0]
     return label[:1].upper() + label[1:] if len(label) >= 2 else None
+
+
+class ExaBadRequest(HttpGiveUp):
+    """400: this query is invalid (e.g. a filter the category does not support)."""
 
 
 def post_json(
@@ -309,6 +329,8 @@ def post_json(
         else:
             if resp.status_code == 200:
                 return resp.json()
+            if resp.status_code == 400:
+                raise ExaBadRequest(f"exa: HTTP 400: {resp.text[:300]}")
             if resp.status_code < 500 and resp.status_code != 429:
                 raise HttpGiveUp(f"exa: HTTP {resp.status_code}: {resp.text[:300]}")
             error, wait = f"HTTP {resp.status_code}", retry_after_s(resp)

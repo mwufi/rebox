@@ -1,0 +1,26 @@
+{
+ "content_hash": "sha256:f379392e26f0cc9e585b48e3cc836e1d964aca8e0c790a7b9f165348e4f65861",
+ "external_id": "url:https://graphon.ai",
+ "fetched_at": "2026-11-02T10:50:00Z",
+ "payload": {
+  "author": null,
+  "category": "company",
+  "domain": "graphon.ai",
+  "favicon": null,
+  "highlights": [
+   "# Graphon Labs\n\nGraphon Labs is a Software Development company. Graphon is a multimodal memory for AI that finds and connects meaningful moments, people, places, and things across videos, images, and text, and turns them into context, so AI can actually work. Graphon Labs employs 19 people, founded in 2025. Headquartered in San Francisco, California, United States. Its workforce is distributed across United States, Canada, and India.\n\n...\n\nGraphon works differently. It reads the content itself: the frames, the speech and the pages, not just the file names and labels around them. As it reads, it builds an ontology of your data automatically, roughly 10x deeper than a team could build by hand. The result is a lasting memory of how everything connects, across formats and over time. AI can then reason across all of it, and every answer shows where it came from.\n\n...\n\nGraphon was founded in 2025 by Arbaaz Khan (CEO), Clark Zhang (CTO) and Deepak Mishra (COO), and is based in the San Francisco Bay Area. We've raised $8.3M to build it.\n\n## Company Details\n- Industry: Software Development\n- Type: Privately held\n- Headquarters: San Francisco, United States\n- Founded Year: 2025\n- Homepage: graphon.ai\n- Aliases: Graphon AI Inc., graphon, graphon labs\n- LinkedIn: linkedin.com/company/graphon-ai\n- Linkedin Followers: 1,426\n- Emails: [email redacted]"
+  ],
+  "homepage": true,
+  "image": "https://media.licdn.com/dms/image/v2/D560BAQHVmXrDeZrXRg/company-logo_200_200/B56Zr6QbfbLIAI-/0/1765135202518/graphon_ai_logo?e=2147483647&v=beta&t=0GOA168RxaVRkepjLmzrddTANcFn1SyC5MjzuCbYYeU",
+  "published_date": null,
+  "query": "new AI startup homepage, based in San Francisco",
+  "summary": "Graphon Labs is a San Francisco-based AI software startup (founded 2025) that built Graphon, a multimodal memory for AI. It automatically reads and indexes content across videos, images, and text to create a deep, interconnected ontology of data, enabling AI to reason across formats and time with source-traceable answers. The company is privately held, with 19 employees, raised $8.3M, and operates from the San Francisco Bay Area with a distributed team across the US, Canada, and India. Founders: Arbaaz Khan (CEO), Clark Zhang (CTO), Deepak Mishra (COO). Website: graphon.ai; LinkedIn: /graphon-ai.",
+  "text": "# Graphon Labs\n\nGraphon Labs is a Software Development company. Graphon is a multimodal memory for AI that finds and connects meaningful moments, people, places, and things across videos, images, and text, and turns them into context, so AI can actually work. Graphon Labs employs 19 people, founded in 2025. Headquartered in San Francisco, California, United States. Its workforce is distributed across United States, Canada, and India.\n\n## About\n\nMost of the world's data isn't text. It's video, images, audio and documents. AI still struggles to use it, because today's tools only pull back pieces",
+  "title": "Graphon Labs",
+  "type": "exa_result",
+  "url": "https://graphon.ai/",
+  "url_key": "https://graphon.ai"
+ },
+ "source": "exa",
+ "url": "https://graphon.ai/"
+}

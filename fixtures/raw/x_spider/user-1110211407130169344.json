@@ -1,0 +1,38 @@
+{
+ "content_hash": "sha256:6b051963087b34aef5e9448a694be91bfe1992b614ec26d5d3780dbd38192b0d",
+ "external_id": "user:1110211407130169344",
+ "fetched_at": "2026-11-02T10:48:34Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2019-03-25T16:06:40.000Z",
+   "description": "Build and deploy production-grade machine learning applications with the #FeaturePlatform for #MachineLearning, from the creators of Uber Michelangelo.",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "display_url": "tecton.ai",
+       "end": 23,
+       "expanded_url": "https://www.tecton.ai/",
+       "start": 0,
+       "url": "https://t.co/AwP6S4T5Eg"
+      }
+     ]
+    }
+   },
+   "id": "1110211407130169344",
+   "location": "San Francisco",
+   "name": "Tecton",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/1946273783339167744/ROpsmGQT_normal.png",
+   "public_metrics": {
+    "followers_count": 1402,
+    "following_count": 112
+   },
+   "url": "https://t.co/AwP6S4T5Eg",
+   "username": "TectonAI",
+   "verified_type": "none"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/TectonAI"
+}

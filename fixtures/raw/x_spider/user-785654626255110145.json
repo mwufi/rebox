@@ -1,0 +1,49 @@
+{
+ "content_hash": "sha256:99a4c83ea97017fa4f1a9b744a97416124249a0f5db4715cffc34796a78212db",
+ "external_id": "user:785654626255110145",
+ "fetched_at": "2026-11-02T10:48:34Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2016-10-11T01:33:54.000Z",
+   "description": "Explore starting a startup in SF: https://t.co/QTihjfPK72 | Co-founders matched @traba_work @tryfinch @primer @contra @levels + more | @solofounders @sologrants",
+   "entities": {
+    "description": {
+     "urls": [
+      {
+       "display_url": "joinodf.com",
+       "end": 57,
+       "expanded_url": "http://joinodf.com",
+       "start": 34,
+       "url": "https://t.co/QTihjfPK72"
+      }
+     ]
+    },
+    "url": {
+     "urls": [
+      {
+       "display_url": "joinodf.com",
+       "end": 23,
+       "expanded_url": "http://joinodf.com",
+       "start": 0,
+       "url": "https://t.co/QTihjfPK72"
+      }
+     ]
+    }
+   },
+   "id": "785654626255110145",
+   "location": "San Francisco, CA",
+   "name": "ODF",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/1978559415168200706/FOxeb-ni_normal.jpg",
+   "public_metrics": {
+    "followers_count": 63465,
+    "following_count": 46
+   },
+   "url": "https://t.co/QTihjfPK72",
+   "username": "joinodf",
+   "verified_type": "business"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/joinodf"
+}

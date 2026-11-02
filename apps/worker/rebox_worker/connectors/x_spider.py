@@ -129,6 +129,11 @@ _COMPANY_BIO_RE = re.compile(
     r"we're hiring|now hiring|try it|sign up|download|get started|customer support)\b",
     re.I,
 )
+_COMPANY_NOUN_RE = re.compile(
+    r"^(?:(?:a|an|the)\s+)?(?:[\w-]+\s+){0,3}(?:lab|platform|company|startup|studio|fund|firm|api|sdk)\b",
+    re.I,
+)
+_HANDLE_SUFFIXES = ("ai", "hq", "labs", "lab", "app", "inc", "vc", "dev", "io", "xyz", "co", "team")
 _PERSON_BIO_RE = re.compile(
     r"(?:\bi(?:'m|’m| am)?\b|\bmy\b|\bme\b|\bhe/him\b|\bshe/her\b|\bthey/them\b|\bhusband\b|\bwife\b|"
     r"\bdad\b|\bmom\b|\bfather\b|\bmother\b|\bviews (?:are )?my own\b|\bco-?founder\b|\bfounder\b|"
@@ -512,14 +517,21 @@ class _Run:
     def _next_post_account(self) -> tuple[str, str] | None:
         if self.ctx.db is None:
             return None
+        cands: list[dict[str, Any]] = []
         with self.ctx.db.view() as conn:
             for kind in sorted(self.post_kinds):
-                rows = frontier.top(
-                    conn, SOURCE, limit=1, status=None, kind=kind, min_depth=1, exclude=self.state.posts_done
+                cands += frontier.top(
+                    conn, SOURCE, limit=50, status=None, kind=kind, min_depth=1, exclude=self.state.posts_done
                 )
-                if rows:
-                    return str(rows[0]["key"]), str(rows[0]["label"] or rows[0]["key"])
-        return None
+        if not cands:
+            return None
+        # Highest score first; within a score, SF/Bay Area accounts before the rest, then the
+        # frontier order (followers).
+        best = min(
+            enumerate(cands),
+            key=lambda ir: (-float(ir[1]["score"]), not is_sf(ir[1]["payload"] or {}), ir[0]),
+        )[1]
+        return str(best["key"]), str(best["label"] or best["key"])
 
     # 4. depth-1 expansion
     def expansion(self) -> Iterator[RawRecord | CursorUpdate]:
@@ -586,14 +598,19 @@ def user_record(u: dict[str, Any]) -> RawRecord:
     )
 
 
+def is_sf(u: Mapping[str, Any]) -> bool:
+    return bool(
+        SF_RE.search(_clean(u.get("location")) or "") or SF_RE.search(_clean(u.get("description")) or "")
+    )
+
+
 def expansion_eligible(u: dict[str, Any], score: int) -> bool:
     """SF people: location or bio mentions SF / the Bay Area, or no location and >= 2 seeds."""
     if classify(u) != "person":
         return False
-    loc = _clean(u.get("location")) or ""
-    if SF_RE.search(loc) or SF_RE.search(_clean(u.get("description")) or ""):
+    if is_sf(u):
         return True
-    return not loc and score >= 2
+    return not _clean(u.get("location")) and score >= 2
 
 
 def _now() -> str:
@@ -632,8 +649,11 @@ def classify(u: Mapping[str, Any]) -> str:
         company += 1
     if _WE_RE.search(bio):
         company += 1
-    if _COMPANY_BIO_RE.search(bio):
+    if _COMPANY_BIO_RE.search(bio) or _COMPANY_NOUN_RE.search(bio):
         company += 1
+    handle_key, name_key = _key(str(u.get("username") or "")), _key(_strip_symbols(name))
+    if len(name_key) >= 3 and handle_key in {name_key + s for s in _HANDLE_SUFFIXES}:
+        company += 2  # @tectonai "Tecton", @typedef_ai "typedef", @acmehq "Acme"
     if _PERSON_BIO_RE.search(bio):
         person += 2
     if _looks_like_person_name(name):
@@ -709,7 +729,9 @@ def user_claims(u: Mapping[str, Any]) -> list[ClaimInput]:
     return out
 
 
-def user_ref(u: Mapping[str, Any]) -> EntityRef:
+def user_ref(u: Mapping[str, Any], *, named: bool = True) -> EntityRef:
+    """``named=False`` for edges: the account's own ``x_user`` record (always fetched with the
+    page) names it, so an edge that happens to mint the entity first adds no second name claim."""
     kind = classify(u)
     identity: dict[str, Any] = {
         "x_id": str(u.get("id") or ""),
@@ -717,19 +739,20 @@ def user_ref(u: Mapping[str, Any]) -> EntityRef:
     }
     if kind == "company":
         identity["domain"] = own_site_domain(u)
-    return EntityRef(kind=kind, identity=identity, name=display_name(u) or str(u.get("username") or ""))
+    name = display_name(u) or str(u.get("username") or "") if named else None
+    return EntityRef(kind=kind, identity=identity, name=name)
 
 
 def following_claims(seed: Mapping[str, Any], users: list[Mapping[str, Any]]) -> list[ClaimInput]:
     sid = str(seed.get("id") or "")
     if not sid or not seed.get("username"):
         return []
-    subject = user_ref(seed)
+    subject = user_ref(seed, named=False)
     return [
         ClaimInput(
             subject=subject,
             predicate="follows",
-            object=user_ref(u),
+            object=user_ref(u, named=False),
             source_ref=f"{SOURCE}:follows:{sid}:{u['id']}",
         )
         for u in users

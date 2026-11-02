@@ -1,0 +1,38 @@
+{
+ "content_hash": "sha256:904c1c61350861602f5b6cb847cee2d0d0944f449deba4239d37f7a64eef26b7",
+ "external_id": "user:52556921",
+ "fetched_at": "2026-11-02T10:48:31Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2009-06-30T23:19:42.000Z",
+   "description": "Partner, Ecosystem @a16z || building @cosign || Formerly: EIR @Blackbirdvc; Co-Founder & CEO at On Deck; early-ish @AngelList, @Cartainc",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "display_url": "a16z.com",
+       "end": 23,
+       "expanded_url": "http://a16z.com",
+       "start": 0,
+       "url": "https://t.co/kRdDUiCZJZ"
+      }
+     ]
+    }
+   },
+   "id": "52556921",
+   "location": "San Francisco / NZ ",
+   "name": "David Booth",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/1809171042340118528/e7U4zSfE_normal.jpg",
+   "public_metrics": {
+    "followers_count": 18381,
+    "following_count": 3099
+   },
+   "url": "https://t.co/kRdDUiCZJZ",
+   "username": "davidbooth",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/davidbooth"
+}

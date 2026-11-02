@@ -1,0 +1,25 @@
+{
+ "content_hash": "sha256:00aaf0572f94acc3dfcfeab8a150f6e6947bfa7a7ec36a910e0eb2c20d6ce2be",
+ "external_id": "user:228892888",
+ "fetched_at": "2026-11-02T10:48:32Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2010-12-20T23:54:54.000Z",
+   "description": "robots, matcha, thinking, investing | heads down era | ex- @amazon robotics, @frcteams | @mit | 🇺🇸",
+   "id": "228892888",
+   "location": "San Francisco, CA",
+   "name": "emily yu",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/2065253763779264512/Ef2MKqrj_normal.jpg",
+   "public_metrics": {
+    "followers_count": 5590,
+    "following_count": 1430
+   },
+   "url": "",
+   "username": "emily_yu",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/emily_yu"
+}

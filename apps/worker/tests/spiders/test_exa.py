@@ -133,6 +133,7 @@ def test_error_is_not_retried_on_4xx(ctx_factory):
         ("https://knowndating.com/", "Known: dating, by voice", True, "Known"),
         ("https://acme.ai/en", "Home - Acme", True, "Acme"),
         ("https://getnao.io/", "Nao Labs - the data IDE", True, "Nao Labs"),
+        ("https://kebra.com/", "Kebra (YC S26) | Agents for logistics", True, "Kebra"),
         ("https://acme.ai/blog/launch", "Launch", False, None),
         ("https://techcrunch.com/", "TechCrunch", False, None),
         ("https://github.com/", "GitHub", False, None),
@@ -194,3 +195,37 @@ def test_pipeline_frontier_and_claims(deps, owner):
     }
     assert names == {"Acme AI", "Ditto"}
     assert owner.execute("select count(*) n from raw_record where source='exa'").fetchone()["n"] == 4
+
+
+def test_company_category_has_no_date_filter_and_bad_query_is_skipped(ctx_factory):
+    bodies: list[dict] = []
+
+    def handler(request):
+        import json
+
+        body = json.loads(request.content)
+        bodies.append(body)
+        if body["query"] == "bad":
+            return httpx.Response(400, json={"error": "Invalid request body"})
+        return httpx.Response(200, json={"results": []})
+
+    qs = [ExaQuery(q="bad"), ExaQuery(q="cos", category="company", days=30)]
+    exa = Exa(transport=httpx.MockTransport(handler), sleep=lambda s: None, queries=qs, now=lambda: NOW)
+    list(exa.fetch(ctx_factory(env=ENV), None))
+    assert "startPublishedDate" not in bodies[1] and bodies[1]["category"] == "company"
+    assert exa.run_stats["failed_queries"] == ["bad"] and exa.run_stats["api_calls"] == 2
+
+
+def test_extract_yc_batch_from_homepage_title():
+    ex = Exa(queries=[])
+    rec = RawRecord.new(
+        "exa",
+        "url:k",
+        result_payload({"url": "https://kebra.com/", "title": "Kebra (YC S26)"}, ExaQuery(q="x")),
+    )
+    assert {(c.predicate, c.value) for c in ex.extract(rec)} == {
+        ("domain", "kebra.com"),
+        ("name", "Kebra"),
+        ("website", "https://kebra.com"),
+        ("yc_batch", "S26"),
+    }

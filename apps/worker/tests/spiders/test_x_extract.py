@@ -76,6 +76,27 @@ CLASSIFY_CASES = [
         "company",
     ),
     (
+        "handle = name + ai",
+        user("13", "TectonAI", name="Tecton", bio="Build and deploy production-grade ML applications"),
+        "company",
+    ),
+    (
+        "handle = name + _ai",
+        user("14", "typedef_ai", name="typedef", bio="AI agents for data engineering"),
+        "company",
+    ),
+    (
+        "a ... lab, join us",
+        user("15", "fabric", name="Fabric", bio="a social computing lab. join us"),
+        "company",
+    ),
+    (
+        "one weak signal is not enough",
+        user("17", "fabric", name="Fabric", bio="a social computing lab"),
+        "person",
+    ),
+    ("person handle+name", user("16", "jdoeai", name="J Doe", bio="I build AI. engineer"), "person"),
+    (
         "website is link-in-bio, not company",
         user("12", "kay", name="Kay", bio="writer", url="https://linktr.ee/kay"),
         "person",
