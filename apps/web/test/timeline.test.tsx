@@ -179,3 +179,16 @@ describe('EntityPage timeline and wiki', () => {
     expect(screen.getByText('HN handle')).toBeTruthy();
   });
 });
+
+describe('Avatar', () => {
+  it('shows the image for http(s) avatars and initials otherwise', async () => {
+    const { Avatar } = await import('../src/components/bits');
+    const { container, rerender } = render(<Avatar entity={{ id: 'rbx:person:a', kind: 'person', name: 'Ada Lovelace', avatar: 'https://img.example/a.png' }} />);
+    const img = container.querySelector('img')!;
+    expect(img.getAttribute('src')).toBe('https://img.example/a.png');
+    expect(img.getAttribute('referrerpolicy')).toBe('no-referrer');
+    rerender(<Avatar entity={{ id: 'rbx:person:a', kind: 'person', name: 'Ada Lovelace', avatar: 'javascript:alert(1)' }} />);
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.textContent).toBe('AL');
+  });
+});
