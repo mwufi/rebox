@@ -42,8 +42,8 @@ Opinions, jokes, threads, hiring ads, giveaways, departures and teasers give not
 Entities:
 - **Account owner:** identity `x_id` + `x_handle` (X) or `github` (GitHub). Its kind (person/company) is the one the graph already has. An account the graph does not know uses the model's `account` guess (`other` → no facts), and gets its identity and `name` claims written with evidence.
 - **Organizations by `@handle`:** company with identity `x_handle` (X), or `github` (GitHub bios, where `@org` is a GitHub org). A company (or person, in posts) the graph did not know gets the handle as an identity claim (`x_handle` / `github`) in the parser's layer, with the referencing quote as evidence, so it is hard-keyed from then on (the resolver matches later mentions; dedupe phase 1 groups it with the `x_spider` / Wikidata company of the same handle). Never for the profile's own handle. `rebox-worker replay x_parse` adds the claims to what earlier runs minted.
-- **Organizations by name:** the graph's single company with that exact name if there is one. Otherwise a name-only company with the account as `context`, so the resolver's scoped fuzzy pass can match it. In articles, a company whose name matches the article's host gets `domain` identity.
-- **Places:** cities from `parsers/places.py` (60 cities with Wikidata ids). "SF", "San Fran", "Bay Area", "SF Bay Area" → San Francisco (`wikidata: Q62`), "NYC" → New York City, and so on. Other places are dropped. For a move ("NYC → SF") only the destination is kept.
+- **Organizations by name:** the graph's single company with that exact name if there is one. Otherwise a name-only company with the account as `context`, so the resolver's scoped fuzzy pass can match it. In articles, a company whose name matches the article's host (or a link in its text) gets `domain` identity. Unless a same-named company in the graph already had that domain at fetch time, the domain is also written as a `domain` identity claim with the quote as evidence (S19), the same way @handles are.
+- **Places:** cities from `parsers/places.py` (60 cities with Wikidata ids). "SF", "San Fran", "Bay Area", "SF Bay Area" → San Francisco (`wikidata: Q62`), "NYC" → New York City, and so on. Other places are dropped. For a move ("NYC → SF") only the destination is kept. A place the graph did not know at fetch time gets a `name` and a `wikidata` identity claim (S19).
 - Every new entity gets a `name` claim from `extract` (with evidence), so the resolver never adds an evidence-less name claim.
 
 ## Guards (in `extract`)
@@ -105,9 +105,10 @@ ANTHROPIC_API_KEY=... rebox-worker sync x_parse --limit 200     # bios
 rebox-worker sync x_parse_posts                                # posts
 rebox-worker sync exa_parse                                    # articles
 rebox-worker replay x_parse                                    # re-extract, no model calls
+rebox-worker replay exa_parse --retract-stale --dry-run        # what an older extract left behind
 ```
 
-A replay writes what extract emits now; it does not retract claims an older extract wrote and the new one no longer emits (e.g. milestones the relevance filter drops). To remove those, retract them as the same worker: for each `public/exa_ai` milestone claim whose `(subject, source_ref)` the current extract no longer produces, write the same claim with `"retract": true` (CONTRACTS §5) as the `exa-parser-*` worker.
+A replay writes what extract emits now; on its own it does not retract claims an older extract wrote and the new one no longer emits (e.g. milestones the relevance filter drops). `rebox-worker replay exa_parse --retract-stale` does: after the replay it retracts, as the worker that wrote them, the source's claims whose `source_ref` the replay did not emit (`--dry-run` first; it refuses above 30% of a layer unless `--force`). See RUNBOOK "After a crash". On the 2026-11-02 live copy after the S18 cleanup: `exa_parse` 0 stale milestones, 22 stale `name` claims of companies only dropped listicles had named (2 more kept: the only name of a company that still has milestones); `x_parse` 0 of 9,495.
 
 Env: `ANTHROPIC_API_KEY` (parsers are disabled without it), `PARSER_MODEL` (default `claude-haiku-5-5`), `PARSER_MAX_CALLS_PER_RUN` (default 2000), `PARSER_BATCH` (optional; overrides the per-connector default).
 

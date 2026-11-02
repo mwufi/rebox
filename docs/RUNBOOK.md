@@ -74,6 +74,23 @@ docker compose exec worker rebox-worker status             # connector_state tab
 ```
 If the worker container is not running, use `docker compose run --rm worker <cmd>` instead of `exec worker rebox-worker <cmd>`.
 
+### After a crash
+A worker killed mid-sync (OOM, `docker compose down`, machine restart) can leave raw records that were written to the raw store but not indexed in `raw_record`, so `replay` would not see them. And after an extract change, claims an older extract wrote stay in the graph until they are retracted. Recover per source, upstream sources first (`x_spider` before `x_parse`, `exa` before `exa_parse`):
+```bash
+docker compose up -d                                                  # migrate, api, worker; jobs left running are re-queued (after stale_after_s)
+docker compose exec worker rebox-worker status                        # last_status per source
+docker compose exec worker rebox-worker raw reindex x_spider --dry-run
+docker compose exec worker rebox-worker raw reindex x_spider          # index raw files the crash left out
+docker compose exec worker rebox-worker replay x_spider               # re-extract everything stored (no fetch)
+docker compose exec worker rebox-worker replay x_spider --retract-stale --dry-run
+docker compose exec worker rebox-worker replay x_spider --retract-stale
+```
+- `replay` never calls a model (parsers re-extract their stored outputs), so it needs no `ANTHROPIC_API_KEY`. It is idempotent.
+- `replay <source> --retract-stale` replays, then retracts every live claim of that source's workers, in the source's layers, whose `source_ref` the replay no longer emits (written again with `retract: true` as the worker that wrote it, in that worker's `replay` run; run stats `retracted_stale`). `--dry-run` writes nothing (no replay either) and prints stale counts per layer and predicate, plus 10 examples (`--examples N`).
+- It never touches other workers' claims (`x_parse` and `x_parse_posts` share `public/x_ai`), claims an `import` wrote (their raw records are on another instance), the name claims the resolver adds when it mints an entity, or an entity's last name while the entity still has other facts (reported as `kept`).
+- It refuses (exit 1, nothing retracted; the replay itself still ran) when a layer would lose more than 30% of the claims checked, or when a record failed to extract. That usually means the raw store is incomplete: run `raw reindex` first. `--force` overrides after you checked the dry run.
+- Run it again to confirm: it reports `stale 0`.
+
 ### Database access
 ```bash
 docker compose exec db psql -U postgres rebox             # owner (bypasses RLS)
