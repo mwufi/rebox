@@ -205,7 +205,8 @@ export function parseTimeseries(q: Record<string, string | undefined>, now = Dat
 }
 
 /**
- * Buckets from the change feed. claims = claim inserts; entities = the first insert per subject
+ * Buckets from the change feed. claims = claim writes (inserts and updates: a new claim, a changed
+ * value, or a pre-0005 claim attributed to the worker that re-sent it); entities = the first insert per subject
  * (the moment the entity first appeared in the graph), counted in the bucket where it happened.
  * Keys: kind = the id prefix (rbx:<kind>:...), worker = worker id ("unattributed" for writes
  * before migration 0005), layer = layer id.
@@ -223,7 +224,7 @@ async function timeseries(tx: Tx, q: TimeseriesQuery) {
       ? await tx<{ t: Date; key: string; n: number }[]>`
           select date_trunc(${bucket}, at) as t, ${keyExpr} as key, count(*)::int as n
           from change ch
-          where ch.op = 'insert' and ch.at >= ${q.since} and ${visibleChange(tx)}
+          where ch.op in ('insert', 'update') and ch.at >= ${q.since} and ${visibleChange(tx)}
           group by 1, 2 order by 1, 2`
       : await tx<{ t: Date; key: string; n: number }[]>`
           with firsts as (
@@ -374,7 +375,7 @@ export function workerRoutes(deps: Deps) {
       const [counts, lastRuns] = await Promise.all([
         tx<{ worker_id: string; total: number; day: number }[]>`
           select ch.worker_id,
-                 count(*) filter (where ch.op = 'insert')::int as total,
+                 count(distinct ch.claim_id)::int as total,
                  count(*) filter (where ch.at > now() - interval '24 hours')::int as day
           from change ch
           where ch.worker_id = any(${ids}::text[]) and ch.op in ('insert', 'update') and ${visibleChange(tx)}
@@ -422,11 +423,10 @@ export function workerRoutes(deps: Deps) {
             and ch.op in ('insert', 'update') and ${visibleChange(tx)}
           group by 1 order by 1`,
         tx<{ predicate: string; n: number }[]>`
-          select ch.predicate, (count(*) filter (where ch.op = 'insert') - count(*) filter (where ch.op = 'delete'))::int as n
+          select ch.predicate, count(distinct ch.claim_id)::int as n
           from change ch
-          where ch.worker_id = ${id} and ch.op in ('insert', 'delete') and ${visibleChange(tx)}
-          group by 1 having count(*) filter (where ch.op = 'insert') > count(*) filter (where ch.op = 'delete')
-          order by 2 desc, 1`,
+          where ch.worker_id = ${id} and ch.op in ('insert', 'update') and ${visibleChange(tx)}
+          group by 1 order by 2 desc, 1`,
         tx<{ claim_id: string }[]>`
           select max(ch.claim_id)::text as claim_id from (
             select claim_id, seq from change ch
@@ -434,7 +434,8 @@ export function workerRoutes(deps: Deps) {
             order by ch.seq desc limit 100
           ) ch group by ch.claim_id order by max(ch.seq) desc limit 20`,
         tx<{ total: number; day: number; runs_ok: number; runs_failed: number }[]>`
-          select (select count(*)::int from change ch where ch.worker_id = ${id} and ch.op = 'insert' and ${visibleChange(tx)}) as total,
+          select (select count(distinct ch.claim_id)::int from change ch
+                   where ch.worker_id = ${id} and ch.op in ('insert','update') and ${visibleChange(tx)}) as total,
                  (select count(*)::int from change ch where ch.worker_id = ${id} and ch.op in ('insert','update')
                     and ch.at > now() - interval '24 hours' and ${visibleChange(tx)}) as day,
                  (select count(*)::int from run where worker_id = ${id} and status = 'ok') as runs_ok,

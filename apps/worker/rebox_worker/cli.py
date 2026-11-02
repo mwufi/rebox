@@ -187,8 +187,8 @@ def cmd_workers_list(args: argparse.Namespace, settings: Settings) -> int:
     with Db(settings.database_url, max_size=1) as db, db.view() as conn:
         rows = conn.execute(
             """select w.id, w.kind, w.source, w.owner, w.trust, w.status, w.last_seen_at,
-                      (select count(*) from change ch
-                        where ch.worker_id = w.id and ch.op = 'insert') as claims,
+                      (select count(distinct ch.claim_id) from change ch
+                        where ch.worker_id = w.id and ch.op in ('insert', 'update')) as claims,
                       (select count(*) from run r where r.worker_id = w.id and r.status = 'ok') as runs_ok,
                       (select count(*) from run r
                         where r.worker_id = w.id and r.status = 'failed') as runs_failed
