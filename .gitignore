@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.data/
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+apps/api/public/
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+coverage/
