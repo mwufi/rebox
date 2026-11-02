@@ -1,11 +1,11 @@
-# S4 — Public connectors: Wikidata, Hacker News launches, GitHub
+# S4 — Public connectors: Wikidata, Hacker News launches, GitHub, X
 
 **Goal:** three real connectors that build the first public graph of the SF startup world, plugged into the worker's Connector protocol, tested offline against recorded fixtures, and smoke-tested live end to end through the real API.
 
 **Branch:** `s4-connectors`  **DB prefix:** `s4_`  **Depends on:** S1 (api) and S2 (worker core) merged to `main`.
 
 ## Owns
-`apps/worker/rebox_worker/connectors/{wikidata,hn,github}.py`, `apps/worker/tests/connectors/**`, `fixtures/raw/{wikidata,hn,github}/**`, `docs/SOURCES.md`. One line in the connector registry per connector.
+`apps/worker/rebox_worker/connectors/{wikidata,hn,github,x}.py`, `apps/worker/tests/connectors/**`, `fixtures/raw/{wikidata,hn,github,x}/**`, `docs/SOURCES.md`. One line in the connector registry per connector.
 
 ## Rules for every connector
 - `fetch` is the only code that touches the network. Respect rate limits (sleep between requests, exponential backoff on 429/5xx), send `USER_AGENT`, support `limit` (stop after N raw records) for dev runs.
@@ -32,6 +32,12 @@
 - Search users with `location:"San Francisco"` and `followers:>=100` (split by follower ranges to stay under the 1,000-result search cap), then fetch each profile; for `company` values of the form `@org`, fetch the org.
 - Person: `name`, `github` (login), `x_handle`, `website`, `headline` (bio), `location`. Company (only from `@org`): `name`, `github`, `website` + `domain`, `x_handle`. Edge: person `worked_at` company (no dates).
 - **Fixtures must be synthetic** (clearly fake logins like `example-octo-1`), because no GitHub access exists in this environment and we don't want copies of real people's profiles in git.
+
+## X profiles (`public/x`)
+- Live mode requires `X_BEARER_TOKEN`; without it `enabled()` is false. Tests run on synthetic fixtures (fake handles only).
+- **Enrichment, not discovery:** read the `x_handle` values already in the graph (people and companies, from Wikidata, GitHub and others) through the worker's DB access, then look them up in batches of up to 100 with the X API v2 users-by-username endpoint (`user.fields=name,description,location,url,public_metrics`). Respect rate-limit headers; cursor = last handle processed so a run can resume.
+- Emits for the existing entity (EntityRef with identity `x_handle`): `name` only if the entity has none, `headline` (description, people) or `description` (companies), `location` (people), `website` (expanded URL, not t.co), `x_followers`.
+- Posts and engagement (for "who posted about AI") are out of scope for v0; they need an activity store and a paid API tier.
 
 ## docs/SOURCES.md
 For each source: what is fetched, license/terms, rate limits used, schedule, layer, and the predicates it emits.

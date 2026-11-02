@@ -183,6 +183,7 @@ Every decision writes `resolution_log`. Batch-local cache so one batch resolves 
 | `REBOX_ENV` | api, worker | `dev` \| `prod` |
 | `USER_AGENT` | worker | `rebox-bot/0.1 (+https://rebox.example)` |
 | `GITHUB_TOKEN` | worker (optional) | enables live GitHub connector |
+| `X_BEARER_TOKEN` | worker (optional) | enables live X connector |
 | `AWS_REGION` | worker (s3 raw store) | `us-west-2` |
 
 ## 10. Repository conventions
