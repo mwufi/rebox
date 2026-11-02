@@ -641,7 +641,7 @@ def test_shared_and_weak_hints_never_merge_distinct_entities(tmp_path, tgt_db, t
     assert len({o.target for o in report.outcomes.values()}) == 2
     assert report.hints_dropped["x_handle (shared by several origin entities)"] == 2
     assert report.hints_dropped["website (weak key)"] == 2
-    assert report.workers[0].action == "register (new)"
+    assert report.workers[0].action == "register (new), table trust 0.8"
     # Only x_id is left; it is a minting key (CONTRACTS §3), so each mints its deterministic x_id id.
     assert {o.target for o in report.outcomes.values()} == {
         mint_id("person", {"x_id": "10"}, "x", "x"),
@@ -767,7 +767,7 @@ def test_writer_rejection_drops_only_the_named_claims(tmp_path, tgt_db):
 
 
 def test_workers_register_through_the_client_with_ids_and_table_trust(tmp_path, tgt_db):
-    """Bundle workers register with their own id and keep the target's trust; claims without a
+    """Bundle workers register with their own id (and, new on the target, its table trust); claims without a
     worker (a bundle from an instance without migration 0008) go to the target's
     ``<source>-connector`` with its table trust (config/trust.yaml: wikidata 0.9)."""
     a = _ref("rbx:person:aaaa", "A", x_handle="a")
@@ -783,7 +783,7 @@ def test_workers_register_through_the_client_with_ids_and_table_trust(tmp_path, 
     stub = _StubWriter(set())
     report = import_bundle(path, tgt_db, stub, ImportOptions())  # type: ignore[arg-type]
     got = {(r["name"], r["id"], r["trust"]) for r in stub.registered}
-    assert got == {("s", "s-spider-000001", None), ("wikidata", None, 0.9)}
+    assert got == {("s", "s-spider-000001", 0.8), ("wikidata", None, 0.9)}  # new: table (kind default)
     assert {w.target_id for w in report.workers} == {"s-spider-000001", "wikidata-connector-000001"}
     assert sorted(stub.written) == ["s:a:name", "wd:a:name"]
 
@@ -823,3 +823,66 @@ def test_ambiguous_match_prefers_the_bundles_own_id(tmp_path, tgt_db, target_url
     report = import_bundle(path, tgt_db, None, ImportOptions(dry_run=True))
     [o] = report.outcomes.values()
     assert (o.target, o.decision) == (newer, "review") and older != newer
+
+
+def test_new_bundle_workers_get_the_targets_table_trust(tmp_path, tgt_db, tgt_owner, target_urls):
+    """S19: an imported worker new on the target registers with the target's table trust
+    (x_spider 0.75, exa 0.7) and the ``trust_source='table'`` marker, like a local worker; the
+    source's own marker is not copied. A worker that already exists keeps its trust and the
+    report shows the difference. Through the real client (fake writer) with an admin token."""
+    a = _ref("rbx:person:aaaa", "A", x_handle="a")
+    new = {"id": "dbooth-spider-000001", "kind": "spider", "source": "x_spider", "trust": 0.75,
+           "layers": ["public/x_spider"],
+           "config": {"seeds": ["dbooth"], "trust_source": "table", "trust_table": 0.75}}  # fmt: skip
+    exa = {
+        "id": "exa-connector-000001",
+        "kind": "connector",
+        "source": "exa",
+        "trust": 0.8,
+        "layers": ["public/exa"],
+        "config": {},
+    }
+    old = {
+        "id": "old-spider-000001",
+        "kind": "spider",
+        "source": "x_spider",
+        "trust": 0.75,
+        "layers": ["public/x_spider"],
+        "config": {},
+    }
+    claims = [
+        {"layer": w["layers"][0], "worker": w["id"], "subject": a, "object": None, "retract": False,
+         "predicate": "name", "value": "A", "source_ref": f"{w['id']}:a:name"}
+        for w in (new, exa, old)
+    ]  # fmt: skip
+    path = tmp_path / "t.rebox.jsonl.gz"
+    _write_bundle(path, claims, [new, exa, old])
+    # The target already has old-spider (an admin set 0.5).
+    tgt_owner.execute(
+        "insert into worker (id, kind, source, owner, trust, layers)"
+        " values (%s, 'spider', 'x_spider', 'rebox', 0.5, %s)",
+        (old["id"], old["layers"]),
+    )
+    dry = import_bundle(path, tgt_db, None, ImportOptions(dry_run=True))
+    actions = {w.bundle_id: w.action for w in dry.workers}
+    assert actions == {
+        new["id"]: "register (new), table trust 0.75",
+        exa["id"]: "register (new), table trust 0.7 (bundle had 0.8)",
+        old["id"]: "exists, trust 0.5 on target vs 0.75 in bundle",
+    }
+    w = FakeWriter(target_urls[1]).start()
+    try:
+        c = ClaimsClient(w.url, w.token, admin_token=w.admin_token)
+        import_bundle(path, tgt_db, c, ImportOptions())
+        c.close()
+    finally:
+        w.stop()
+    rows = {
+        r["id"]: (round(r["trust"], 4), r["config"])
+        for r in tgt_owner.execute("select id, trust, config from worker").fetchall()
+    }
+    assert rows == {
+        new["id"]: (0.75, {"seeds": ["dbooth"], "trust_source": "table", "trust_table": 0.75}),
+        exa["id"]: (0.7, {"trust_source": "table", "trust_table": 0.7}),
+        old["id"]: (0.5, {}),
+    }

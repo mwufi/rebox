@@ -3,6 +3,7 @@
 rebox-worker run [--once]          claim and run queued jobs (loop)
 rebox-worker sync <source>         run a connector now, inline
 rebox-worker replay <source>       re-extract a source from the raw store
+    [--retract-stale [--dry-run] [--force]]   ... then retract claims it no longer emits (S19)
 rebox-worker schedule-due          enqueue syncs for connectors that are due
 rebox-worker enqueue <source>      queue a sync (or --kind replay)
 rebox-worker status                connector_state table
@@ -34,7 +35,7 @@ from .config import ConfigError, Settings
 from .connectors import REGISTRY, Ctx, UnknownConnector, get_connector
 from .db import Db
 from .dedupe import add_parser as add_dedupe_parser
-from .pipeline import Deps, SourceBusy, Stats, run_replay, run_sync
+from .pipeline import Deps, RetractStale, SourceBusy, Stats, replay_retract_stale, run_replay, run_sync
 from .rawstore import RawStore
 
 log = logging.getLogger("rebox_worker")
@@ -139,10 +140,21 @@ def cmd_sync(args: argparse.Namespace, settings: Settings) -> int:
 
 def cmd_replay(args: argparse.Namespace, settings: Settings) -> int:
     connector = get_connector(args.source)
-    with open_deps(settings) as deps:
-        stats = run_replay(connector, deps)
-    print(f"replay {args.source}: " + json.dumps(stats.as_dict()))
-    return 0
+    if not args.retract_stale:
+        if args.dry_run or args.force:
+            print("rebox-worker: --dry-run and --force go with --retract-stale", file=sys.stderr)
+            return 2
+        with open_deps(settings) as deps:
+            stats = run_replay(connector, deps)
+        print(f"replay {args.source}: " + json.dumps(stats.as_dict()))
+        return 0
+    opts = RetractStale(dry_run=args.dry_run, force=args.force, examples=args.examples)
+    with open_deps(settings, need_writer=not args.dry_run) as deps:
+        report = replay_retract_stale(connector, deps, opts)
+    if report.replay is not None:
+        print(f"replay {args.source}: " + json.dumps(report.replay))
+    print(report.render())
+    return 1 if report.refused else 0
 
 
 def cmd_schedule_due(args: argparse.Namespace, settings: Settings) -> int:
@@ -348,6 +360,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     rp = sub.add_parser("replay", help="re-extract a source from the raw store (no fetch)")
     rp.add_argument("source")
+    rp.add_argument(
+        "--retract-stale",
+        action="store_true",
+        help="then retract the source's claims the replay no longer emits (as their workers)",
+    )
+    rp.add_argument("--dry-run", action="store_true", help="with --retract-stale: report only (no replay)")
+    rp.add_argument("--force", action="store_true", help="with --retract-stale: allow > 30%% of a layer")
+    rp.add_argument("--examples", type=int, default=10, help="stale examples to print")
     rp.set_defaults(func=cmd_replay)
 
     sd = sub.add_parser("schedule-due", help="enqueue syncs for connectors that are due")

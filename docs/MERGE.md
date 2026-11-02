@@ -24,34 +24,46 @@ the bundle share. The claims themselves are always imported.
 Re-running an import is safe: claims already on the target are skipped, so a second run writes
 nothing at all (no claims, runs or log rows).
 
-## Tomorrow: overnight layers → Zen's OrbStack stack
+## Overnight layers → Zen's OrbStack stack (exact sequence)
 
-Assumes the stack from `docker-compose.yml` (services `db`, `api`, `worker`), running `main` with
-this change.
+Zen's machine runs the `docker-compose.yml` stack (services `db`, `migrate`, `api`, `worker`,
+`scheduler`) under OrbStack. Run every command from the repo root. Do the steps in order: the
+import must run against `main`'s code **and** a migrated database (migrations 0005–0008 add
+workers, runs, evidence and the legacy workers the trust comparison relies on).
 
 **0. On the overnight instance, export** (here: the `rebox_live` database on port 54329):
 
 ```sh
 cd apps/worker
 DATABASE_URL=postgres://rebox_app:rebox_app@localhost:54329/rebox_live \
-  uv run rebox-worker export --layers public/x_spider,public/exa --out ~/overnight.rebox.jsonl.gz
+  uv run rebox-worker export --layers public/x_spider,public/exa,public/x_ai,public/exa_ai \
+  --out ~/overnight.rebox.jsonl.gz
 ```
 
-It prints claims per layer, the entity count and the workers. Add layers built later
-(`public/x_ai`, ...) to `--layers`; the export reads one consistent snapshot, so it is fine to
-run while spiders are writing. Copy the file to Zen's machine.
+It prints claims per layer, the entity count and the workers. The export reads one consistent
+snapshot, so it is fine to run while spiders are writing. Copy the file to Zen's machine (the
+2026-11-02 bundle is `rebox-overnight-2026-11-02.rebox.jsonl.gz`).
 
-**1. Update and back up Zen's stack**
+**1. Pull main, rebuild, migrate first** (before anything reads or writes the graph):
 
 ```sh
-git pull                                   # main with S11
-docker compose up -d --build               # rebuilds api/worker images; `migrate` applies 0005 if missing
+git checkout main && git pull --ff-only
+docker compose up -d --build                    # rebuilds api + worker images; `migrate` runs first
+docker compose ps -a migrate                    # must say "Exited (0)"; if not:
+docker compose logs migrate                     #   read why, fix, then `docker compose run --rm migrate`
+docker compose exec -T db psql -U postgres rebox -Atc \
+  "select max(version) from schema_migrations"  # the newest file in db/migrations
+curl -s localhost:3000/health                   # {"ok":true,"db":true}
+```
+
+`api`, `worker` and `scheduler` only start after `migrate` exited 0, so a stack that is `Up` has
+migrated. Stop the scheduler for the merge so no sync writes in between (`docker compose stop
+scheduler`; start it again after step 5).
+
+**2. Back up, and copy the bundle into the worker container**
+
+```sh
 docker compose exec -T db pg_dump -U postgres rebox | gzip > ~/rebox-before-merge.sql.gz
-```
-
-**2. Copy the bundle into the worker container**
-
-```sh
 docker compose cp ~/overnight.rebox.jsonl.gz worker:/tmp/overnight.rebox.jsonl.gz
 ```
 
@@ -63,8 +75,14 @@ docker compose exec worker rebox-worker import /tmp/overnight.rebox.jsonl.gz --d
 
 Read the report:
 
-- `workers`: each bundle worker is `register (new)` or `exists`. A `conflict` (the same worker
-  id on Zen's side with another source) stops the import; nothing is written.
+- `workers`: each bundle worker is `register (new), table trust T` or `exists`. A new worker
+  is registered with Zen's own trust table (`config/trust.yaml`: x_spider 0.75, exa 0.7,
+  parsers 0.6) and the `config.trust_source='table'` marker, exactly like a worker created by a
+  local sync; `(bundle had X)` shows when the overnight instance used another value. A worker
+  that already `exists` keeps Zen's trust (`trust A on target vs B in bundle` shows a
+  difference). The worker container has `ADMIN_TOKEN` (compose), which applying a table trust
+  needs. A `conflict` (the same worker id on Zen's side with another source) stops the import;
+  nothing is written.
 - `claims by layer`: `new` / `changed` / `unchanged` / `rejected`.
 - `entities` per kind: `minted` (new on Zen's side), `matched_same_id` (Zen already has it under
   the same id, e.g. Wikidata companies), `matched_other_id` (merged onto one of Zen's entities
@@ -93,12 +111,22 @@ Each bundle worker writes in its own run (kind `replay`; stats include `written`
 **5. Check**
 
 ```sh
-docker compose exec worker rebox-worker import /tmp/overnight.rebox.jsonl.gz --dry-run   # all "unchanged"
-docker compose exec worker rebox-worker workers list
+docker compose exec worker rebox-worker import /tmp/overnight.rebox.jsonl.gz --dry-run   # workers "exists", claims "unchanged"
+docker compose exec worker rebox-worker workers list                                     # spiders 0.75 / 0.7, parsers 0.6
 curl -s localhost:3000/v0/stats
+docker compose start scheduler
 ```
 
 The workers page in the explorer shows the imported workers and their `replay` runs.
+
+Do not run `replay <source> --retract-stale` on Zen's machine for the imported parser sources
+expecting it to clean imported claims: their raw records live on the overnight instance, and
+claims an import wrote are never treated as stale. Clean up on the overnight instance, then
+export again.
+
+Measured on copies (2026-11-02 bundle into a fresh migrated `s4_live` copy): 32,891 claims in
+4 layers, 45 s; the five workers registered new with trust 0.75, 0.75, 0.7 (spiders, with the
+marker) and 0.6 (parsers); a second dry run reports every worker `exists`.
 
 ## Notes
 

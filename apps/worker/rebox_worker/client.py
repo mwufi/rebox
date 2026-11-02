@@ -2,8 +2,9 @@
 
 ``POST /internal/claims`` (every batch names its ``worker`` and ``run_id``), ``POST /internal/workers``
 (idempotent registration), ``POST /internal/runs`` and ``PATCH /internal/runs/:id``. With an admin
-token (``admin_token=``, else ``$ADMIN_TOKEN``) also ``PATCH /v0/admin/workers/:id``, used only to
-apply a worker's table trust (see ``register_worker``).
+token (``admin_token=``, else ``$ADMIN_TOKEN``) also ``PATCH /v0/admin/workers/:id`` (trust plus
+the ``trust_source``/``trust_table`` config marker), used only to apply a worker's table trust
+(see ``register_worker``).
 
 Rejections
     The writer is all-or-nothing per batch: a ``400`` lists the bad claims by index and writes
@@ -267,7 +268,8 @@ class ClaimsClient:
         A trust an admin changed is never touched. Applying needs an admin token; without one a
         one-line hint is logged and registration continues. Reading or patching trust never fails
         the registration. A new worker's ``config`` records ``trust_source``/``trust_table`` when
-        the table value differs from the kind default."""
+        the table value differs from the kind default; applying the table to an existing worker
+        writes the same marker (``PATCH`` merges ``config`` shallowly)."""
         body: dict[str, Any] = {"name": name, "kind": kind, "source": source, "layers": list(layers)}
         cfg = dict(config or {})
         if trust is not None and kind in DEFAULT_TRUST and not _same_trust(trust, DEFAULT_TRUST[kind]):
@@ -326,7 +328,9 @@ class ClaimsClient:
             )
             return
         try:
-            self._request("PATCH", f"/v0/admin/workers/{worker_id}", {"trust": trust}, admin=True)
+            # The marker keeps the worker table-managed when the table changes again (S19).
+            body = {"trust": trust, "config": {"trust_source": "table", "trust_table": trust}}
+            self._request("PATCH", f"/v0/admin/workers/{worker_id}", body, admin=True)
         except WriterError as e:
             log.warning("worker %s: could not set trust %s: %s", worker_id, trust, e)
             self._trust_done.pop(worker_id, None)

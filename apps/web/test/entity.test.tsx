@@ -169,3 +169,60 @@ describe('EntityPage', () => {
     expect(await screen.findByRole('heading', { name: 'Not in the graph' })).toBeTruthy();
   });
 });
+
+describe('EntityPage attributes sidebar (S19)', () => {
+  const ACME = ref('rbx:company:acme', 'Acme');
+  const preds = [
+    ...PREDICATES,
+    { id: 'milestone', subject_kinds: ['person', 'company'], object_kind: null, cardinality: 'many', meta: { label: 'Milestone', value_type: 'json', timeline: true } },
+    { id: 'funding_round', subject_kinds: ['company'], object_kind: null, cardinality: 'one', meta: { label: 'Funding round', value_type: 'json' } },
+  ];
+  const ms = (i: number) =>
+    fact({
+      predicate: 'milestone',
+      subject: ACME,
+      value: { title: `Acme raised round ${i}`, kind: 'funding', url: `https://news.example/${i}` },
+      valid_from: `2026-0${i}-01`,
+      layer: 'public/exa_ai',
+      source: 'exa_ai',
+      source_ref: `exa_parse:a${i}:milestone`,
+    });
+  const VIEW: EntityView = {
+    id: ACME.id,
+    kind: 'company',
+    name: 'Acme',
+    merged_from: [],
+    facts: [
+      fact({ predicate: 'name', value: 'Acme', subject: ACME }),
+      ms(1),
+      ms(2),
+      ms(3),
+      fact({ predicate: 'funding_round', subject: ACME, value: { amount: '$5M', lead: 'Lux', url: 'https://lux.example/acme', note: null } }),
+      fact({ predicate: 'x_followers', subject: ACME, value: 1234 }),
+    ],
+    incoming: [],
+  };
+
+  it('counts milestones with a link to the timeline and never shows raw JSON', async () => {
+    const enc = encodeURIComponent(ACME.id);
+    renderEntity(`/e/${enc}`, {
+      'GET /v0/predicates': () => preds,
+      [`GET /v0/entities/${enc}`]: () => VIEW,
+      [`GET /v0/entities/${enc}/timeline*`]: () => ({ events: [] }),
+    });
+    const container = document.body;
+    expect(await screen.findByRole('heading', { level: 1, name: 'Acme' })).toBeTruthy();
+    const side = screen.getByRole('heading', { level: 3, name: 'Attributes' }).closest('.side-block') as HTMLElement;
+    // No milestone row and no JSON anywhere in the sidebar.
+    expect(within(side).queryByText('Milestone')).toBeNull();
+    expect(side.textContent).not.toMatch(/[{}"]/);
+    const link = within(side).getByRole('link', { name: '3 milestones — see Timeline' });
+    expect(link.getAttribute('href')).toBe('#timeline');
+    expect(container.querySelector('#timeline')).toBeTruthy();
+    await userEvent.click(link); // scrolls (no-op in jsdom), never navigates
+    // Other JSON-valued attributes read as compact key: value text.
+    expect(within(side).getByText('amount: $5M · lead: Lux · url: lux.example/acme')).toBeTruthy();
+    expect(within(side).getByText('X followers')).toBeTruthy();
+    expect(container.textContent).not.toContain('{"title"');
+  });
+});

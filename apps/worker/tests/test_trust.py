@@ -131,7 +131,9 @@ def test_new_worker_gets_its_table_trust(db, owner, writer, admin_client):
     w = _worker(owner, wid)
     assert w["trust"] == pytest.approx(0.9)
     assert w["config"] == {"trust_source": "table", "trust_table": 0.9}
-    assert _patches(writer) == [(f"/v0/admin/workers/{wid}", {"trust": 0.9})]
+    assert _patches(writer) == [
+        (f"/v0/admin/workers/{wid}", {"trust": 0.9, "config": {"trust_source": "table", "trust_table": 0.9}})
+    ]
     # Same again: already at the table value, nothing to do.
     assert _reg(admin_client, 0.9) == wid
     assert len(_patches(writer)) == 1
@@ -149,7 +151,12 @@ def test_existing_default_worker_is_patched_to_the_table(db, owner, writer, admi
     wid = _reg(admin_client, None, name="hn")  # registered before the table existed
     assert _worker(owner, wid)["trust"] == pytest.approx(0.8)
     assert _reg(admin_client, 0.7, name="hn") == wid
-    assert _worker(owner, wid)["trust"] == pytest.approx(0.7)
+    # S19: the PATCH also writes the table marker (config merges), so the worker stays
+    # table-managed.
+    assert _worker(owner, wid) == {
+        "trust": pytest.approx(0.7),
+        "config": {"trust_source": "table", "trust_table": 0.7},
+    }
     # Registering again (the next sync of the same process) does not read the worker again.
     _reg(admin_client, 0.7, name="hn")
     gets = [p for m, p, _ in writer.calls if m == "GET"]
@@ -172,6 +179,23 @@ def test_a_table_change_reaches_workers_the_table_set(db, owner, writer, admin_c
     wid = _reg(admin_client, 0.9)
     _reg(admin_client, 0.85)  # config/trust.yaml edited: wikidata 0.9 -> 0.85
     assert _worker(owner, wid)["trust"] == pytest.approx(0.85)
+
+
+def test_table_change_reaches_an_existing_worker_the_table_patched(db, owner, writer, admin_client):
+    """S19: an existing worker the table moved off its kind default (0.8 -> 0.7) carries the
+    marker, so a later table edit (0.7 -> 0.65) still reaches it; without the marker its 0.7
+    would look admin-set. Other config keys are kept."""
+    wid = _reg(admin_client, None, name="hn", config={"seeds": ["a"]})
+    _reg(admin_client, 0.7, name="hn")
+    fresh = ClaimsClient(writer.url, writer.token, admin_token=ADMIN)  # the next worker process
+    try:
+        assert _reg(fresh, 0.65, name="hn") == wid
+    finally:
+        fresh.close()
+    assert _worker(owner, wid) == {
+        "trust": pytest.approx(0.65),
+        "config": {"seeds": ["a"], "trust_source": "table", "trust_table": 0.65},
+    }
 
 
 def test_without_admin_token_one_hint_and_registration_goes_on(db, owner, writer, plain_client, caplog):
@@ -247,7 +271,10 @@ def test_real_api_applies_table_trust_and_respects_admin(real_api, db, owner):  
         }
         old = _reg(c, None, name="hn")
         assert _reg(c, 0.7, name="hn") == old
-        assert _worker(owner, old)["trust"] == pytest.approx(0.7)
+        assert _worker(owner, old) == {
+            "trust": pytest.approx(0.7),
+            "config": {"trust_source": "table", "trust_table": 0.7},
+        }
         r = httpx.patch(
             f"{real_api}/v0/admin/workers/{old}",
             json={"trust": 0.33},

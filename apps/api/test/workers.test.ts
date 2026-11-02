@@ -244,6 +244,27 @@ describe('external workers', () => {
   });
 });
 
+describe('admin PATCH config (S19)', () => {
+  it('merges config shallowly, alongside trust; other keys are kept', async () => {
+    const r = await register({ name: `cfg${tag}`, kind: 'spider', source: 'x_spider', layers: ['public/x_spider'], config: { seeds: ['a'], trust_source: 'old' } });
+    const id = r.body.id as string;
+    const p = await t.patch(`/v0/admin/workers/${id}`, { trust: 0.75, config: { trust_source: 'table', trust_table: 0.75 } }, admin);
+    expect(p.status).toBe(200);
+    expect(p.body.trust).toBeCloseTo(0.75);
+    expect(p.body.config).toEqual({ seeds: ['a'], trust_source: 'table', trust_table: 0.75 });
+    // A patch without config leaves it alone; a nested value is replaced, not deep-merged.
+    await t.patch(`/v0/admin/workers/${id}`, { description: 'x' }, admin);
+    const q = await t.patch(`/v0/admin/workers/${id}`, { config: { seeds: ['b'] } }, admin);
+    expect(q.body.config).toEqual({ seeds: ['b'], trust_source: 'table', trust_table: 0.75 });
+    const [row] = await t.owner`select config, trust from worker where id = ${id}`;
+    expect(row!.config).toEqual({ seeds: ['b'], trust_source: 'table', trust_table: 0.75 });
+    // config must be an object; admin only.
+    expect((await t.patch(`/v0/admin/workers/${id}`, { config: ['x'] }, admin)).status).toBe(400);
+    expect((await t.patch(`/v0/admin/workers/${id}`, { config: 'x' }, admin)).status).toBe(400);
+    expect((await t.patch(`/v0/admin/workers/${id}`, { config: { a: 1 } }, ingest)).status).toBe(403);
+  });
+});
+
 describe('fold: trust tie-break and support', () => {
   it('within a scope, higher trust beats a newer write; scope still beats trust', async () => {
     const c = uid('company', 'trust');

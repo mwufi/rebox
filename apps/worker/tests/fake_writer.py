@@ -3,7 +3,8 @@
 ``POST /internal/claims`` (with ``worker``, ``run_id``, per-claim ``evidence``),
 ``POST /internal/workers`` (idempotent on name+kind+source, optional explicit ``id``),
 ``POST /internal/runs``, ``PATCH /internal/runs/:id``, and for worker trust (S17)
-``GET /v0/workers/:id`` (anonymous) and ``PATCH /v0/admin/workers/:id {trust}`` (admin token).
+``GET /v0/workers/:id`` (anonymous) and ``PATCH /v0/admin/workers/:id {trust, config}`` (admin
+token; config merges shallowly).
 
 It validates the request shape strictly and writes through the *app role* with
 ``rebox_set_view`` (visible = all public layers, writable = the request layer), exactly as
@@ -210,12 +211,14 @@ class FakeWriter:
         )
 
     def patch_worker(self, worker_id: str, body: Any) -> dict[str, Any] | None:
-        if not isinstance(body, dict) or set(body) - {"trust", "status", "description", "layers"}:
+        if not isinstance(body, dict) or set(body) - {"trust", "status", "description", "layers", "config"}:
             raise ValueError(f"bad admin patch {body!r}")
+        if not isinstance(body.get("config", {}), dict):
+            raise ValueError(f"bad admin patch config {body!r}")
         with psycopg.connect(self.app_url) as conn, conn.transaction():
             conn.execute(
-                "update worker set trust = coalesce(%s::real, trust) where id = %s",
-                (body.get("trust"), worker_id),
+                "update worker set trust = coalesce(%s::real, trust), config = config || %s where id = %s",
+                (body.get("trust"), Jsonb(body.get("config") or {}), worker_id),
             )
         return self.get_worker(worker_id)
 

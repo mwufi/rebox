@@ -11,7 +11,29 @@ import { NotFound } from './NotFound';
 
 const EDGE_PREVIEW = 8;
 
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/**
+ * An attribute value as short text. JSON objects (props, `{title, kind, url}`, ...) read as
+ * "key: value · key: value", never as raw JSON; URLs lose their scheme.
+ */
+export function attrText(v: unknown): string {
+  if (Array.isArray(v)) return v.map(attrText).filter(Boolean).join(', ');
+  if (isRecord(v)) {
+    return Object.entries(v)
+      .filter(([, x]) => x !== null && x !== undefined && x !== '')
+      .map(([k, x]) => `${k}: ${attrText(x)}`)
+      .join(' · ');
+  }
+  if (typeof v === 'string') return v.replace(/^https?:\/\//, '');
+  return valueText(v);
+}
+
 function Value({ fact }: { fact: Fact }) {
+  if (isRecord(fact.value) || (Array.isArray(fact.value) && fact.value.some(isRecord))) {
+    const text = attrText(fact.value);
+    return <span title={text}>{text}</span>;
+  }
   const text = valueText(fact.value);
   const href = hrefFor(fact.predicate, fact.value);
   if (href) {
@@ -122,8 +144,11 @@ export function EdgeGroup({ group, side, entityId }: { group: FactGroup; side: '
   );
 }
 
+/** Shown, clustered, in the Timeline; the sidebar only counts them. */
+const TIMELINE_ONLY = new Set(['milestone']);
+
 function KeyAttrs({ groups }: { groups: FactGroup[] }) {
-  const items = groups.filter((g) => g.predicate !== 'description' && g.predicate !== 'headline');
+  const items = groups.filter((g) => g.predicate !== 'description' && g.predicate !== 'headline' && !TIMELINE_ONLY.has(g.predicate));
   if (!items.length) return null;
   return (
     <dl className="keyattrs" aria-label="Key attributes">
@@ -142,6 +167,23 @@ function KeyAttrs({ groups }: { groups: FactGroup[] }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+/** "N milestones — see Timeline", scrolling to the timeline section. */
+function MilestoneNote({ n }: { n: number }) {
+  return (
+    <p className="attr-note muted">
+      <a
+        href="#timeline"
+        onClick={(e) => {
+          e.preventDefault();
+          document.getElementById('timeline')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+        }}
+      >
+        {plural(n, 'milestone')} — see Timeline
+      </a>
+    </p>
   );
 }
 
@@ -192,6 +234,9 @@ function Provenance({ view }: { view: EntityView }) {
 
 export function EntityBody({ view, preds }: { view: EntityView; preds: PredicateIndex }) {
   const g = groupFacts(view, preds);
+  const attributes = g.attributes.filter((x) => !TIMELINE_ONLY.has(x.predicate));
+  const milestones = [...g.key, ...g.attributes].find((x) => x.predicate === 'milestone');
+  const milestoneCount = milestones ? Math.max(milestones.total, milestones.facts.length) : 0;
   const desc = g.key.find((x) => x.predicate === 'description') ?? g.key.find((x) => x.predicate === 'headline');
   const descFact = desc?.facts[0];
   const degree = edgeTotal(view);
@@ -255,12 +300,13 @@ export function EntityBody({ view, preds }: { view: EntityView; preds: Predicate
               </ul>
             </div>
           )}
-          {g.attributes.length > 0 && (
+          {(attributes.length > 0 || milestoneCount > 0) && (
             <div className="side-block">
               <div className="section-head">
                 <h3>Attributes</h3>
               </div>
-              <AttrList groups={g.attributes} />
+              {attributes.length > 0 && <AttrList groups={attributes} />}
+              {milestoneCount > 0 && <MilestoneNote n={milestoneCount} />}
             </div>
           )}
           <div className="side-block">
@@ -301,7 +347,7 @@ function TimelineSection({ id }: { id: string }) {
   };
   const dated = data ? data.events.filter((e) => e.kind !== 'first_seen').length : 0;
   return (
-    <section className="timeline-section" aria-labelledby={`tl-h-${id}`}>
+    <section className="timeline-section" id="timeline" aria-labelledby={`tl-h-${id}`}>
       <div className="section-head">
         <h2 id={`tl-h-${id}`}>Timeline</h2>
         {data && <span className="count">{plural(dated, 'event')}</span>}
