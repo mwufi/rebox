@@ -78,11 +78,12 @@ review item, worker or run):
 docker compose exec worker rebox-worker dedupe --dry-run
 ```
 
-A real run needs the admin token in the worker's environment (the worker service only has the
-ingest token):
+A real run needs the admin token in the worker's environment; the compose worker service has it
+(`ADMIN_TOKEN` from `.env`):
 
 ```sh
-docker compose exec -e ADMIN_TOKEN="$ADMIN_TOKEN" worker rebox-worker dedupe
+docker compose exec worker rebox-worker dedupe --dry-run   # look first
+docker compose exec worker rebox-worker dedupe
 ```
 
 Options: `--kinds company,person` (default; other kinds use the `wikidata`/`x_id` conflict rule),

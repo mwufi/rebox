@@ -192,7 +192,7 @@ Every decision writes `resolution_log`. Batch-local cache so one batch resolves 
 | `APP_DB_PASSWORD` | migrate | password set on role `rebox_app` |
 | `PORT` | api | `3000` |
 | `INGEST_TOKEN` | api, worker | secret |
-| `ADMIN_TOKEN` | api | secret |
+| `ADMIN_TOKEN` | api; worker (optional: applies table trust, runs dedupe merges) | secret |
 | `API_URL` | worker | `http://localhost:3000` |
 | `RAW_STORE` | worker | `file:///abs/.data/raw` or `s3://bucket/raw` |
 | `REBOX_ENV` | api, worker | `dev` \| `prod` |
@@ -228,7 +228,8 @@ Every decision writes `resolution_log`. Batch-local cache so one batch resolves 
 Every write comes from a **worker** (a named, accountable writer) inside a **run**. Internal spiders and external contributors are the same thing with different trust.
 
 - **Worker id:** `<name>-<kind>-<6 digits>`, e.g. `dbooth-spider-292929`, `hn-connector-104233`, `xbio-parser-551021`. Kinds: `connector`, `spider`, `parser`, `enricher`, `external`. A worker's identity is stable across runs; `worker.config` holds what makes it distinct (e.g. its seed list).
-- **Default trust** (0–1): connector 0.8, spider 0.8, parser 0.6, enricher 0.5, external 0.3. Admins can change it.
+- **Default trust** (0–1): connector 0.8, spider 0.8, parser 0.6, enricher 0.5, external 0.3. The source trust table `config/trust.yaml` overrides by source (wikidata 0.9, github 0.8, hn 0.7, x_spider 0.75, exa 0.7). The pipeline applies it on registration while a worker's trust is still its kind default or the value the table last set (`config.trust_source='table'`); this needs `ADMIN_TOKEN` in the worker's env. Admin-set trust is never overridden.
+- **Legacy claims:** claims written before 0005 belong to `<source>-connector-000000` (migration 0008); the 0.5 trust for claims with no worker is only a fallback.
 - **Registration** (ingest token): `POST /internal/workers {name, kind, source, layers, config?, description?, id?}` → `{id}`; idempotent on `(name, kind, source)` when `id` is omitted (returns the existing worker). External workers: `POST /v0/admin/workers` (admin token) → `{id, token}`, token shown once, format `rbxw_<worker id>_<32 hex>`, stored as sha256 in `worker.token_hash`.
 - **Runs:** `POST /internal/runs {worker, kind}` → `{run_id}`; `PATCH /internal/runs/:id {status?, stats?, error?}` (stats merge). The worker pipeline opens a run per sync/replay/parse and closes it with final stats (`fetched, claims, written, minted, matched, review, rejected, api_calls, cost_usd`).
 - **Writer (§5) additions:** request body gains `"worker": "<id>"` (required) and `"run_id"` (optional); each claim may carry `"evidence": [{"url", "author"?, "quote"?, "observed_at"?}]`. Validation: worker exists and is `active`; `layer` ∈ `worker.layers` (a `public/<source>` layer is still auto-created); evidence is **required** when the worker kind is `parser`, `enricher` or `external`. The ingest token may act as any internal worker (`owner = 'rebox'`); an external token acts only as its own worker. `last_seen_at` is updated on every write.

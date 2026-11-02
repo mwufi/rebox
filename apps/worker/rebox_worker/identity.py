@@ -26,6 +26,15 @@ Run stats
     ``budget_stop``, ...). It is merged into the connector-level run's stats at every progress
     update and when the run closes (ok or failed).
 
+Trust (``config/trust.yaml``, override the path with ``$TRUST_FILE``)
+    Which value the fold shows when sources disagree depends on worker trust (CONTRACTS §12). A
+    worker's table trust is ``sources[<its source>]`` if listed, else ``defaults[<its kind>]``
+    (``trust_for``). ``register`` passes it to ``ClaimsClient.register_worker(trust=...)``, which
+    applies it to a new worker, and to an existing one whose trust is still its kind default (or
+    the value the table set before); a trust an admin changed is never touched. Applying it needs
+    ``ADMIN_TOKEN``; without one the client logs a one-line hint. If the file is missing (e.g. an
+    image without ``config/``) the built-in copy of the table is used.
+
 Persistence
     The id lives in the ``worker`` table, not in ``connector_state``: ``POST /internal/workers``
     is idempotent on ``(name, kind, source)``, so every run resolves the same id with one call
@@ -42,10 +51,14 @@ Runs
 from __future__ import annotations
 
 import logging
+import os
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+from .client import DEFAULT_TRUST
 
 if TYPE_CHECKING:
     from .client import ClaimsClient
@@ -154,7 +167,109 @@ def spec_for(connector: Connector, ctx: Ctx | None = None, spec: WorkerSpec | No
     )
 
 
-def register(client: ClaimsClient, spec: WorkerSpec) -> str:
+# ── source trust table ──
+
+# Built-in copy of config/trust.yaml, used when the file is not there. Keep the three in sync
+# (this, the file, db/migrations/0008_legacy_workers.sql); tests check that they agree.
+BUILTIN_SOURCE_TRUST: dict[str, float] = {
+    "wikidata": 0.9,
+    "github": 0.8,
+    "hn": 0.7,
+    "x_spider": 0.75,
+    "exa": 0.7,
+}
+
+
+@dataclass(frozen=True)
+class TrustTable:
+    """Default trust by worker kind, with overrides by worker source."""
+
+    defaults: Mapping[str, float] = field(default_factory=lambda: dict(DEFAULT_TRUST))
+    sources: Mapping[str, float] = field(default_factory=lambda: dict(BUILTIN_SOURCE_TRUST))
+    path: Path | None = None
+
+    def trust_for(self, kind: str, source: str) -> float:
+        if source in self.sources:
+            return self.sources[source]
+        if kind in self.defaults:
+            return self.defaults[kind]
+        return DEFAULT_TRUST.get(kind, 0.5)
+
+
+def trust_path(env: Mapping[str, str] | None = None) -> Path:
+    """``$TRUST_FILE`` if set, else ``config/trust.yaml`` in the nearest ancestor that has it."""
+    env = os.environ if env is None else env
+    if env.get("TRUST_FILE"):
+        return Path(env["TRUST_FILE"]).expanduser()
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "config" / "trust.yaml").is_file():
+            return parent / "config" / "trust.yaml"
+    return Path.cwd() / "config" / "trust.yaml"
+
+
+def _trust_map(raw: Any, where: str) -> dict[str, float]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, Mapping):
+        raise ValueError(f"{where}: expected a mapping of name -> trust")
+    out: dict[str, float] = {}
+    for k, v in raw.items():
+        try:
+            t = float(v)
+        except (TypeError, ValueError):
+            raise ValueError(f"{where}.{k}: trust must be a number, got {v!r}") from None
+        if not 0 <= t <= 1:
+            raise ValueError(f"{where}.{k}: trust must be between 0 and 1, got {t}")
+        out[str(k)] = t
+    return out
+
+
+def load_trust(env: Mapping[str, str] | None = None, path: Path | None = None) -> TrustTable:
+    """The trust table from ``path`` / ``trust_path(env)``; the built-in table if there is no file."""
+    from .frontier import parse_yaml  # the worker's small YAML subset (no YAML dependency)
+
+    p = path or trust_path(env)
+    if not p.is_file():
+        if path is not None or (env if env is not None else os.environ).get("TRUST_FILE"):
+            raise FileNotFoundError(f"trust table {p} not found")
+        return TrustTable()
+    data = parse_yaml(p.read_text(encoding="utf-8")) or {}
+    if not isinstance(data, Mapping):
+        raise ValueError(f"{p}: expected a mapping at the top level")
+    defaults = {**DEFAULT_TRUST, **_trust_map(data.get("defaults"), f"{p}: defaults")}
+    return TrustTable(defaults=defaults, sources=_trust_map(data.get("sources"), f"{p}: sources"), path=p)
+
+
+_TRUST_CACHE: dict[Path, tuple[float, TrustTable]] = {}
+
+
+def trust_table() -> TrustTable:
+    """The current table (re-read when the file changes)."""
+    p = trust_path()
+    try:
+        mtime = p.stat().st_mtime
+    except OSError:
+        return load_trust(path=None)
+    hit = _TRUST_CACHE.get(p)
+    if hit is None or hit[0] != mtime:
+        hit = (mtime, load_trust(path=p))
+        _TRUST_CACHE[p] = hit
+    return hit[1]
+
+
+def trust_for(kind: str, source: str) -> float:
+    """The table trust for a worker of this kind and source."""
+    return trust_table().trust_for(kind, source)
+
+
+def register(client: ClaimsClient, spec: WorkerSpec, trust: float | None = None) -> str:
+    """Register ``spec`` with its table trust (``trust_for``) unless ``trust`` is given. An
+    unreadable trust table never stops a sync: the worker registers without a trust."""
+    if trust is None:
+        try:
+            trust = trust_for(spec.kind, spec.source)
+        except (OSError, ValueError) as e:
+            log.warning("trust table: %s; registering %s without a table trust", e, spec.name)
     return client.register_worker(
         name=spec.name,
         kind=spec.kind,
@@ -162,6 +277,7 @@ def register(client: ClaimsClient, spec: WorkerSpec) -> str:
         layers=spec.layers,
         config=dict(spec.config) or None,
         description=spec.description,
+        trust=trust,
     )
 
 

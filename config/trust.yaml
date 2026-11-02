@@ -1,0 +1,29 @@
+# Source trust (S17, CONTRACTS §12). Read by apps/worker/rebox_worker/identity.py (load_trust);
+# override the path with TRUST_FILE.
+#
+# Trust (0-1) decides which value the fold shows when sources disagree within a scope: higher
+# worker trust first, then the newest claim. A worker registered by the pipeline gets
+# `sources[<its source>]` if listed, else `defaults[<its kind>]`.
+#
+# Existing workers follow this table while their trust is still the kind default (or the value
+# this table set last); a worker whose trust an admin changed (PATCH /v0/admin/workers/:id) is
+# never touched. Applying a value to an existing worker needs ADMIN_TOKEN in the worker's env.
+#
+# db/migrations/0008_legacy_workers.sql inlines these numbers for the legacy
+# `<source>-connector-000000` workers; keep them in sync.
+
+# Unchanged from CONTRACTS §12 (what POST /internal/workers assigns).
+defaults:
+  connector: 0.8
+  spider: 0.8
+  parser: 0.6
+  enricher: 0.5
+  external: 0.3
+
+# By worker source (the connector name). Parsers (x_parse, x_parse_posts, exa_parse) keep 0.6.
+sources:
+  wikidata: 0.9    # curated, human-reviewed names and facts
+  github: 0.8
+  hn: 0.7          # names are often handles
+  x_spider: 0.75   # display names are self-chosen ("vitalik.eth")
+  exa: 0.7

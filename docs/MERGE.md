@@ -71,9 +71,10 @@ Read the report:
   with a different id — the examples show origin id → Zen's id and the key that matched; check
   a few), `review` (ambiguous; a review item is opened).
 - `conflicts`: one-valued attributes (`name`, `headline`, `description`, ...) where Zen's
-  current value differs. `incoming wins` means the fold will show the imported value: X spider
-  claims have trust 0.8, Wikidata/HN claims written before workers existed count as 0.5, and on a
-  tie (e.g. GitHub connector 0.8) the newer claim wins. Admins can lower a worker's trust later
+  current value differs. `incoming wins` means the fold will show the imported value: trust
+  comes from `config/trust.yaml` (Wikidata 0.9, GitHub 0.8, X spider 0.75, HN 0.7, Exa 0.7,
+  parsers 0.6); claims written before workers existed belong to `<source>-connector-000000`
+  after migration 0008 (so make sure your stack has migrated first); on a tie the newer claim wins. Admins can lower a worker's trust later
   (`PATCH /v0/admin/workers/:id {"trust": ...}`) to change that.
 
 `--json` prints the same report as JSON; `--examples 50` shows more examples;

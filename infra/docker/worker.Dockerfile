@@ -53,6 +53,8 @@ COPY --from=build /app/apps/worker /app/apps/worker
 WORKDIR /app
 # Recorded fixtures (offline example connector), if present.
 COPY fixture[s]/ ./fixtures/
+# Seeds and the source trust table (config/seeds.yaml, config/trust.yaml).
+COPY config/ ./config/
 USER 10001:10001
 ENTRYPOINT ["rebox-worker"]
 CMD ["run"]

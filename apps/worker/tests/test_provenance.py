@@ -428,7 +428,8 @@ def test_x_spider_writes_each_seed_set_as_its_own_worker(deps, owner, writer):
     # Every seed set is registered (sf-core too, though it wrote nothing), plus the connector-level worker.
     assert set(workers) == {"dbooth", "yoni", "sf-core", "x-spider"}
     assert all(w["kind"] == "spider" and w["source"] == "x_spider" for w in workers.values())
-    assert workers["dbooth"]["config"] == {"seeds": ["seed_a"]}
+    # x_spider's table trust (config/trust.yaml, 0.75) differs from the spider default: recorded.
+    assert workers["dbooth"]["config"] == {"seeds": ["seed_a"], "trust_source": "table", "trust_table": 0.75}
     assert workers["yoni"]["layers"] == ["public/x_spider"]
     import re
 

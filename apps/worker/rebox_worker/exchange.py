@@ -26,8 +26,9 @@ Import (``import_bundle``)
     1. Plan workers: every worker of the bundle keeps its id on the target (``POST
        /internal/workers`` with an explicit ``id``; idempotent). The same id with a different
        kind/source/owner on the target aborts the import before anything is written. Claims
-       without a worker (written before migration 0005) are written as the target's
-       ``<source>-connector`` worker.
+       without a worker (written before migration 0005, on an instance without 0008) are
+       written as the target's ``<source>-connector`` worker, registered with its table trust
+       (``config/trust.yaml``).
     2. Stream the claims in batches, grouped by (layer, worker), through ``ImportResolver``,
        then diff them against the target (same layer + source_ref + subject + predicate +
        object): unchanged claims are not sent, so re-importing a bundle writes nothing (no
@@ -72,9 +73,9 @@ from typing import Any
 import psycopg
 from pydantic import PrivateAttr, ValidationError
 
-from .client import BATCH_SIZE, ClaimsClient, ValidationRejected, chunks
+from .client import DEFAULT_TRUST, ClaimsClient
 from .db import Db, public_layers, set_view
-from .identity import worker_name
+from .identity import trust_for, worker_name
 from .ids import strongest_key
 from .models import ClaimInput, ClaimWrite, EntityRef, Evidence, IdRef
 from .predicates import Predicate, load_predicates
@@ -95,7 +96,6 @@ log = logging.getLogger(__name__)
 BUNDLE_VERSION = 1
 BATCH_CLAIMS = 500  # bundle claims per resolver batch
 WEAK_HINT_KEYS = frozenset({"website"})
-DEFAULT_TRUST = {"connector": 0.8, "spider": 0.8, "parser": 0.6, "enricher": 0.5, "external": 0.3}
 UNATTRIBUTED_TRUST = 0.5  # fold trust of claims without a worker (CONTRACTS §12)
 _WORKER_ID_RE = re.compile(r"^(?P<name>.+)-(?P<kind>connector|spider|parser|enricher|external)-\d{6}$")
 
@@ -869,7 +869,7 @@ class _Importer:
                         kind="connector",
                         source=source,
                         owner="rebox",
-                        trust=DEFAULT_TRUST["connector"],
+                        trust=trust_for("connector", source),
                         layers=[layer],
                         config={},
                         description=None,
@@ -932,20 +932,18 @@ class _Importer:
     def _register_workers(self) -> None:
         assert self.client is not None
         for plan in self.report.workers:
-            body: dict[str, Any] = {
-                "name": plan.name,
-                "kind": plan.kind,
-                "source": plan.source,
-                "layers": plan.layers,
-            }
-            if plan.config:
-                body["config"] = plan.config
-            if plan.description:
-                body["description"] = plan.description
-            if plan.bundle_id:
-                body["id"] = plan.bundle_id
-            # ClaimsClient.register_worker has no `id` parameter; same endpoint, same retries.
-            got = str(self.client._request("POST", "/internal/workers", body)["id"])
+            got = self.client.register_worker(
+                name=plan.name,
+                kind=plan.kind,
+                source=plan.source,
+                layers=plan.layers,
+                config=plan.config or None,
+                description=plan.description,
+                id=plan.bundle_id,
+                # A bundle worker keeps the target's trust; the target's own connector (claims
+                # without a worker) gets its table trust.
+                trust=None if plan.bundle_id else plan.trust,
+            )
             if plan.bundle_id and got != plan.bundle_id:
                 raise ImportAborted(f"registered {plan.bundle_id} but the target returned {got}")
             plan.target_id = got
@@ -1180,29 +1178,14 @@ class _Importer:
             )
 
     def _write(self, layer: str, plan: WorkerPlan, claims: list[ClaimWrite]) -> int:
-        """Write in writer-sized batches. A 400 that names claims drops those claims (reported as
-        rejected) and retries the rest once; anything else propagates."""
+        """Write in writer-sized batches. Claims the writer refuses (a 400 that names them), and
+        claims that depend on an entity only a refused claim would mint, are dropped and reported
+        as rejected; the rest is written. Anything else propagates."""
         assert self.client is not None and plan.target_id is not None
-        written = 0
-        for chunk in chunks(claims, BATCH_SIZE):
-            chunk = list(chunk)
-            try:
-                written += self.client.write_batch(
-                    layer, chunk, worker=plan.target_id, run_id=plan.run_id
-                ).written
-                continue
-            except ValidationRejected as e:
-                bad = {d.get("index"): d.get("message") for d in e.details}
-                if not bad or any(not isinstance(i, int) or not 0 <= i < len(chunk) for i in bad):
-                    raise
-                for i, msg in sorted(bad.items()):
-                    self._reject(layer, plan, chunk[i].source_ref, f"writer: {msg}")
-                keep = [c for i, c in enumerate(chunk) if i not in bad]
-            if keep:
-                written += self.client.write_batch(
-                    layer, keep, worker=plan.target_id, run_id=plan.run_id
-                ).written
-        return written
+        res = self.client.write(layer, claims, worker=plan.target_id, run_id=plan.run_id, drop_rejected=True)
+        for r in res.rejected:
+            self._reject(layer, plan, r.claim.source_ref, f"writer: {r.reason}")
+        return res.written
 
     def _run_stats(self, plan: WorkerPlan) -> dict[str, Any]:
         return {

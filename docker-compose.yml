@@ -23,6 +23,9 @@ x-worker-env: &worker-env
   DATABASE_URL: postgres://rebox_app:${APP_DB_PASSWORD:-rebox_app}@db:5432/rebox
   API_URL: http://api:3000
   INGEST_TOKEN: ${INGEST_TOKEN:-dev-ingest-token}
+  # Lets the worker apply config/trust.yaml and run dedupe merges (admin API).
+  ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-admin-token}
+  TRUST_FILE: /app/config/trust.yaml
   RAW_STORE: file:///data/raw
   REBOX_ENV: ${REBOX_ENV:-dev}
   USER_AGENT: ${USER_AGENT:-rebox-bot/0.1 (+https://github.com/rebox)}

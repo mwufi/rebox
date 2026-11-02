@@ -7,7 +7,7 @@
  * - Fold key = root + predicate + (canonical other entity for edges | value for `many`
  *   attributes | nothing for `one` attributes).
  * - Winner per key = narrowest layer scope (user > team > firm > public), then the writing
- *   worker's trust (CONTRACTS §12; claims written before workers existed count as 0.5), then
+ *   worker's trust (CONTRACTS §12; claims with no worker count as 0.5 — only a fallback since migration 0008 attributes legacy claims), then
  *   newest updated_at, then a claim made on the root itself over one inherited from a
  *   merged-away entity, then highest id (deterministic). Winners with retract = true are dropped.
  * - support = distinct (layer, source_ref) among the non-retracted candidates for the same key
