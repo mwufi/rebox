@@ -1,8 +1,9 @@
 """An in-process stand-in for the writer API (CONTRACTS §5, §12).
 
 ``POST /internal/claims`` (with ``worker``, ``run_id``, per-claim ``evidence``),
-``POST /internal/workers`` (idempotent on name+kind+source), ``POST /internal/runs``,
-``PATCH /internal/runs/:id``.
+``POST /internal/workers`` (idempotent on name+kind+source, optional explicit ``id``),
+``POST /internal/runs``, ``PATCH /internal/runs/:id``, and for worker trust (S17)
+``GET /v0/workers/:id`` (anonymous) and ``PATCH /v0/admin/workers/:id {trust}`` (admin token).
 
 It validates the request shape strictly and writes through the *app role* with
 ``rebox_set_view`` (visible = all public layers, writable = the request layer), exactly as
@@ -53,9 +54,12 @@ def _norm(meta: dict[str, Any]):
 
 
 class FakeWriter:
-    def __init__(self, app_url: str, token: str = "test-ingest-token") -> None:
+    def __init__(
+        self, app_url: str, token: str = "test-ingest-token", admin_token: str = "test-admin-token"
+    ) -> None:
         self.app_url = app_url
         self.token = token
+        self.admin_token = admin_token
         self.requests: list[dict[str, Any]] = []  # claims bodies
         self.calls: list[tuple[str, str, Any]] = []  # every request (method, path, body)
         self.fail_next: list[int | str] = []
@@ -84,7 +88,23 @@ class FakeWriter:
             def log_message(self, *args: Any) -> None:  # quiet
                 pass
 
+            def do_GET(self) -> None:
+                m = re.fullmatch(r"/v0/workers/([a-z0-9-]+)", self.path)
+                with writer.lock:
+                    writer.calls.append((self.command, self.path, None))
+                row = writer.get_worker(m.group(1)) if m else None
+                return self._send(200, row) if row else self._send(404, {"error": "not_found"})
+
             def do_PATCH(self) -> None:
+                a = re.fullmatch(r"/v0/admin/workers/([a-z0-9-]+)", self.path)
+                if a:
+                    if self.headers.get("Authorization") != f"Bearer {writer.admin_token}":
+                        return self._send(403, {"error": "forbidden"})
+                    body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
+                    with writer.lock:
+                        writer.calls.append((self.command, self.path, body))
+                    row = writer.patch_worker(a.group(1), body)
+                    return self._send(200, row) if row else self._send(404, {"error": "not_found"})
                 m = re.fullmatch(r"/internal/runs/(\d+)", self.path)
                 if not m:
                     return self._send(404, {"error": "not_found"})
@@ -147,18 +167,24 @@ class FakeWriter:
         name, kind, source = body["name"], body["kind"], body["source"]
         if kind not in TRUST or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,40}", name):
             raise Rejected([{"index": -1, "message": f"bad name/kind {name!r} {kind!r}"}])
+        wanted = body.get("id")
+        if wanted is not None and not re.fullmatch(rf"{re.escape(name)}-{kind}-[0-9]{{6}}", str(wanted)):
+            raise Rejected([{"index": -1, "message": f"id must be {name}-{kind}-<6 digits>"}])
         with psycopg.connect(self.app_url) as conn, conn.transaction():
-            row = conn.execute(
-                """select id, layers from worker where kind = %s and source = %s and owner = 'rebox'
-                     and id ~ %s order by created_at, id limit 1""",
-                (kind, source, f"^{name}-{kind}-[0-9]{{6}}$"),
-            ).fetchone()
+            if wanted:
+                row = conn.execute("select id, layers from worker where id = %s", (wanted,)).fetchone()
+            else:
+                row = conn.execute(
+                    """select id, layers from worker where kind = %s and source = %s and owner = 'rebox'
+                         and id ~ %s order by created_at, id limit 1""",
+                    (kind, source, f"^{name}-{kind}-[0-9]{{6}}$"),
+                ).fetchone()
             if row:
                 extra = [x for x in body["layers"] if x not in row[1]]
                 if extra:
                     conn.execute("update worker set layers = layers || %s where id = %s", (extra, row[0]))
                 return {"id": row[0], "created": False}
-            wid = f"{name}-{kind}-{random.randint(0, 999999):06d}"
+            wid = wanted or f"{name}-{kind}-{random.randint(0, 999999):06d}"
             conn.execute(
                 """insert into worker (id, kind, source, trust, layers, config, description)
                    values (%s, %s, %s, %s, %s, %s, %s)""",
@@ -173,6 +199,25 @@ class FakeWriter:
                 ),
             )
         return {"id": wid, "created": True}
+
+    def get_worker(self, worker_id: str) -> dict[str, Any] | None:
+        with psycopg.connect(self.app_url) as conn:
+            row = conn.execute(
+                "select id, kind, source, trust, config from worker where id = %s", (worker_id,)
+            ).fetchone()
+        return (
+            None if row is None else dict(zip(("id", "kind", "source", "trust", "config"), row, strict=True))
+        )
+
+    def patch_worker(self, worker_id: str, body: Any) -> dict[str, Any] | None:
+        if not isinstance(body, dict) or set(body) - {"trust", "status", "description", "layers"}:
+            raise ValueError(f"bad admin patch {body!r}")
+        with psycopg.connect(self.app_url) as conn, conn.transaction():
+            conn.execute(
+                "update worker set trust = coalesce(%s::real, trust) where id = %s",
+                (body.get("trust"), worker_id),
+            )
+        return self.get_worker(worker_id)
 
     def open_run(self, body: Any) -> dict[str, Any]:
         with psycopg.connect(self.app_url) as conn, conn.transaction():

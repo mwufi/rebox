@@ -1,7 +1,9 @@
 """Writer API client (CONTRACTS §5, §12).
 
 ``POST /internal/claims`` (every batch names its ``worker`` and ``run_id``), ``POST /internal/workers``
-(idempotent registration), ``POST /internal/runs`` and ``PATCH /internal/runs/:id``.
+(idempotent registration), ``POST /internal/runs`` and ``PATCH /internal/runs/:id``. With an admin
+token (``admin_token=``, else ``$ADMIN_TOKEN``) also ``PATCH /v0/admin/workers/:id``, used only to
+apply a worker's table trust (see ``register_worker``).
 
 Rejections
     The writer is all-or-nothing per batch: a ``400`` lists the bad claims by index and writes
@@ -17,6 +19,7 @@ Rejections
 from __future__ import annotations
 
 import logging
+import os
 import random
 import time
 from collections.abc import Callable, Iterator, Sequence
@@ -30,6 +33,23 @@ from .models import ClaimWrite, IdRef, MintRef
 log = logging.getLogger(__name__)
 
 BATCH_SIZE = 500  # API max is 1000 per request
+
+# CONTRACTS §12 default trust by worker kind: what POST /internal/workers assigns a new worker.
+DEFAULT_TRUST: dict[str, float] = {
+    "connector": 0.8,
+    "spider": 0.8,
+    "parser": 0.6,
+    "enricher": 0.5,
+    "external": 0.3,
+}
+_TRUST_EPS = 1e-4  # worker.trust is a float4
+
+
+def _same_trust(a: Any, b: Any) -> bool:
+    try:
+        return abs(float(a) - float(b)) < _TRUST_EPS
+    except (TypeError, ValueError):
+        return False
 
 
 class WriterError(RuntimeError):
@@ -101,7 +121,15 @@ class ClaimsClient:
         timeout_s: float = 60.0,
         transport: httpx.BaseTransport | None = None,
         sleep: Callable[[float], None] = time.sleep,
+        admin_token: str | None = None,
     ) -> None:
+        # Only for PATCH /v0/admin/workers/:id (table trust); never logged.
+        # admin_token="" means none, even if $ADMIN_TOKEN is set.
+        token_ = admin_token if admin_token is not None else os.environ.get("ADMIN_TOKEN")
+        self.admin_token = token_ or None
+        # Worker id -> table trust already reconciled by this client: a long-running worker
+        # registers its identities on every sync, but reads (GET /v0/workers/:id) and hints once.
+        self._trust_done: dict[str, float] = {}
         self.http = httpx.Client(
             base_url=api_url.rstrip("/"),
             headers={"Authorization": f"Bearer {token}", "User-Agent": user_agent},
@@ -220,14 +248,90 @@ class ClaimsClient:
         layers: Sequence[str],
         config: dict[str, Any] | None = None,
         description: str | None = None,
+        id: str | None = None,
+        trust: float | None = None,
     ) -> str:
-        """Idempotent on (name, kind, source): returns the existing worker's id, or a new one."""
+        """Register a worker and return its id (``POST /internal/workers``).
+
+        Idempotent on ``(name, kind, source)``: returns the existing worker's id, or a new one.
+        Re-registering may add ``layers``; ``config`` and ``description`` only apply to a new worker.
+
+        ``id``: register under this exact id (``<name>-<kind>-<6 digits>``, e.g. an imported
+        worker keeping its id); the existing worker with that id is returned if there is one.
+
+        ``trust``: the trust this worker should have per the source trust table
+        (``config/trust.yaml``, see ``identity.trust_for``). The API gives a new worker its kind
+        default, so the value is applied afterwards with ``PATCH /v0/admin/workers/:id`` -- only
+        while the worker's trust is still table-managed: equal to its kind default, or equal to
+        what the table set earlier (``config.trust_source == 'table'`` and ``config.trust_table``).
+        A trust an admin changed is never touched. Applying needs an admin token; without one a
+        one-line hint is logged and registration continues. Reading or patching trust never fails
+        the registration. A new worker's ``config`` records ``trust_source``/``trust_table`` when
+        the table value differs from the kind default."""
         body: dict[str, Any] = {"name": name, "kind": kind, "source": source, "layers": list(layers)}
-        if config:
-            body["config"] = config
+        cfg = dict(config or {})
+        if trust is not None and kind in DEFAULT_TRUST and not _same_trust(trust, DEFAULT_TRUST[kind]):
+            cfg.update(trust_source="table", trust_table=trust)
+        if cfg:
+            body["config"] = cfg
         if description:
             body["description"] = description
-        return str(self._request("POST", "/internal/workers", body)["id"])
+        if id:
+            body["id"] = id
+        data = self._request("POST", "/internal/workers", body)
+        worker_id = str(data["id"])
+        if trust is not None:
+            self._apply_trust(worker_id, kind, float(trust), created=data.get("created") is True)
+        return worker_id
+
+    def _apply_trust(self, worker_id: str, kind: str, trust: float, *, created: bool) -> None:
+        """Bring a table-managed worker's trust to ``trust`` (see ``register_worker``)."""
+        if worker_id in self._trust_done and _same_trust(self._trust_done[worker_id], trust):
+            return
+        self._trust_done[worker_id] = trust
+        default = DEFAULT_TRUST.get(kind)
+        if created:
+            current: Any = default
+            cfg: dict[str, Any] = {}
+        else:
+            try:
+                w = self._request("GET", f"/v0/workers/{worker_id}")
+            except WriterError as e:  # e.g. a worker with only private layers is not listed
+                log.debug("worker %s: cannot read its trust (%s); leaving it", worker_id, e)
+                self._trust_done.pop(worker_id, None)  # try again on the next registration
+                return
+            current, cfg = w.get("trust"), w.get("config") or {}
+        if current is None or _same_trust(current, trust):
+            return
+        current = round(float(current), 4)  # a float4 read back may be 0.800000011920929
+        managed = (default is not None and _same_trust(current, default)) or (
+            cfg.get("trust_source") == "table" and _same_trust(current, cfg.get("trust_table"))
+        )
+        if not managed:
+            log.debug(
+                "worker %s: trust %s was set by an admin; table value %s not applied",
+                worker_id,
+                current,
+                trust,
+            )
+            return
+        if not self.admin_token:
+            log.info(
+                "worker %s: trust is %s, config/trust.yaml says %s; set ADMIN_TOKEN for the worker "
+                "to apply it (or PATCH /v0/admin/workers/%s)",
+                worker_id,
+                current,
+                trust,
+                worker_id,
+            )
+            return
+        try:
+            self._request("PATCH", f"/v0/admin/workers/{worker_id}", {"trust": trust}, admin=True)
+        except WriterError as e:
+            log.warning("worker %s: could not set trust %s: %s", worker_id, trust, e)
+            self._trust_done.pop(worker_id, None)
+            return
+        log.info("worker %s: trust %s -> %s (config/trust.yaml)", worker_id, current, trust)
 
     def open_run(self, worker: str, kind: str) -> int:
         return int(self._request("POST", "/internal/runs", {"worker": worker, "kind": kind})["run_id"])
@@ -252,12 +356,16 @@ class ClaimsClient:
 
     # ── transport ──
 
-    def _request(self, method: str, path: str, body: dict[str, Any]) -> dict[str, Any]:
-        """JSON request with retries on network errors, 429 and 5xx. 400 raises ValidationRejected."""
+    def _request(
+        self, method: str, path: str, body: dict[str, Any] | None = None, *, admin: bool = False
+    ) -> dict[str, Any]:
+        """JSON request with retries on network errors, 429 and 5xx. 400 raises ValidationRejected.
+        ``admin`` sends the admin token instead of the ingest token."""
+        headers = {"Authorization": f"Bearer {self.admin_token}"} if admin and self.admin_token else None
         attempt = 0
         while True:
             try:
-                resp = self.http.request(method, path, json=body)
+                resp = self.http.request(method, path, json=body, headers=headers)
             except httpx.TransportError as e:
                 error: str = f"network error: {e!r}"
             else:
