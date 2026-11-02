@@ -473,6 +473,7 @@ class Dedupe:
         self._acted = 0
         self._splits: list[tuple[str, str]] | None = None
         self._dismissed: list[tuple[int, list[str]]] = []
+        self._reviewed: set[tuple[str, ...]] = set()  # review sets opened (or planned) in this run
 
     # ── driver ──
 
@@ -567,21 +568,25 @@ class Dedupe:
             print(d.line(), file=self.out)
 
     def _review(self, conn: psycopg.Connection, d: Decision) -> None:
+        ids = d.ids
+        params = {"kind": REVIEW_KIND, "ids": ids, "reason": d.reason, "evidence": d.evidence}
+        exists = (
+            tuple(ids) in self._reviewed
+            or conn.execute(
+                """select 1 from review_item where kind = %(kind)s and entity_ids = %(ids)s::text[]
+                 and status in ('open', 'dismissed') limit 1""",
+                params,
+            ).fetchone()
+        )
+        if exists:  # e.g. a conflicting key group that phase 3 finds again by name
+            d.result = "review_exists"
+            self.report.stats["review_existing"] += 1
+            return
         if not self._take():
             d.result = "deferred"
             self.report.stats["deferred"] += 1
             return
-        ids = d.ids
-        params = {"kind": REVIEW_KIND, "ids": ids, "reason": d.reason, "evidence": d.evidence}
-        exists = conn.execute(
-            """select 1 from review_item where kind = %(kind)s and entity_ids = %(ids)s::text[]
-                 and status in ('open', 'dismissed') limit 1""",
-            params,
-        ).fetchone()
-        if exists:
-            d.result = "review_exists"
-            self.report.stats["review_existing"] += 1
-            return
+        self._reviewed.add(tuple(ids))
         if self.dry_run:
             d.result = "would_open_review"
             self.report.stats["review_opened"] += 1

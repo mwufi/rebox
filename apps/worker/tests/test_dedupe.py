@@ -556,8 +556,11 @@ def _counts(owner) -> dict[str, int]:
 def test_dry_run_writes_nothing_and_plans_the_same(db, client, merger, admin, g, owner):
     wd = g.entity("company", "fwd", "Figma, Inc.", wikidata="Q1", domain="figma.com")
     ex = g.entity("company", "fex", "Figma", layer="public/exa", domain="figma.com")
-    g.entity("company", "oa1", "OpenAI", wikidata="Q2", domain="openai.com")
-    g.entity("company", "oa2", "OpenAI", wikidata="Q3", domain="openai.com")
+    oa1 = g.entity("company", "oa1", "OpenAI", wikidata="Q2", domain="openai.com")
+    oa2 = g.entity("company", "oa2", "OpenAI", wikidata="Q3", domain="openai.com")
+    sf = g.entity("place", "sf", "San Francisco")
+    g.edge(oa1, "based_in", sf)  # phase 3 finds the OpenAI pair again: still one review item
+    g.edge(oa2, "based_in", sf)
     nf = g.entity("company", "fname", "Figma", layer="public/x_ai")  # name-only: joins the merged Figma
     before = _counts(owner)
     out = io.StringIO()
@@ -568,10 +571,19 @@ def test_dry_run_writes_nothing_and_plans_the_same(db, client, merger, admin, g,
     plan = {(d.phase, d.action, d.target.id if d.target else None) for d in rep.decisions}
     assert ("key", "merge", wd) in plan and ("name_only", "merge", wd) in plan
     assert rep.groups_by_predicate["domain"]["company"] == 2
+    assert rep.stats["review_opened"] == 1 and rep.stats["review_existing"] == 1
     # the real run does what the dry run said
     real = dedupe(db, client, merger)
     assert merged(owner) == {ex: wd, nf: wd}
-    for k in ("groups", "auto_merged", "review_opened", "skipped_conflict", "name_only_merged"):
+    assert len(reviews(owner)) == 1
+    for k in (
+        "groups",
+        "auto_merged",
+        "review_opened",
+        "review_existing",
+        "skipped_conflict",
+        "name_only_merged",
+    ):
         assert real.stats[k] == rep.stats[k], k
 
 
