@@ -1,0 +1,47 @@
+# First-party spider seeds (S8). Read by apps/worker/rebox_worker/frontier.py (load_seeds);
+# override the path with SEEDS_FILE.
+#
+# seeds: named seed sets of X usernames. Each set is its own worker identity
+#   (<set>-spider-<6 digits>, CONTRACTS §12) and its handles are crawled by `x_spider`:
+#   their direct following first, then posts and depth-1 expansion if budget remains.
+# exa.queries: natural-language Exa searches for fresh SF startup activity. Each is a string or
+#   a mapping {q, category?, days?, num? (<= 25), include_domains?}. `days` (default 30) limits
+#   results to pages published in the last N days; queries with include_domains have no date
+#   filter unless `days` is given.
+
+seeds:
+  dbooth: [davidbooth]
+  yoni: [yoni_michael]
+  sf-core: []
+
+exa:
+  queries:
+    # Named hot SF startups (domains checked by hand; one query each, pinned to their own site).
+    - q: "Ditto, the AI social agent and matchmaker for college students"
+      include_domains: [ditto.ai]
+      num: 3
+    - q: "Known, the AI voice dating app from San Francisco"
+      include_domains: [knowndating.com]
+      num: 3
+    # Fresh activity.
+    - q: "San Francisco startup that launched in the last 30 days"
+      days: 30
+    - q: "San Francisco startup announces seed round"
+      category: news
+      days: 30
+    - q: "San Francisco startup raises Series A"
+      category: news
+      days: 30
+    - q: "YC company launch this week"
+      days: 14
+    - q: "new AI startup homepage, based in San Francisco"
+      category: company
+      days: 60
+    - q: "Launch YC: San Francisco startup launches product"
+      days: 30
+    - q: "news about Ditto AI dating startup raising money"
+      category: news
+      days: 365
+    - q: "news about Known dating app San Francisco funding"
+      category: news
+      days: 365

@@ -173,7 +173,7 @@ class FakeWriter:
                     k = kinds[_id(ref)]
                     if role == "subject" and k not in p["subject_kinds"]:
                         details.append({"index": i, "message": f"subject kind {k} not allowed"})
-                    if role == "object" and k != p["object_kind"]:
+                    if role == "object" and p["object_kind"] != "*" and k != p["object_kind"]:
                         details.append({"index": i, "message": f"object kind {k} != {p['object_kind']}"})
             if details:
                 raise Rejected(details)
