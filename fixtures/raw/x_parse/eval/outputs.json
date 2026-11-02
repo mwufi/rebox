@@ -47,8 +47,8 @@
      "kind": "product",
      "org": "Loomline",
      "org_handle": "",
-     "quote": "Today Loomline is releasing Loom 2, our second-generation agent runtime.",
-     "title": "Released Loom 2 agent runtime, 3x faster",
+     "quote": "Today Loomline is releasing Loom 2, our second-generation agent runtime",
+     "title": "Released Loom 2, second-generation agent runtime",
      "type": "milestone"
     }
    ]
@@ -80,7 +80,7 @@
      "org": "Mosaic Health",
      "org_handle": "",
      "quote": "Mosaic Health has hired Dana Whitfield, previously a director at Verily, as its chief technology officer",
-     "title": "Hired former Verily director Dana Whitfield as CTO",
+     "title": "Hired former Verily director as chief technology officer",
      "type": "milestone"
     }
    ]
@@ -131,11 +131,11 @@
     {
      "founder": false,
      "investor": false,
-     "org": "",
+     "org": "loomline_ex",
      "org_handle": "loomline_ex",
      "quote": "building agents at @loomline_ex",
      "status": "current",
-     "title": "",
+     "title": "building agents",
      "type": "role"
     },
     {
@@ -234,12 +234,12 @@
     },
     {
      "place": "New York City",
-     "quote": "NYC → SF",
+     "quote": "NYC",
      "type": "location"
     },
     {
      "place": "San Francisco",
-     "quote": "NYC → SF",
+     "quote": "SF",
      "type": "location"
     }
    ]
@@ -269,7 +269,7 @@
    "facts": [
     {
      "place": "Oakland",
-     "quote": "location: Oakland, CA",
+     "quote": "Oakland, CA",
      "type": "location"
     },
     {
@@ -289,12 +289,12 @@
    "facts": [
     {
      "place": "San Francisco",
-     "quote": "location: SF / NYC",
+     "quote": "SF",
      "type": "location"
     },
     {
      "place": "New York City",
-     "quote": "location: SF / NYC",
+     "quote": "NYC",
      "type": "location"
     },
     {
@@ -314,7 +314,7 @@
      "org_handle": "",
      "quote": "Previously co-founded Tinyfox",
      "status": "past",
-     "title": "co-founded",
+     "title": "",
      "type": "role"
     }
    ]
@@ -345,7 +345,7 @@
     {
      "founder": false,
      "investor": false,
-     "org": "Opalai",
+     "org": "Opal AI",
      "org_handle": "opalai_ex",
      "quote": "research scientist @opalai_ex",
      "status": "current",
@@ -354,7 +354,7 @@
     },
     {
      "place": "Berkeley",
-     "quote": "berkeley",
+     "quote": "location: berkeley",
      "type": "location"
     },
     {
@@ -375,7 +375,7 @@
     {
      "founder": false,
      "investor": false,
-     "org": "Figtree",
+     "org": "",
      "org_handle": "figtree_ex",
      "quote": "design @figtree_ex",
      "status": "current",
@@ -395,21 +395,21 @@
     {
      "founder": false,
      "investor": false,
-     "org": "Cloudnine",
+     "org": "",
      "org_handle": "cloudnine_ex",
      "quote": "formerly @cloudnine_ex",
      "status": "past",
-     "title": "SRE",
+     "title": "",
      "type": "role"
     },
     {
      "founder": false,
      "investor": false,
-     "org": "Stackpath",
+     "org": "",
      "org_handle": "stackpath_ex",
      "quote": "@stackpath_ex",
      "status": "past",
-     "title": "SRE",
+     "title": "",
      "type": "role"
     },
     {
@@ -434,6 +434,16 @@
      "quote": "PM at Notionly",
      "status": "current",
      "title": "PM",
+     "type": "role"
+    },
+    {
+     "founder": false,
+     "investor": false,
+     "org": "Google",
+     "org_handle": "",
+     "quote": "ex-Google",
+     "status": "past",
+     "title": "",
      "type": "role"
     },
     {
@@ -496,7 +506,7 @@
      "investor": false,
      "org": "Heroku",
      "org_handle": "",
-     "quote": "Previously at Heroku",
+     "quote": "Previously at Heroku and Segment.",
      "status": "past",
      "title": "",
      "type": "role"
@@ -506,7 +516,7 @@
      "investor": false,
      "org": "Segment",
      "org_handle": "",
-     "quote": "Previously at Heroku and Segment",
+     "quote": "Previously at Heroku and Segment.",
      "status": "past",
      "title": "",
      "type": "role"
@@ -527,7 +537,7 @@
      "org": "",
      "org_handle": "tinyrocket-ex",
      "quote": "co-founder @tinyrocket-ex",
-     "status": "current",
+     "status": "past",
      "title": "co-founder",
      "type": "role"
     }
@@ -575,7 +585,7 @@
      "kind": "launch",
      "org": "Quillworks",
      "org_handle": "quillworks_ex",
-     "quote": "Today we're launching Quillworks Agents: AI that closes your books in hours, not weeks.",
+     "quote": "Today we're launching Quillworks Agents",
      "title": "Launched Quillworks Agents, AI for closing books",
      "type": "milestone"
     }
@@ -599,21 +609,21 @@
    "account": "company",
    "facts": [
     {
-     "org": "Loomline",
-     "org_handle": "loomline_ex",
-     "person_handle": "devonk_ex",
-     "quote": "Welcome @devonk_ex to @loomline_ex as our new Head of AI!",
-     "title": "Head of AI",
-     "type": "hire"
-    },
-    {
      "first_person": false,
      "kind": "hire",
      "org": "Loomline",
      "org_handle": "loomline_ex",
      "quote": "Welcome @devonk_ex to @loomline_ex as our new Head of AI!",
-     "title": "Hired Devon K as Head of AI",
+     "title": "Welcomed devonk as Head of AI",
      "type": "milestone"
+    },
+    {
+     "org": "",
+     "org_handle": "loomline_ex",
+     "person_handle": "devonk_ex",
+     "quote": "Welcome @devonk_ex to @loomline_ex as our new Head of AI!",
+     "title": "Head of AI",
+     "type": "hire"
     }
    ]
   },
@@ -655,18 +665,10 @@
      "investor": true,
      "org": "Cobalt VC",
      "org_handle": "cobaltvc_ex",
-     "quote": "I'm joining @cobaltvc_ex as a Partner!",
+     "quote": "I'm joining @cobaltvc_ex as a Partner",
      "status": "current",
      "title": "Partner",
      "type": "role"
-    },
-    {
-     "org": "Cobalt VC",
-     "org_handle": "cobaltvc_ex",
-     "person_handle": "priya_inv_ex",
-     "quote": "I'm joining @cobaltvc_ex as a Partner!",
-     "title": "Partner",
-     "type": "hire"
     },
     {
      "first_person": true,
@@ -676,6 +678,14 @@
      "quote": "Thrilled to announce I'm joining @cobaltvc_ex as a Partner!",
      "title": "Joined Cobalt VC as Partner",
      "type": "milestone"
+    },
+    {
+     "org": "",
+     "org_handle": "cobaltvc_ex",
+     "person_handle": "priya_inv_ex",
+     "quote": "Thrilled to announce I'm joining @cobaltvc_ex as a Partner!",
+     "title": "Partner",
+     "type": "hire"
     }
    ]
   },
@@ -685,7 +695,7 @@
     {
      "first_person": true,
      "kind": "product",
-     "org": "Opal",
+     "org": "",
      "org_handle": "",
      "quote": "Opal 3 is out today: our fastest model yet",
      "title": "Released Opal 3, its fastest model yet",
@@ -730,22 +740,12 @@
    ]
   },
   "post-13": {
-   "account": "other",
+   "account": "company",
    "facts": []
   },
   "post-14": {
    "account": "person",
    "facts": [
-    {
-     "founder": false,
-     "investor": false,
-     "org": "",
-     "org_handle": "brightwave_ex",
-     "quote": "I've joined @brightwave_ex as Head of Ops",
-     "status": "current",
-     "title": "Head of Ops",
-     "type": "role"
-    },
     {
      "org": "",
      "org_handle": "brightwave_ex",
@@ -771,9 +771,9 @@
   "api_calls": 7,
   "cache_read_tokens": 24486,
   "cache_write_tokens": 0,
-  "cost_usd": 0.003355,
+  "cost_usd": 0.003313,
   "failed_inputs": 0,
   "input_tokens": 4683,
-  "output_tokens": 5283
+  "output_tokens": 5200
  }
 }

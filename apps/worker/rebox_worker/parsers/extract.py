@@ -42,9 +42,15 @@ from .schema import Acquisition, Hire, Location, Milestone, Role, parse_facts
 
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
 PHONE_RE = re.compile(r"(?<![\w$€£])\+?\(?\d{1,4}\)?(?:[\s.-]?\(?\d{2,4}\)?){2,5}(?![\w%])")
-MOVE_RE = re.compile(r"(\S[^→>]*?)\s*(?:→|->|=>|>|\bto\b)\s*([A-Za-z][A-Za-z .]+)$")
+# "NYC → SF", "LA to SF": two short place-like phrases around an arrow or "to"
+MOVE_RE = re.compile(r"([A-Za-z][A-Za-z ]{0,24}?)\s*(?:→|->|=>|>|\bto\b)\s*([A-Za-z][A-Za-z ]{0,24})")
 INVESTING_TITLE = re.compile(r"(?i)investing|investor|angel|backing")
 FOUNDER_PREFIX = re.compile(r"(?i)^(co-?\s?founder|cofounder|founder)\s*(&|and|/|,)\s*")
+# Past-tense markers in a role quote ("ex-", "prev", "formerly", "founded"), not inside handles.
+PAST_MARKER = re.compile(
+    r"(?i)(?<![\w-])(ex|prev|previously|formerly|former|fmr|past|alum|used to|was)(?![\w])"
+    r"|(?<![\w-])ex-|\bfounded\b"
+)
 FOUNDER_TITLE = re.compile(r"(?i)(co-?\s?)?founder|founding (ceo|team)|cofounder")
 _HANDLE_RE = re.compile(r"^[A-Za-z0-9_-]{1,39}$")
 
@@ -338,6 +344,8 @@ class Extraction:
         key = _ref_key(company)
         value = {"title": title} if title else None
         past = f.status == "past"
+        if past and f.founder and not PAST_MARKER.search(f.quote):
+            past = False  # "co-founder @x" with no ex-/prev/former: the model guessed the tense
         valid_to = self.date if past else None
         if not f.founder or title or past:
             self.add(self.subject, "worked_at", key, f.quote, object=company, value=value, valid_to=valid_to)
@@ -347,12 +355,22 @@ class Extraction:
     def _location(self, f: Location) -> None:
         if self.subject is None or self.doc.kind in ("x_post", "article"):
             return
-        move = MOVE_RE.search(f.quote)
-        if move and canonical_city(f.place) != canonical_city(move.group(2).strip(" .,")):
+        if self._move_origin(f.place):
             return self._drop("origin of a move", f.quote)  # "NYC → SF": only the destination
         place = self.place(f.place, f.quote)
         if place is not None:
             self.add(self.subject, "based_in", _ref_key(place), f.quote, object=place)
+
+    def _move_origin(self, place: str) -> bool:
+        """``place`` is where the account moved from ("NYC → SF", "LA to SF") in its text."""
+        city = canonical_city(place)
+        for line in self.text.splitlines():
+            for m in MOVE_RE.finditer(line):
+                src = _city_suffix(m.group(1))
+                dst = _city_prefix(m.group(2))
+                if src and dst and src == city and dst != city:
+                    return True
+        return False
 
     def _milestone(self, f: Milestone) -> None:
         if not self.date:
@@ -428,6 +446,23 @@ class Extraction:
         if self.subject is not None and self.subject.kind == "company":
             return self.subject
         return None
+
+
+def _city_suffix(s: str) -> tuple[str, str] | None:
+    """The city at the end of ``s`` ("ex-Lyft NYC" -> NYC), trying the last 1-3 words."""
+    words = s.split()
+    for n in (3, 2, 1):
+        if len(words) >= n and (hit := canonical_city(" ".join(words[-n:]))):
+            return hit
+    return None
+
+
+def _city_prefix(s: str) -> tuple[str, str] | None:
+    words = s.split()
+    for n in (3, 2, 1):
+        if len(words) >= n and (hit := canonical_city(" ".join(words[:n]))):
+            return hit
+    return None
 
 
 def _ref_key(ref: EntityRef) -> str:

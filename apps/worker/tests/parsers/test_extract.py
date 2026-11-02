@@ -522,3 +522,18 @@ def test_thread_continuations_are_parsed_replies_to_others_are_not():
     assert doc_for(RawRecord.new("x_spider", "a", own, fetched_at=FETCHED)) is not None
     assert doc_for(RawRecord.new("x_spider", "b", other, fetched_at=FETCHED)) is None
     assert doc_for(RawRecord.new("x_spider", "c", rt, fetched_at=FETCHED)) is None
+
+
+def test_founder_tense_needs_a_past_marker():
+    payload = {
+        "user": {
+            "login": "octo-ex-8",
+            "type": "User",
+            "name": "Omar",
+            "bio": "co-founder @tinyrocket-ex · rust",
+        }
+    }
+    role = {"type": "role", "org": "", "org_handle": "tinyrocket-ex", "title": "co-founder", "status": "past",
+            "founder": True, "investor": False, "quote": "co-founder @tinyrocket-ex"}  # fmt: skip
+    claims = run("github", payload, [role])
+    assert [c.predicate for c in claims if c.object] == ["founded"]  # not an ended role
