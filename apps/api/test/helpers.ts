@@ -8,6 +8,8 @@ import { createWriter } from '../src/writer.js';
 
 export const INGEST = 'test-ingest-token';
 export const ADMIN = 'test-admin-token';
+/** The internal worker every helper write is attributed to (CONTRACTS §12). */
+export const TEST_WORKER = 'test-connector-000001';
 
 /** In-process app on the APP url (rebox_app; RLS applies), plus an owner connection for setup. */
 export function setupApp(opts: { env?: 'dev' | 'prod'; publicDir?: string } = {}) {
@@ -43,16 +45,38 @@ export function setupApp(opts: { env?: 'dev' | 'prod'; publicDir?: string } = {}
     return { status: res.status, body: json, headers: res.headers };
   }
 
+  const ingest = { authorization: `Bearer ${INGEST}` };
+  /** Registers (or extends) an internal worker so it may write `layer`; returns its id. */
+  async function worker(layer: string, opts: { name?: string; kind?: string; id?: string } = {}): Promise<string> {
+    const name = opts.name ?? 'test';
+    const kind = opts.kind ?? 'connector';
+    const body: Record<string, unknown> = { name, kind, source: name, layers: [layer] };
+    if (opts.id ?? (name === 'test' && kind === 'connector')) body.id = opts.id ?? TEST_WORKER;
+    const r = await req('POST', '/internal/workers', { body, headers: ingest });
+    if (r.status !== 200 && r.status !== 201) throw new Error(`register worker: ${r.status} ${JSON.stringify(r.body)}`);
+    return r.body.id as string;
+  }
+  const registered = new Set<string>();
+
   return {
     app,
     db,
     owner,
     logs,
+    worker,
     get: (path: string, headers?: Record<string, string>) => req('GET', path, { headers }),
     post: (path: string, body: unknown, headers?: Record<string, string>) => req('POST', path, { body, headers }),
-    /** POST /internal/claims with the ingest token. */
-    write: (layer: string, claims: unknown[]) =>
-      req('POST', '/internal/claims', { body: { layer, claims }, headers: { authorization: `Bearer ${INGEST}` } }),
+    patch: (path: string, body: unknown, headers?: Record<string, string>) => req('PATCH', path, { body, headers }),
+    /** POST /internal/claims with the ingest token, as TEST_WORKER (registered for the layer) or `opts.worker`. */
+    write: async (layer: string, claims: unknown[], opts: { worker?: string; run_id?: number } = {}) => {
+      if (!opts.worker && !registered.has(layer)) {
+        await worker(layer);
+        registered.add(layer);
+      }
+      const body: Record<string, unknown> = { layer, worker: opts.worker ?? TEST_WORKER, claims };
+      if (opts.run_id !== undefined) body.run_id = opts.run_id;
+      return req('POST', '/internal/claims', { body, headers: ingest });
+    },
   };
 }
 

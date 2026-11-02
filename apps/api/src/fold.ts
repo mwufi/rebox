@@ -6,9 +6,13 @@
  *   claims on the root.
  * - Fold key = root + predicate + (canonical other entity for edges | value for `many`
  *   attributes | nothing for `one` attributes).
- * - Winner per key = narrowest layer scope (user > team > firm > public), then newest
- *   updated_at, then a claim made on the root itself over one inherited from a merged-away
- *   entity, then highest id (deterministic). Winners with retract = true are dropped.
+ * - Winner per key = narrowest layer scope (user > team > firm > public), then the writing
+ *   worker's trust (CONTRACTS §12; claims written before workers existed count as 0.5), then
+ *   newest updated_at, then a claim made on the root itself over one inherited from a
+ *   merged-away entity, then highest id (deterministic). Winners with retract = true are dropped.
+ * - support = distinct (layer, source_ref) among the non-retracted candidates for the same key
+ *   (and, for `one` attributes, the same value as the winner): how many sources corroborate the
+ *   fact. It is computed from the candidate rows the fold already reads, so it adds no scan.
  * - Edges whose other side is not visible (RLS on entity) are dropped, so private ids never leak.
  */
 import type { Tx } from './db.js';
@@ -33,7 +37,13 @@ export interface FoldedRow {
   source: string;
   source_ref: string;
   updated_at: Date;
+  worker_id: string | null;
+  evidence: unknown[] | null;
+  support: number;
 }
+
+/** Trust assumed for claims with no worker (written before migration 0005). */
+export const UNATTRIBUTED_TRUST = 0.5;
 
 export interface FoldOptions {
   roots: readonly string[];
@@ -77,26 +87,38 @@ export async function foldFacts(tx: Tx, opts: FoldOptions): Promise<FoldedRow[]>
     ),
     cand as (
       select g.root, (g.member = g.root) as direct, c.id, c.predicate, c.subject, c.object_id, c.value, c.valid_from, c.valid_to,
-             c.retract, c.layer_id, c.source_ref, c.updated_at, l.scope, l.source,
+             c.retract, c.layer_id, c.source_ref, c.updated_at, c.worker_id, c.evidence, l.scope, l.source,
+             coalesce(wk.trust, ${UNATTRIBUTED_TRUST}::real) as trust,
              case when c.object_id is null then null else coalesce(oc.root, ${otherCol}) end as other,
              case when p.object_kind is not null then coalesce(oc.root, ${otherCol})
                   when p.cardinality = 'many' then c.value::text
-                  else '' end as fold_key
+                  else '' end as fold_key,
+             -- For one-cardinality attributes, only rows with the same value corroborate the winner.
+             case when p.object_kind is null and p.cardinality = 'one' then c.value::text else '' end as support_key
       from grp g
       join claim c on ${anchorCol} = g.member
       join layer l on l.id = c.layer_id
       join predicate p on p.id = c.predicate
+      left join worker wk on wk.id = c.worker_id
       left join canon oc on oc.member = ${otherCol}
       where true ${predicateFilter} ${edgeFilter}
     ),
     winners as (
       select distinct on (root, predicate, fold_key) *
       from cand
-      order by root, predicate, fold_key, scope desc, updated_at desc, direct desc, id desc
+      order by root, predicate, fold_key, scope desc, trust desc, updated_at desc, direct desc, id desc
+    ),
+    support as (
+      select root, predicate, fold_key, support_key, count(distinct (layer_id, source_ref))::int as n
+      from cand where not retract
+      group by root, predicate, fold_key, support_key
     )
     select w.root, w.id::text as claim_id, w.predicate, w.subject, w.object_id, w.other, w.value,
-           w.valid_from, w.valid_to, w.layer_id, w.source, w.source_ref, w.updated_at
+           w.valid_from, w.valid_to, w.layer_id, w.source, w.source_ref, w.updated_at,
+           w.worker_id, w.evidence, coalesce(s.n, 1) as support
     from winners w
+    left join support s on s.root = w.root and s.predicate = w.predicate and s.fold_key = w.fold_key
+                       and s.support_key = w.support_key
     where not w.retract
       and (w.other is null or exists (select 1 from entity oe where oe.id = w.other))
       ${after}
