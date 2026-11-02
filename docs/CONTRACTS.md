@@ -174,7 +174,8 @@ Every decision writes `resolution_log`. Batch-local cache so one batch resolves 
 | Var | Used by | Example |
 | --- | --- | --- |
 | `DATABASE_URL` | api, worker | `postgres://rebox_app:rebox_app@localhost:54329/rebox` (app role) |
-| `MIGRATE_DATABASE_URL` | migrate | owner URL |
+| `MIGRATE_DATABASE_URL` | migrate | owner URL (password may come from `PGPASSWORD`) |
+| `APP_DB_PASSWORD` | migrate | password set on role `rebox_app` |
 | `PORT` | api | `3000` |
 | `INGEST_TOKEN` | api, worker | secret |
 | `ADMIN_TOKEN` | api | secret |
@@ -185,9 +186,16 @@ Every decision writes `resolution_log`. Batch-local cache so one batch resolves 
 | `GITHUB_TOKEN` | worker (optional) | enables live GitHub connector |
 | `X_BEARER_TOKEN` | worker (optional) | enables live X connector |
 | `AWS_REGION` | worker (s3 raw store) | `us-west-2` |
+| `SCHEDULE_INTERVAL_S` | compose scheduler | `900` |
 
 ## 10. Repository conventions
 
 - Monorepo: `apps/api` (TypeScript, Node 22, Hono, `postgres` driver, vitest), `apps/web` (React + Vite, built into `apps/api/public`), `apps/worker` (Python 3.13, uv, psycopg 3, httpx, pytest), `db/`, `infra/`, `fixtures/raw/`, `docs/`.
 - Tests use a real Postgres: `scripts/test-db.sh <dbname>` prints the owner URL then the app URL. Shared dev server: `postgres://postgres@localhost:54329/postgres`. Each slice uses its own database names prefixed with its slice id.
 - No service imports another service's code. They share only these contracts and the database schema.
+
+## 11. Packaging (from S3)
+
+- `apps/api`: `pnpm --filter @rebox/api build` must emit `dist/server.js`; the image runs `node dist/server.js` from `/app/apps/api` and serves static files from `apps/api/public` (resolve it relative to `dist/..`).
+- `apps/worker`: console script `rebox-worker` must support `--help`; the image runs from `/app` with fixtures at `/app/fixtures/raw/<source>` (resolve fixtures relative to the repo root, overridable by `FIXTURES_DIR`).
+- Commit `pnpm-lock.yaml` and `apps/worker/uv.lock`; images use frozen/locked installs when present.
