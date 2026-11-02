@@ -190,13 +190,10 @@ def test_x_enriches_entities_from_github(deps, owner):
     assert run_sync(gh, deps).rejected == 0
     entities = owner.execute("select count(*) n from entity").fetchone()["n"]
 
-    from rebox_worker.connectors.x import graph_handles
-
-    def handles(c):
-        return graph_handles(type(c)(env={"DATABASE_URL": deps.lock_url}))
-
+    # Default handle source: graph_handles(ctx) reads the graph through ctx.db (the worker's pool).
     handler, _ = _x_api()
-    x = X(transport=httpx.MockTransport(handler), sleep=lambda s: None, handles=handles)
+    x = X(transport=httpx.MockTransport(handler), sleep=lambda s: None)
+    assert deps.ctx.db is None  # the pipeline fills it in from deps.db
     stats = run_sync(x, deps)
     assert stats.minted == 0 and stats.rejected == 0 and stats.written > 0
     assert owner.execute("select count(*) n from entity").fetchone()["n"] == entities

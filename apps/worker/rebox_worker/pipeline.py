@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from typing import Any
 
 import psycopg
@@ -80,7 +80,9 @@ def run_sync(connector: Connector, deps: Deps) -> Stats:
         resolver = Resolver(deps.db, source=connector.name, layer=connector.layer)
         cursor = load_cursor(deps.db, connector)
         pending = _Pending()
-        for item in connector.fetch(deps.ctx, cursor):
+        # Connectors that read the graph (X) use the worker's pool, never a connection of their own.
+        ctx = deps.ctx if deps.ctx.db is not None else replace(deps.ctx, db=deps.db)
+        for item in connector.fetch(ctx, cursor):
             if isinstance(item, CursorUpdate):
                 pending.cursor = item.cursor
                 _flush(connector, deps, resolver, pending, stats)

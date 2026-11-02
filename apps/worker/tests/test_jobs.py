@@ -142,7 +142,55 @@ class _On:
     name, layer, interval_s = "on", "public/on", 60
 
 
+class _Manual:
+    name, layer, interval_s = "manual-only", "public/manual-only", 60
+    scheduled = False
+
+
+class _NeedsToken:
+    name, layer, interval_s = "tok", "public/tok", 60
+
+    def enabled(self, ctx):
+        return bool(ctx.env.get("TOK_TOKEN"))
+
+
 def test_schedule_due_registers_connectors_and_skips_disabled(db, owner):
     assert jobs.schedule_due(db, {"off": _Disabled(), "on": _On()}) == ["on"]
     rows = owner.execute("select source, interval_s from connector_state order by source").fetchall()
-    assert [(r["source"], r["interval_s"]) for r in rows] == [("off", 60), ("on", 60)]
+    assert [(r["source"], r["interval_s"]) for r in rows] == [("on", 60)]  # disabled: no state row
+
+
+def test_schedule_due_first_run_on_a_fresh_database(db, owner):
+    """No connector_state rows at all: every enabled, scheduled connector is enqueued at once."""
+    assert owner.execute("select count(*) n from connector_state").fetchone()["n"] == 0
+    conns = {"on": _On(), "manual-only": _Manual(), "off": _Disabled()}
+    assert jobs.schedule_due(db, conns) == ["on"]
+    assert jobs.schedule_due(db, conns) == []
+    jobs_ = owner.execute("select kind, payload->>'source' s, status from job").fetchall()
+    assert [(j["kind"], j["s"], j["status"]) for j in jobs_] == [("sync", "on", "queued")]
+
+
+def test_schedule_due_skips_unscheduled_even_with_state(db, owner):
+    """A manual `sync example` leaves a due state row; the scheduler still never enqueues it."""
+    owner.execute(
+        "insert into connector_state (source, interval_s, next_run_at) values ('manual-only', 60, now())"
+    )
+    assert jobs.schedule_due(db, {"manual-only": _Manual()}) == []
+    assert owner.execute("select count(*) n from job").fetchone()["n"] == 0
+
+
+def test_schedule_due_reads_tokens_from_ctx_env(db):
+    from rebox_worker.connectors.base import Ctx
+
+    assert jobs.schedule_due(db, {"tok": _NeedsToken()}, Ctx(env={})) == []
+    assert jobs.schedule_due(db, {"tok": _NeedsToken()}, Ctx(env={"TOK_TOKEN": "t"})) == ["tok"]
+
+
+def test_registry_schedule_is_hn_and_wikidata_without_tokens(db):
+    """The real registry on a fresh database: example is test data, github/x need tokens."""
+    from rebox_worker.connectors import REGISTRY
+    from rebox_worker.connectors.base import Ctx
+
+    conns = {name: cls() for name, cls in REGISTRY.items()}
+    no_tokens = Ctx(env={"GITHUB_TOKEN": "", "X_BEARER_TOKEN": ""})
+    assert jobs.schedule_due(db, conns, no_tokens) == ["hn", "wikidata"]

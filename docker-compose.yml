@@ -2,6 +2,8 @@
 #   cp .env.example .env && docker compose up --build     → http://localhost:3000
 #   docker compose up -d --wait db                         → just Postgres on :54329 (make up)
 # Values come from .env (compose reads it for ${...}); defaults match .env.example.
+# Host ports: API_HOST_PORT (default 3000) and DB_HOST_PORT (default 54329), for machines where
+# those are taken. They only change the published ports; inside the stack nothing changes.
 # Containers reach Postgres at db:5432, so the localhost URLs in .env are not used here.
 
 x-api-image: &api-image
@@ -32,7 +34,7 @@ services:
     environment:
       POSTGRES_PASSWORD: dev
       POSTGRES_DB: rebox
-    ports: ["54329:5432"]
+    ports: ["${DB_HOST_PORT:-54329}:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
       # TCP check: the image's init phase runs a socket-only server, which must not count as ready.
@@ -59,7 +61,7 @@ services:
       INGEST_TOKEN: ${INGEST_TOKEN:-dev-ingest-token}
       ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-admin-token}
       REBOX_ENV: ${REBOX_ENV:-dev}
-    ports: ["127.0.0.1:3000:3000"]
+    ports: ["127.0.0.1:${API_HOST_PORT:-3000}:3000"]
     depends_on:
       migrate: { condition: service_completed_successfully }
     healthcheck:

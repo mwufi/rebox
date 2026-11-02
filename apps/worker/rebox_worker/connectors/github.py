@@ -30,7 +30,6 @@ source_ref: ``github:user:<login>:<predicate>[:<key>]`` / ``github:org:<login>:<
 
 from __future__ import annotations
 
-import os
 import re
 import time
 from collections.abc import Callable, Iterator
@@ -56,10 +55,8 @@ _ORG_RE = re.compile(r"^@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))$")
 
 
 def token(ctx: Ctx, name: str) -> str | None:
-    """A token from the connector context, falling back to the process environment.
-
-    (``jobs.schedule_due`` builds ``Ctx()`` without ``env``; see the S4 report.)"""
-    return ctx.env.get(name) or os.environ.get(name) or None
+    """A non-empty token from the connector context (the CLI and scheduler pass ``os.environ``)."""
+    return (ctx.env.get(name) or "").strip() or None
 
 
 class GitHub:

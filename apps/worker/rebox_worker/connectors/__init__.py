@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .base import Connector, Ctx, fixtures_root, is_enabled
+from .base import Connector, Ctx, fixtures_root, is_enabled, is_scheduled
 from .example import Example
 from .github import GitHub
 from .hn import Hn
@@ -32,4 +32,13 @@ def get_connector(name: str) -> Connector:
         raise UnknownConnector(f"unknown connector {name!r} (known: {known})") from None
 
 
-__all__ = ["REGISTRY", "Connector", "Ctx", "UnknownConnector", "fixtures_root", "get_connector", "is_enabled"]
+__all__ = [
+    "REGISTRY",
+    "Connector",
+    "Ctx",
+    "UnknownConnector",
+    "fixtures_root",
+    "get_connector",
+    "is_enabled",
+    "is_scheduled",
+]

@@ -126,23 +126,28 @@ def requeue_stale(db: Db, stale_after_s: int = STALE_AFTER_S) -> int:
         return cur.rowcount
 
 
-def schedule_due(db: Db, connectors: dict[str, Any] | None = None) -> list[str]:
+def schedule_due(db: Db, connectors: dict[str, Any] | None = None, ctx: Any = None) -> list[str]:
     """Enqueue a ``sync`` for every connector that is due, and advance its ``next_run_at``.
 
     Due = ``next_run_at <= now()`` and no queued/running sync for that source. Idempotent:
-    running it twice in a row enqueues nothing the second time. ``connectors`` (name ->
-    connector instance) registers missing state rows and skips disabled connectors.
+    running it twice in a row enqueues nothing the second time.
+
+    ``connectors`` (name -> connector instance) restricts scheduling to the connectors that are
+    enabled (``enabled(ctx)``, e.g. a token is set in ``ctx.env``) and scheduled (not
+    ``scheduled = False``, like ``example``), and registers a state row with
+    ``next_run_at = now()`` for any of them that has none, so a fresh stack syncs right away.
+    ``ctx`` is the connector context (the CLI passes ``Ctx(env=os.environ)``).
     """
-    from .connectors.base import Ctx, is_enabled  # local: avoid a cycle at import time
+    from .connectors.base import Ctx, is_enabled, is_scheduled  # local: avoid a cycle at import time
     from .pipeline import ensure_state
 
-    enabled: set[str] | None = None
+    eligible: set[str] | None = None
     with db.view() as conn:
-        if connectors:
-            ctx = Ctx()
-            for c in connectors.values():
-                ensure_state(conn, c)
-            enabled = {name for name, c in connectors.items() if is_enabled(c, ctx)}
+        if connectors is not None:
+            ctx = ctx if ctx is not None else Ctx()
+            eligible = {name for name, c in connectors.items() if is_scheduled(c) and is_enabled(c, ctx)}
+            for name in sorted(eligible):
+                ensure_state(conn, connectors[name])
         # Lock the due rows so two schedulers cannot both enqueue the same source.
         rows = conn.execute(
             """select source, interval_s from connector_state
@@ -153,7 +158,7 @@ def schedule_due(db: Db, connectors: dict[str, Any] | None = None) -> list[str]:
         enqueued: list[str] = []
         for row in rows:
             source = row["source"]
-            if enabled is not None and source not in enabled:
+            if eligible is not None and source not in eligible:
                 continue
             active = conn.execute(
                 """select 1 from job where kind = 'sync' and status in ('queued','running')
