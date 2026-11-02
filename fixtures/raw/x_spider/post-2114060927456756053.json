@@ -1,0 +1,20 @@
+{
+ "content_hash": "sha256:55b0d340af90a034b088dbab7186ff0e7691e754a69c8e6751e838920c8555b1",
+ "external_id": "post:2114060927456756053",
+ "fetched_at": "2026-11-02T10:48:49Z",
+ "payload": {
+  "author": {
+   "id": "18576537",
+   "username": "IDF"
+  },
+  "post": {
+   "created_at": "2026-10-24T18:26:17.000Z",
+   "id": "2114060927456756053",
+   "lang": "en",
+   "text": "⭕️OPERATIONAL UPDATE - JUDEA &amp; SAMARIA: Over the weekend, IDF soldiers, Israel Border Police, and the ISA operated in ~40 areas and 400 locations as part of counterterrorism activities, focusing on areas identified with Hamas.\n\n~40 suspects were apprehended, including terrorists"
+  },
+  "type": "x_post"
+ },
+ "source": "x_spider",
+ "url": "https://x.com/IDF/status/2114060927456756053"
+}

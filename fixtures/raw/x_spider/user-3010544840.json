@@ -1,0 +1,25 @@
+{
+ "content_hash": "sha256:ae4c3afe9696a82b05dc03103411a0d75ae96452723947b8874b19d58258b967",
+ "external_id": "user:3010544840",
+ "fetched_at": "2026-11-02T10:48:32Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2015-02-05T20:54:36.000Z",
+   "description": "Co-Founder / CEO @monacogtm. Fmr partner @foundersfund. Fmr CRO @brexhq",
+   "id": "3010544840",
+   "location": "San Francisco, CA",
+   "name": "Sam Blond",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/1346138651458109440/WJYj8gv0_normal.jpg",
+   "public_metrics": {
+    "followers_count": 28578,
+    "following_count": 979
+   },
+   "url": "",
+   "username": "samdblond",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/samdblond"
+}

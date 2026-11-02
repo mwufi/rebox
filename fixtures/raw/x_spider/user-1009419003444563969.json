@@ -1,0 +1,25 @@
+{
+ "content_hash": "sha256:c9210c18de3ccbd821f99c9bdd99a28fc765b9b219e5daa1727f7f551e4939b4",
+ "external_id": "user:1009419003444563969",
+ "fetched_at": "2026-11-02T10:48:32Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2018-06-20T12:53:39.000Z",
+   "description": "learning @CapitalAlso",
+   "id": "1009419003444563969",
+   "location": "New York, NY",
+   "name": "Brandes Woodall",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/1945150362228248576/asu-EQ_E_normal.jpg",
+   "public_metrics": {
+    "followers_count": 287,
+    "following_count": 407
+   },
+   "url": "",
+   "username": "BrandesWoodall",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/BrandesWoodall"
+}

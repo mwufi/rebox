@@ -1,0 +1,38 @@
+{
+ "content_hash": "sha256:c43f215599a79f164056d9ca7c391377b0fec8b8de99b3a5dca1fdfeaa938cd6",
+ "external_id": "user:431968702",
+ "fetched_at": "2026-11-02T10:48:32Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2011-12-08T22:01:00.000Z",
+   "description": "Member of Technical Staff at @anthropicai\n\nOn leave from @ycombinator\n\nCofounded @gocardless and @monzo",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "display_url": "tomblomfield.com",
+       "end": 23,
+       "expanded_url": "https://tomblomfield.com",
+       "start": 0,
+       "url": "https://t.co/mVl7D9lUPx"
+      }
+     ]
+    }
+   },
+   "id": "431968702",
+   "location": "San Francisco ",
+   "name": "Tom Blomfield",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/855132078660345856/RtT-rxFc_normal.jpg",
+   "public_metrics": {
+    "followers_count": 89826,
+    "following_count": 955
+   },
+   "url": "https://t.co/mVl7D9lUPx",
+   "username": "t_blom",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/t_blom"
+}

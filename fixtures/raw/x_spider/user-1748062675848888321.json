@@ -1,0 +1,37 @@
+{
+ "content_hash": "sha256:35b539b7a44458ac3e5f1744c76ab566dd37741287a51d88b96ff670fd0e991e",
+ "external_id": "user:1748062675848888321",
+ "fetched_at": "2026-11-02T10:48:32Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2024-01-18T19:20:07.000Z",
+   "description": "Your money, on the world’s most powerful network. Rolling out to U.S. residents.",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "display_url": "money.x.com",
+       "end": 23,
+       "expanded_url": "http://money.x.com",
+       "start": 0,
+       "url": "https://t.co/PEppZRwkrr"
+      }
+     ]
+    }
+   },
+   "id": "1748062675848888321",
+   "name": "X Money",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/2041559289458782208/1mGk24um_normal.jpg",
+   "public_metrics": {
+    "followers_count": 695912,
+    "following_count": 1
+   },
+   "url": "https://t.co/PEppZRwkrr",
+   "username": "XMoney",
+   "verified_type": "business"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/XMoney"
+}

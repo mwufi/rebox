@@ -1,0 +1,38 @@
+{
+ "content_hash": "sha256:a0d11d46c4b6d54d33c123cc6376ba045488c28d052ece20f2e9c52b0ae046fe",
+ "external_id": "user:339261041",
+ "fetched_at": "2026-11-02T10:48:32Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2011-07-20T20:44:14.000Z",
+   "description": "startup investor/helper, founder @conviction. interested in intelligence, accelerating progress. tech podcast: @nopriorspod",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "display_url": "conviction.com",
+       "end": 23,
+       "expanded_url": "http://conviction.com",
+       "start": 0,
+       "url": "https://t.co/zcwvJflpvk"
+      }
+     ]
+    }
+   },
+   "id": "339261041",
+   "location": "on ⛓",
+   "name": "sarah guo",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/2104624169661124608/uQ5t8Dsx_normal.jpg",
+   "public_metrics": {
+    "followers_count": 165279,
+    "following_count": 3421
+   },
+   "url": "https://t.co/zcwvJflpvk",
+   "username": "saranormous",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/saranormous"
+}

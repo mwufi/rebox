@@ -1,0 +1,26 @@
+{
+ "content_hash": "sha256:7b5a3d195aa8879bc5aa67c0a5495483a86209ace1e3511677ed69719ec4d15c",
+ "external_id": "url:https://buildersreport.telilabs.com/p/builders-report-edition-2",
+ "fetched_at": "2026-11-02T10:50:17Z",
+ "payload": {
+  "author": "Adrian Arnaboldi",
+  "category": "news",
+  "domain": "buildersreport.telilabs.com",
+  "favicon": null,
+  "highlights": [
+   "Founders: Celeste Amadon (Stanford), Asher Allen (Stanford)\n\nCompany: Known\n\nWhat? We are building intelligence for human connection, starting with a dating product (a matchmaker).\n\nWhy? We started it because we realized AI’s ability to understand us could be used to connect us rather than simulate companionship.\n\nWhat’s next? We raised a $10M seed earlier this year and just launched our beta and opening it to public in SF on the 15th of Feb! We’re throwing a thousand person party at sf mint on the 14th. Next we are going nyc. We want to retire the swipe and make dating intentional again. \n\nOther Notes:\n\n- Read more about Known’s $10M seed in TechCrunch here. The team originally set out to build an AI app that booked restaurants for dates, but quickly realized the bigger opportunity was encouraging people to meet in person. Known was born out of a voice-powered AI onboarding experience that replaces forms with conversation, with users spending an average of 26 minutes talking to the app. After onboarding, the AI suggests matches and enforces momentum by giving users 24 hours to accept an introduction and another 24 hours to schedule a date, while also helping pick restaurants and coordinate availability for real-world meetups. \n- Known’s X launch video on February 1st got 1.5M views."
+  ],
+  "homepage": false,
+  "image": "https://substackcdn.com/image/fetch/$s_!3y8a!,w_1200,h_675,c_fill,f_jpg,q_auto:good,fl_progressive:steep,g_auto/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fc160badd-657f-4ccb-9740-5ba522bcaaf3_1920x1080.png",
+  "published_date": "2026-02-04T00:00:00.000Z",
+  "query": "news about Known dating app San Francisco funding",
+  "summary": "Summary: Known, a dating startup developing an AI-driven matchmaking product, raised a $10M seed round earlier this year. The company, led by founders Celeste Amadon and Asher Allen (Stanford), launched a beta in San Francisco with a public release planned for February 15 and a major launch event at SF Mint on February 14. Known aims to retire the swipe and promote intentional dating, starting with in-person meetups. An onboarding experience uses voice-powered AI to replace forms, with users spending ~26 minutes onboarding; post-onboarding, the AI suggests matches and enforces momentum by setting timelines (24 hours to accept an intro, 24 hours to schedule a date) and assisting with restaurant picks and coordinating availability. The team recently published an X launch video that garnered 1.5M views. News coverage includes TechCrunch detailing the seed funding. Key points for your query: -Funding: $10M seed raised (early 2024/this year) -San Francisco: beta launch in SF; public beta launch 2/15; event 2/14 at SF Mint -Product: AI-assisted dating app focusing on in-person meetings and reduced swiping -Launch momentum: strong onboarding, 24-hour intro/appointment cadence, restaurant coordination -Notable traction: TechCrunch coverage; 1.5M views for X launch video If you want, I can pull a brief headline-style update or extract exact dates and links if you provide permission to fetch current articles.",
+  "text": "Builders Report: Edition 2 - by Adrian Arnaboldi\n\n### Six young teams building in dating, gourmet slime, video production, AI photography, campus security, and drug discovery!\n\nAdrian Arnaboldi\n\nFeb 04, 2026\n\nWelcome to the second edition of Builders Report (formerly Dorm Report)! I’m Adrian, the founder of Teli Labs, and we’re building this newsletter to spotlight young founders and give them a platform to share what they’re working on!\n\nIf you’re a young founder or know someone who is, don’t hesitate to fill out this form to be considered for a feature in an upcoming issue. \n\nFounders: Celes",
+  "title": "Builders Report: Edition 2 - by Adrian Arnaboldi",
+  "type": "exa_result",
+  "url": "https://www.buildersreport.telilabs.com/p/builders-report-edition-2",
+  "url_key": "https://buildersreport.telilabs.com/p/builders-report-edition-2"
+ },
+ "source": "exa",
+ "url": "https://www.buildersreport.telilabs.com/p/builders-report-edition-2"
+}

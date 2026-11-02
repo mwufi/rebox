@@ -1,0 +1,25 @@
+{
+ "content_hash": "sha256:228e264dd27e4d3cb26b9d8b2f66d64dedc33313ad3f9be06009ff7a5945e55d",
+ "external_id": "user:15075881",
+ "fetched_at": "2026-11-02T10:48:34Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2008-06-10T18:21:34.000Z",
+   "description": "Partnering technical founders at first inflection | @factoryAI @elevenlabs @perplexity_AI @bluefish_AI @twelve_labs @entireHQ |  AI Apps, Platforms, Frontier AI",
+   "id": "15075881",
+   "location": "San Francisco, CA",
+   "name": "Ann Bordetsky",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/1901838430201647104/211acKZy_normal.jpg",
+   "public_metrics": {
+    "followers_count": 12444,
+    "following_count": 2668
+   },
+   "url": "",
+   "username": "annbordetsky",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/annbordetsky"
+}

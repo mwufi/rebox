@@ -1,0 +1,38 @@
+{
+ "content_hash": "sha256:ca9c8f75051fefb929b022bfcb4c4f7c3ef04e7d1b87613b1a5d50ec3284b5f2",
+ "external_id": "user:18576537",
+ "fetched_at": "2026-11-02T10:48:34Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2009-01-03T08:53:43.000Z",
+   "description": "Official IDF X account. We post real-time information and updates from the field.",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "display_url": "linktr.ee/israel_defense…",
+       "end": 23,
+       "expanded_url": "https://linktr.ee/israel_defense_forces",
+       "start": 0,
+       "url": "https://t.co/KFmUlz30dy"
+      }
+     ]
+    }
+   },
+   "id": "18576537",
+   "location": "Israel",
+   "name": "Israel Defense Forces",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/1460244034706935808/lBBT0_jC_normal.jpg",
+   "public_metrics": {
+    "followers_count": 3292942,
+    "following_count": 34
+   },
+   "url": "https://t.co/KFmUlz30dy",
+   "username": "IDF",
+   "verified_type": "government"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/IDF"
+}
