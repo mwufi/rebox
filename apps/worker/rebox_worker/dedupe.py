@@ -33,9 +33,12 @@ feed are written by the one place that owns merges. Review items go to ``review_
    * none -> merge the name-only companies among themselves into the one with most claims
      (tie: oldest).
 
+   A name-only company is matched by its main names (``Profile.main_folds``), so one stray
+   name never chains two companies together.
+
 3. **Name + neighbor** (no shared key): same kind, equal folded name, and an edge (either
-   direction, ``follows`` excluded) to the same entity -> review item, reason ``name+neighbor``.
-   Never merged automatically.
+   direction, ``follows`` excluded; for people also places, a hub everyone is based_in) to the
+   same entity -> review item, reason ``name+neighbor``. Never merged automatically.
 
 Review items are not reopened: an open or dismissed ``possible_duplicate`` item for the same set
 of entities suppresses a new one. A second run finds nothing to merge (merged entities are no
