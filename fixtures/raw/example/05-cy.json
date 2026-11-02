@@ -1,0 +1,11 @@
+{
+  "id": "person:cy",
+  "kind": "person",
+  "name": "Cy Example",
+  "identity": {"x_handle": "cyexample", "hn_user": "cy_example"},
+  "attrs": {"location": "Oakland"},
+  "edges": [
+    {"predicate": "worked_at", "dir": "out", "value": {"title": "Engineer"}, "valid_from": "2015-06-01",
+     "entity": {"kind": "company", "name": "Acme Robotics", "identity": {"github": "acme-robotics"}}}
+  ]
+}

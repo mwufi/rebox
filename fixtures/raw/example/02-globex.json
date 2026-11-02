@@ -1,0 +1,11 @@
+{
+  "id": "company:globex",
+  "kind": "company",
+  "name": "Globex Example",
+  "identity": {"domain": "globex.example", "x_handle": "https://x.com/GlobexExample"},
+  "attrs": {"description": "Fictional analytics company (example fixture).", "headcount": 42},
+  "edges": [
+    {"predicate": "ceo_of", "dir": "in",
+     "entity": {"kind": "person", "name": "Cy Example", "identity": {"x_handle": "@CyExample"}}}
+  ]
+}
