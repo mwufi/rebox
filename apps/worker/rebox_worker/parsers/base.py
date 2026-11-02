@@ -18,9 +18,9 @@ fetch
 extract
     ``extract.extract_claims`` (pure). Replays read the stored outputs: no model calls.
 
-Run stats: model usage (api_calls, tokens, cost_usd) goes to the run's stats through
-``ctx.add_usage`` (CONTRACTS §12) when the pipeline provides it; it is also logged and saved in
-the cursor under ``last_run``.
+Run stats: ``run_stats()`` returns this run's model usage (api_calls, input/output and cache
+tokens, cost_usd, failed_inputs); the pipeline merges it into the run record (CONTRACTS §12). It
+is also logged and saved in the cursor under ``last_run``.
 """
 
 from __future__ import annotations
@@ -219,9 +219,7 @@ class ParserConnector:
 
     def _flush(self, ctx: Any, model: Model, batch: list[tuple[InputDoc, list[Any]]]) -> Iterator[RawRecord]:
         docs = [d for d, _ in batch]
-        before = self.usage.as_dict()
         outputs = model.parse(docs, self.usage)
-        _report_usage(ctx, before, self.usage.as_dict())
         graph = self._graph(ctx, docs, outputs)
         for doc, out in zip(docs, outputs, strict=True):
             payload = {
@@ -313,27 +311,6 @@ class ParserConnector:
         if not isinstance(rec.payload, dict) or "input" not in rec.payload:
             return []
         return extract_claims(self.name, rec.payload)
-
-
-def _report_usage(ctx: Any, before: dict[str, Any], after: dict[str, Any]) -> None:
-    """Feed the run's stats (CONTRACTS §12) through ``ctx.add_usage`` when the pipeline has it."""
-    add = getattr(ctx, "add_usage", None)
-    if not callable(add):
-        return
-    delta = {k: after[k] - before[k] for k in USAGE_KEYS if after[k] != before[k]}
-    if delta:
-        add(**delta)
-
-
-USAGE_KEYS = (
-    "api_calls",
-    "input_tokens",
-    "cache_write_tokens",
-    "cache_read_tokens",
-    "output_tokens",
-    "cost_usd",
-    "failed_inputs",
-)
 
 
 def _mentions(doc: InputDoc, out: dict[str, Any] | None, key: str) -> bool:
