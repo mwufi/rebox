@@ -669,3 +669,68 @@ def test_relevance_names():
     assert relevance.names("Rocker, Inc.", "Rocker launches") and relevance.names("fal", "fal raised")
     assert relevance.names("Notion (Notion Labs)", "Notion ships AI")
     assert not relevance.names("", "anything")
+
+
+# ── @handle references carry their identity claim (S18 addendum) ──
+
+
+def _bio(bio: str, facts: list[dict[str, Any]], graph: dict[str, Any] | None = None, handle: str = "dana_ex"):
+    payload = {"type": "x_user", "user": {"id": "77", "username": handle, "name": "Dana", "description": bio}}
+    return run("x_spider", payload, facts, graph=graph)
+
+
+def _role(handle: str, quote: str, **kw: Any) -> dict[str, Any]:
+    return {"type": "role", "org": kw.get("org", ""), "org_handle": handle, "title": kw.get("title", ""),
+            "status": "current", "founder": kw.get("founder", False), "investor": False, "quote": quote}  # fmt: skip
+
+
+def test_building_at_handle_writes_the_handle_as_identity():
+    claims = _bio("building @pally", [_role("pally", "building @pally", founder=True)])
+    (f,) = by_pred(claims, "founded")
+    assert f.object.identity == {"x_handle": "pally"}
+    (h,) = [c for c in by_pred(claims, "x_handle") if c.subject.identity == {"x_handle": "pally"}]
+    assert h.value == "pally" and h.subject == f.object
+    assert _ev(h)["quote"] == "building @pally" and _ev(h)["url"] == "https://x.com/dana_ex"
+    assert (
+        h.source_ref
+        == f"x_parse:{f.source_ref.split(':', 1)[1].rsplit(':founded:', 1)[0]}:x_handle:x_handle=pally"
+    )
+    # once per handle, however often the bio names it
+    claims = _bio(
+        "CEO @pally. Ex-intern @pally",
+        [_role("pally", "CEO @pally", title="CEO"), _role("pally", "Ex-intern @pally")],
+    )
+    assert len([c for c in by_pred(claims, "x_handle") if c.value == "pally"]) == 1
+
+
+def test_handle_identity_skipped_for_known_handles_and_the_own_handle():
+    # the graph already has a company with that handle (it carries the claim): no second one
+    claims = _bio(
+        "building @pally", [_role("pally", "building @pally")], graph={"x_handle:pally": ["company"]}
+    )
+    assert [
+        c.value for c in by_pred(claims, "x_handle") if c.subject.identity.get("x_handle") == "pally"
+    ] == []
+    # the profile's own handle is the owner's identity (written by _own_identity), not a company's
+    claims = _bio("I am @dana_ex, building @pally", [_role("dana_ex", "I am @dana_ex")], handle="dana_ex")
+    assert not any(c.predicate == "x_handle" and c.subject.kind == "company" for c in claims)
+
+
+def test_person_by_handle_gets_x_handle_identity():
+    payload = {"type": "x_post", "post": {"id": "9", "text": "Welcome @lee_ex to the team at @pally!", "author_id": "7",
+               "created_at": "2026-10-01T00:00:00Z"}, "author": {"id": "7", "username": "pally"}}  # fmt: skip
+    hire = {"type": "hire", "person_handle": "lee_ex", "org": "", "org_handle": "pally", "title": "",
+            "quote": "Welcome @lee_ex to the team at @pally!"}  # fmt: skip
+    claims = run("x_spider", payload, [hire], account="company")
+    (w,) = by_pred(claims, "worked_at")
+    assert w.subject.identity == {"x_handle": "lee_ex"}
+    ids = {(c.subject.identity.get("x_handle"), c.value) for c in by_pred(claims, "x_handle")}
+    assert ("lee_ex", "lee_ex") in ids and not any(c.subject.kind == "company" and c.value == "pally"
+                                                   and c.source_ref.endswith("x_handle=pally") for c in claims)  # fmt: skip
+
+
+def test_github_org_handle_writes_a_github_identity():
+    payload = {"user": {"login": "octo-ex-5", "type": "User", "name": "Omar", "bio": "eng @tinyrocket-ex"}}
+    claims = run("github", payload, [_role("tinyrocket-ex", "eng @tinyrocket-ex", title="eng")])
+    (g,) = [c for c in by_pred(claims, "github") if c.subject.identity == {"github": "tinyrocket-ex"}]
+    assert g.value == "tinyrocket-ex" and _ev(g)["quote"] == "eng @tinyrocket-ex"

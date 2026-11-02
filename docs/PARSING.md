@@ -41,7 +41,7 @@ Opinions, jokes, threads, hiring ads, giveaways, departures and teasers give not
 
 Entities:
 - **Account owner:** identity `x_id` + `x_handle` (X) or `github` (GitHub). Its kind (person/company) is the one the graph already has. An account the graph does not know uses the model's `account` guess (`other` → no facts), and gets its identity and `name` claims written with evidence.
-- **Organizations by `@handle`:** company with identity `x_handle` (X), or `github` (GitHub bios, where `@org` is a GitHub org).
+- **Organizations by `@handle`:** company with identity `x_handle` (X), or `github` (GitHub bios, where `@org` is a GitHub org). A company (or person, in posts) the graph did not know gets the handle as an identity claim (`x_handle` / `github`) in the parser's layer, with the referencing quote as evidence, so it is hard-keyed from then on (the resolver matches later mentions; dedupe phase 1 groups it with the `x_spider` / Wikidata company of the same handle). Never for the profile's own handle. `rebox-worker replay x_parse` adds the claims to what earlier runs minted.
 - **Organizations by name:** the graph's single company with that exact name if there is one. Otherwise a name-only company with the account as `context`, so the resolver's scoped fuzzy pass can match it. In articles, a company whose name matches the article's host gets `domain` identity.
 - **Places:** cities from `parsers/places.py` (60 cities with Wikidata ids). "SF", "San Fran", "Bay Area", "SF Bay Area" → San Francisco (`wikidata: Q62`), "NYC" → New York City, and so on. Other places are dropped. For a move ("NYC → SF") only the destination is kept.
 - Every new entity gets a `name` claim from `extract` (with evidence), so the resolver never adds an evidence-less name claim.

@@ -74,7 +74,6 @@ import logging
 import re
 import sys
 import time
-import unicodedata
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -85,6 +84,7 @@ import httpx
 import psycopg
 from psycopg.types.json import Jsonb
 
+from . import names
 from .db import Db
 from .resolve import _canonicalize
 
@@ -98,7 +98,6 @@ STRONG_KEYS: dict[str, tuple[str, ...]] = {"person": ("wikidata", "x_id", "githu
 DEFAULT_STRONG_KEYS = ("wikidata", "x_id")
 DEFAULT_KINDS = ("company", "person")
 REVIEW_KIND = "possible_duplicate"
-LEGAL_FORMS = ("inc", "llc", "ltd", "corp", "corporation", "co", "gmbh", "sa")
 MAX_DEPTH = 20
 MIN_FOLDED_LEN = 2
 # A keyed company is a safe target for name-only merges with this many distinct referrers (phase 2).
@@ -133,27 +132,23 @@ WORKER_LAYERS = ("public/dedupe",)  # writes no claims; the registry requires a 
 # ── names ─────────────────────────────────────────────────────────────────
 
 _PAREN_RE = re.compile(r"\s*\([^()]*\)\s*$")
-_LEGAL_RE = re.compile(r"(?:^|[\s,]+)(?:" + "|".join(LEGAL_FORMS) + r")\.?$")
 
 
 def fold_name(name: str, kind: str) -> str:
-    """The name key for phases 2 and 3: lowercase, trimmed, without a trailing ``(...)``
-    parenthetical, whitespace collapsed; companies also without trailing legal forms
-    (``inc, llc, ltd, corp, corporation, co, gmbh, sa``, with or without a dot or comma).
+    """The name key for phases 2 and 3.
+
+    Companies: ``names.fold_name`` (CONTRACTS §3, the resolver's folding: NFKC, casefold,
+    accents, one trailing ``(...)``, trailing punctuation, a leading ``the``, legal suffixes),
+    so dedupe and the resolver's company name pass agree on what "the same name" is. Other
+    kinds: ``names.fold_base`` plus a trailing ``(...)`` dropped ("Ada Lovelace (she/her)").
 
     ``"Anysphere, Inc."`` -> ``"anysphere"``; ``"Notion (Notion Labs)"`` -> ``"notion"``.
     Never strips a name down to nothing (``"Co"`` stays ``"co"``).
     """
-    s = " ".join(unicodedata.normalize("NFKC", name).casefold().split())
-    stripped = _PAREN_RE.sub("", s).strip()
-    s = stripped or s
     if kind == "company":
-        while True:
-            shorter = _LEGAL_RE.sub("", s).rstrip(" ,.")
-            if not shorter or shorter == s:
-                break
-            s = shorter
-    return s.strip(" ,")
+        return names.fold_name(kind, name)
+    s = names.fold_base(name)
+    return _PAREN_RE.sub("", s).strip() or s
 
 
 def registrable_label(domain: str) -> str | None:

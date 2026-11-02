@@ -63,9 +63,11 @@ converge only on a distinctive name (two words or 6+ characters: "palantir", "lu
 ones ("ramp", "meta", "base") are left alone without a review item (stat
 `name_only_skipped_short`; the dry run lists them).
 
-**Folded name** (phases 2 and 3): lowercase, trimmed, a trailing `(...)` dropped, whitespace
-collapsed; companies also drop trailing legal forms (`inc`, `llc`, `ltd`, `corp`, `corporation`,
-`co`, `gmbh`, `sa`, with or without `.`/`,`). Exact equality only, never trigram similarity. A
+**Folded name** (phases 2 and 3): companies use `names.fold_name` (CONTRACTS §3, the same folding as
+the resolver's company name pass: NFKC, casefold, accents stripped, one trailing `(...)`, trailing
+punctuation, a leading `the `, legal suffixes such as `inc`, `llc`, `ltd`, `corp`, `gmbh`, `plc`,
+`pbc`); other kinds are lowercased, trimmed, accents stripped, whitespace collapsed and a trailing
+`(...)` dropped. Exact equality only, never trigram similarity. A
 name-only company is matched by its main names: the one most of its name claims use, plus any other
 used by at least a third of them (a stray second name such as "Glass" on "Ramp" does not chain two
 companies together). Folded names shorter than two characters are ignored.

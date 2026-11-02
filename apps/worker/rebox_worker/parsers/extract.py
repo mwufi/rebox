@@ -31,6 +31,9 @@ Entities:
 
 An entity the graph did not know at fetch time gets an explicit ``name`` claim (with evidence),
 so the resolver never has to add an evidence-less name claim for it; known entities get none.
+One referenced by ``@handle`` also gets its handle as an identity claim (``x_handle``, or
+``github`` for a GitHub org; never the profile's own handle), with the same evidence: the
+resolver mints it from that key, and without the claim it would look name-only forever (S18).
 """
 
 from __future__ import annotations
@@ -175,6 +178,7 @@ class Extraction:
             )
             if not known:
                 self._name(ref, name or handle, quote, key=f"{platform}={handle.lower()}")
+                self._handle_identity(ref, platform, handle, quote)
             return ref
         if not name or name.casefold() not in self.lower:
             return self._drop("org name not in text", quote) if name else None
@@ -253,6 +257,7 @@ class Extraction:
         ref = EntityRef(kind="person", identity={"x_handle": handle}, name=None if known else handle)
         if not known:
             self._name(ref, handle, quote, key=f"x_handle={handle.lower()}")
+            self._handle_identity(ref, "x_handle", handle, quote)
         return ref
 
     # ── claims ──
@@ -284,6 +289,22 @@ class Extraction:
             return
         self._named.add(key)
         self.add(ref, "name", key, quote, value=name)
+
+    def _handle_identity(self, ref: EntityRef, platform: str, handle: str, quote: str) -> None:
+        """An entity new to the graph, referenced by ``@handle``: also write the handle as its
+        identity claim (``x_handle``, or ``github`` for a GitHub org), with the referencing
+        quote as evidence. Without it the resolver mints the entity from the handle but nothing
+        records the key, so it looks name-only forever (S18). Never for the profile's own handle
+        (the owner's identity is ``_own_identity``'s)."""
+        m = self.doc.meta
+        own = {str(m.get("handle") or "").lower(), str(m.get("github") or "").lower()} - {""}
+        if handle.lower() in own:
+            return
+        key = f"{platform}={handle.lower()}"
+        if f"id:{key}" in self._named:
+            return
+        self._named.add(f"id:{key}")
+        self.add(ref, platform, key, quote, value=handle)
 
     def _strip_label(self, quote: str) -> str:
         """Models sometimes quote the rendered field label ("location: SF"); the value is the quote."""
