@@ -143,8 +143,14 @@ export interface EntityView {
   kind: Kind;
   name: string | null;
   merged_from: string[];
+  /** Attributes, plus the first edges of each outgoing edge predicate (S13). */
   facts: Fact[];
+  /** The first edges of each incoming predicate (S13). */
   incoming: Fact[];
+  /** S13: total outgoing edges per predicate; the edges endpoint pages through the rest. */
+  facts_counts?: Record<string, number>;
+  /** S13: total incoming edges per predicate. */
+  incoming_counts?: Record<string, number>;
 }
 
 /** GET /v0/entities/:id — either the view, or a redirect plus the target's view. */

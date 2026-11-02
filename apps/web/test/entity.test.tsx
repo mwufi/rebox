@@ -1,11 +1,28 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
-import { createClient } from '../src/api';
-import { groupFacts, sourcesOf } from '../src/lib/facts';
+import userEvent from '@testing-library/user-event';
+import { createClient, type EntityView } from '../src/api';
+import { edgeTotal, groupFacts, sourcesOf } from '../src/lib/facts';
+import { buildGraph, degreeOf } from '../src/lib/graph';
 import { ApiContext, clearCache } from '../src/lib/hooks';
 import { EntityPage } from '../src/pages/Entity';
-import { ODILE, PREDICATES, PRED_INDEX, QUILLWORK, mockFetch } from './fixtures';
+import { ODILE, PREDICATES, PRED_INDEX, QUILLWORK, fact, mockFetch, ref } from './fixtures';
+
+/** S13: a hub whose view carries the first 12 of 30 incoming based_in edges, plus counts. */
+const SF = ref('rbx:place:san-francisco', 'San Francisco');
+const TENANTS = Array.from({ length: 30 }, (_, i) => ref(`rbx:company:t${String(i).padStart(2, '0')}`, `Tenant ${String(i).padStart(2, '0')}`));
+const tenantFact = (c: ReturnType<typeof ref>) => fact({ predicate: 'based_in', subject: c, object: SF, source_ref: `t:${c.id}` });
+const HUB: EntityView = {
+  id: SF.id,
+  kind: 'place',
+  name: 'San Francisco',
+  merged_from: [],
+  facts: [fact({ predicate: 'name', value: 'San Francisco', subject: SF })],
+  incoming: TENANTS.slice(0, 12).map(tenantFact),
+  facts_counts: {},
+  incoming_counts: { based_in: 30 },
+};
 
 describe('groupFacts', () => {
   it('splits key attributes, other attributes, outgoing and incoming edges', () => {
@@ -30,6 +47,24 @@ describe('groupFacts', () => {
     expect(g.outgoing[0]!.predicate).toBe('worked_at');
     expect(g.attributes.map((x) => x.label)).toEqual(['Hacker News']);
     expect(g.key.map((x) => x.predicate)).toEqual(['headline']);
+  });
+
+  it('uses the view counts for group totals (S13) and falls back to the facts carried', () => {
+    const g = groupFacts(HUB, PRED_INDEX);
+    expect(g.incoming.map((x) => [x.predicate, x.facts.length, x.total])).toEqual([['based_in', 12, 30]]);
+    expect(g.total).toBe(30);
+    expect(edgeTotal(HUB)).toBe(30);
+    // Views without counts (older servers, fixtures) count what they carry.
+    expect(groupFacts(QUILLWORK, PRED_INDEX).incoming.map((x) => x.total)).toEqual([2, 1]);
+    expect(edgeTotal(QUILLWORK)).toBe(4);
+  });
+
+  it('graph caps and degree count edges the view did not carry', () => {
+    expect(degreeOf(HUB)).toBe(30);
+    const g = buildGraph(HUB);
+    const more = g.nodes.find((n) => n.more)!;
+    expect(more.more).toMatchObject({ count: 18, predicate: 'based_in', dir: 'in' });
+    expect(degreeOf(QUILLWORK)).toBe(3); // unique neighbors: Odile both founded and works there
   });
 
   it('counts facts per source layer', () => {
@@ -99,6 +134,34 @@ describe('EntityPage', () => {
     expect(screen.getByText(/was merged into this entity/).textContent).toContain('rbx:person:odile-hn');
     // The target view was primed from the redirect body: no second fetch.
     expect(m.calls.filter((c) => /^\/v0\/entities\/[^/]+$/.test(c.url)).length).toBe(1);
+  });
+
+  it('shows a hub group total and loads the rest from the edges endpoint (S13)', async () => {
+    const enc = encodeURIComponent(SF.id);
+    const m = renderEntity(`/e/${enc}`, {
+      [`GET /v0/entities/${enc}`]: () => HUB,
+      [`GET /v0/entities/${enc}/edges?predicate=based_in&dir=in&limit=112`]: () => ({
+        edges: TENANTS.slice(0, 20).map(tenantFact),
+        next: 'c1',
+      }),
+      [`GET /v0/entities/${enc}/edges?predicate=based_in&dir=in&limit=100&cursor=c1`]: () => ({
+        edges: TENANTS.slice(20).map(tenantFact),
+        next: null,
+      }),
+    });
+    const group = await screen.findByRole('region', { name: 'Based here' });
+    expect(within(group).getByText('30')).toBeTruthy();
+    expect(within(group).getAllByRole('link')).toHaveLength(8);
+    // Expanding fetches the first page (the 12 carried edges dedupe).
+    await userEvent.click(within(group).getByRole('button', { name: '+22 more' }));
+    await waitFor(() => expect(within(group).getAllByRole('link')).toHaveLength(20));
+    await userEvent.click(within(group).getByRole('button', { name: '+10 more' }));
+    await waitFor(() => expect(within(group).getAllByRole('link')).toHaveLength(30));
+    expect(within(group).getAllByRole('link').map((a) => a.textContent)).toEqual(TENANTS.map((t) => t.name));
+    expect(within(group).getByRole('button', { name: 'Show fewer' })).toBeTruthy();
+    expect(m.calls.filter((c) => c.url.includes('/edges')).length).toBe(2);
+    // The neighborhood thumbnail counts every connection.
+    expect(screen.getByText(/30 connections/)).toBeTruthy();
   });
 
   it('shows a not-found page for unknown ids', async () => {

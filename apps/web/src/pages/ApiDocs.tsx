@@ -25,14 +25,14 @@ export const ENDPOINTS: Endpoint[] = [
   {
     method: 'GET',
     path: '/v0/entities/:id',
-    desc: 'An entity with every effective fact (after the fold) and incoming edges, each with layer, source and source_ref. A merged id returns {"redirect", "entity"}.',
+    desc: 'An entity with its effective facts (after the fold) and incoming edges, each with layer, source and source_ref. Each edge predicate carries its first 12 edges per direction; facts_counts and incoming_counts give the totals, and the edges endpoint pages through the rest. A merged id returns {"redirect", "entity"}.',
     curl: (o) => `curl -s ${o}/v0/entities/rbx:company:quillwork`,
   },
   { method: 'GET', path: '/v0/entities?ids=a,b', desc: 'EntityRefs for up to 200 ids, merge-followed.', curl: (o) => `curl -s ${q(`${o}/v0/entities?ids=rbx:company:quillwork,rbx:person:odile-fernsby`)}` },
   {
     method: 'GET',
     path: '/v0/entities/:id/edges?predicate=&dir=out|in&limit=50&cursor=',
-    desc: 'Pages through all edges of one entity, optionally one predicate and direction.',
+    desc: 'Pages through all edges of one entity, optionally one predicate and direction, ordered by predicate then the other entity id (the entity view carries the first ones).',
     curl: (o) => `curl -s ${q(`${o}/v0/entities/rbx:company:quillwork/edges?dir=in&predicate=worked_at`)}`,
   },
   {

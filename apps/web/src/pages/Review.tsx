@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError, isRedirect, type EntityRef, type EntityView, type ReviewItem } from '../api';
 import { KindTag, Skel, SourceBadge, entityPath } from '../components/bits';
-import { KEY_ATTRS, labelOf } from '../lib/facts';
+import { KEY_ATTRS, edgeTotal, labelOf } from '../lib/facts';
 import { clearCache, useApi, usePredicates, useTitle } from '../lib/hooks';
 import { displayName, plural, relativeTime, valueText } from '../lib/format';
 
@@ -45,7 +45,7 @@ function Candidate({
   preds: ReturnType<typeof usePredicates>['byId'];
 }) {
   const attrs = view ? view.facts.filter((f) => !f.object && SUMMARY_ATTRS.includes(f.predicate)) : [];
-  const edges = view ? view.facts.filter((f) => f.object).length + view.incoming.length : 0;
+  const edges = view ? edgeTotal(view) : 0;
   return (
     <div className="candidate">
       <div>
