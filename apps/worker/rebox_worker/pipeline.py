@@ -29,7 +29,7 @@ from psycopg.types.json import Jsonb
 from .client import ClaimsClient
 from .connectors.base import Connector, Ctx
 from .db import Db
-from .identity import Active, RunTracker
+from .identity import Active, RunTracker, connector_run_stats
 from .models import ClaimInput, CursorUpdate, RawRecord
 from .rawstore import RawStore
 from .resolve import Resolver
@@ -55,11 +55,11 @@ class Stats:
     review: int = 0
     rejected: int = 0
     batches: int = 0
-    # Paid-API usage reported by the connector (ctx.add_usage): api_calls, cost_usd, tokens...
-    usage: dict[str, float] = field(default_factory=dict)
+    # Usage reported by the connector (ctx.add_usage, connector.run_stats): api_calls, cost_usd...
+    usage: dict[str, Any] = field(default_factory=dict)
 
-    def as_dict(self) -> dict[str, float]:
-        out: dict[str, float] = {f.name: getattr(self, f.name) for f in fields(self) if f.name != "usage"}
+    def as_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {f.name: getattr(self, f.name) for f in fields(self) if f.name != "usage"}
         out.update(self.usage)
         return out
 
@@ -138,8 +138,12 @@ def _runs(deps: Deps, connector: Connector, ctx: Ctx, kind: str, stats: Stats) -
     try:
         yield tracker
     except BaseException as e:
+        stats.usage.update(connector_run_stats(connector))
         tracker.close(stats, e)
         raise
+    # The connector's own run_stats (api_calls, cost_usd, x_stop, ...) also land in the returned
+    # Stats, so the CLI output and connector_state.last_stats show them.
+    stats.usage.update(connector_run_stats(connector))
     tracker.close(stats, None)
 
 

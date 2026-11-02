@@ -180,11 +180,14 @@ def test_evidence_and_json_values_through_resolver(deps, writer, owner):
     assert ms.to_request()["evidence"] == [
         {"url": "https://x.com/acme/status/1", "author": "acme", "quote": "We raised a $4M seed"}
     ]
-    assert "evidence" not in next(c for c in res.claims if c.predicate == "name").to_request()
+    # The generated name of a minted entity cites the evidence of the claim that minted it, so a
+    # parser's whole batch (including generated names) satisfies "evidence required".
+    name = next(c for c in res.claims if c.predicate == "name")
+    assert name.to_request()["evidence"] == ms.to_request()["evidence"]
     wid = deps.client.register_worker(name="xpost", kind="parser", source="t", layers=["public/t"])
-    deps.client.write("public/t", [c for c in res.claims if c.predicate == "milestone"], worker=wid)
+    deps.client.write("public/t", res.claims, worker=wid)
     with pytest.raises(Exception, match="evidence required"):  # parsers must cite evidence
-        deps.client.write("public/t", [c for c in res.claims if c.predicate == "name"], worker=wid)
+        deps.client.write("public/t", [name.model_copy(update={"evidence": None})], worker=wid)
     row = owner.execute("select value, evidence from claim where predicate = 'milestone'").fetchone()
     assert row["value"]["kind"] == "funding" and row["evidence"][0]["quote"] == "We raised a $4M seed"
     with pytest.raises(Exception, match="url"):
@@ -369,3 +372,135 @@ def test_two_workers_corroborate_against_real_api(api_deps, real_api, owner):
         run_sync(NoEvidence(), api_deps)
     last = owner.execute("select status, error from run order by id desc limit 1").fetchone()
     assert last["status"] == "failed" and "evidence is required" in last["error"]
+
+
+# ── S8 hooks: per-seed workers (workers / worker_for) and connector run_stats ──
+
+
+def test_x_spider_writes_each_seed_set_as_its_own_worker(deps, owner, writer):
+    """XSpider.workers() -> one spider worker per seed set, all registered up front; each
+    x_following page is written as its seed set's worker (in that worker's run); profiles and
+    expansion pages as the connector-level worker; no batch mixes workers."""
+    from spiders.test_x_fetch import ENV, world
+
+    from rebox_worker.connectors.x_spider import XSpider
+
+    owner.execute("truncate frontier")
+    fx = world()
+    sp = XSpider(
+        transport=fx.transport(),
+        sleep=lambda s: None,
+        seeds={"dbooth": ["seed_a"], "yoni": ["seed_b"], "sf-core": []},
+    )
+    deps.ctx.env = {**ENV, "X_SPIDER_PHASES": "following"}
+    stats = run_sync(sp, deps)
+
+    workers = {
+        r["id"].rsplit("-", 2)[0]: r
+        for r in owner.execute("select id, kind, source, config, layers from worker")
+    }
+    # Every seed set is registered (sf-core too, though it wrote nothing), plus the connector-level worker.
+    assert set(workers) == {"dbooth", "yoni", "sf-core", "x-spider"}
+    assert all(w["kind"] == "spider" and w["source"] == "x_spider" for w in workers.values())
+    assert workers["dbooth"]["config"] == {"seeds": ["seed_a"]}
+    assert workers["yoni"]["layers"] == ["public/x_spider"]
+    import re
+
+    assert re.fullmatch(r"dbooth-spider-\d{6}", workers["dbooth"]["id"])
+
+    # Batches never mix workers, and each carries its worker's own run.
+    runs = {r["id"]: r for r in owner.execute("select id, worker_id, kind, status, stats from run")}
+    for body in writer.requests:
+        assert runs[body["run_id"]]["worker_id"] == body["worker"]
+    # follows edges (from x_following pages) are attributed to the seed set that followed.
+    follows = owner.execute(
+        "select regexp_replace(worker_id, '-spider-[0-9]{6}$', '') w, count(*) n from claim"
+        " where predicate = 'follows' group by 1"
+    ).fetchall()
+    assert {r["w"]: r["n"] for r in follows} == {"dbooth": 5, "yoni": 4}
+    # Profiles (x_user records) are the connector-level worker's.
+    assert {
+        r["w"]
+        for r in owner.execute(
+            "select distinct regexp_replace(worker_id, '-spider-[0-9]{6}$', '') w"
+            " from claim where predicate = 'x_id'"
+        )
+    } == {"x-spider"}
+
+    by_worker = {r["worker_id"].rsplit("-", 2)[0]: r for r in runs.values()}
+    assert set(by_worker) == {"x-spider", "dbooth", "yoni"}  # sf-core wrote nothing: no run
+    assert all(r["status"] == "ok" for r in by_worker.values())
+    assert by_worker["dbooth"]["stats"]["written"] == 5 and by_worker["yoni"]["stats"]["written"] == 4
+    # The connector's run_stats are merged into the connector-level run (and returned to the CLI).
+    main = by_worker["x-spider"]["stats"]
+    assert main["user_reads"] == fx.user_objects and main["api_calls"] == len(fx.calls) == 3
+    assert main["cost_usd"] == pytest.approx(fx.cost) and "x_total_budget_usd" in main
+    assert "user_reads" not in by_worker["dbooth"]["stats"]
+    assert stats.as_dict()["api_calls"] == 3
+
+
+def test_worker_for_names_and_specs_and_run_stats_on_failure(deps, owner, writer):
+    """worker_for may return a workers() name, a dict, or None; run_stats (attribute or method)
+    is merged even when the run fails."""
+    from rebox_worker.models import CursorUpdate
+
+    class Multi:
+        name, layer, interval_s, worker_kind = "multi", "public/multi", 60, "spider"
+
+        def __init__(self, fail: bool = False):
+            self.fail = fail
+            self.run_stats = {}
+
+        def workers(self, ctx):
+            return [{"name": "alpha", "config": {"seeds": ["a"]}}, {"name": "multi", "description": "main"}]
+
+        def worker_for(self, rec):
+            return {"a": "alpha", "b": {"name": "beta", "kind": "parser"}}.get(rec.payload["w"])
+
+        def fetch(self, ctx, cursor):
+            for w in ("a", "b", "c", "a"):
+                yield RawRecord.new("multi", f"{w}:{ctx.usage.get('n', 0)}", {"w": w, "n": len(w)})
+                ctx.add_usage(n=1)
+            self.run_stats = {"api_calls": 4, "x_stop": "429 Too Many Requests"}
+            if self.fail:
+                raise RuntimeError("upstream broke")
+            yield CursorUpdate(cursor={"ok": True})
+
+        def extract(self, rec):
+            ev = [Evidence(url="https://example.com/x")]
+            h = rec.external_id.replace(":", "-")
+            ref = EntityRef(kind="person", identity={"x_handle": h}, name=h)
+            return [
+                ClaimInput(
+                    subject=ref, predicate="x_handle", value=h, source_ref=rec.external_id, evidence=ev
+                )
+            ]
+
+    run_sync(Multi(), deps)
+    workers = {
+        r["id"].rsplit("-", 2)[0]: r for r in owner.execute("select id, kind, description from worker")
+    }
+    assert {k: w["kind"] for k, w in workers.items()} == {
+        "alpha": "spider",
+        "multi": "spider",
+        "beta": "parser",
+    }
+    assert workers["multi"]["description"] == "main"  # the listed entry is the connector-level identity
+    runs = {
+        r["w"]: r
+        for r in owner.execute(
+            "select split_part(worker_id, '-', 1) w, kind, status, stats from run order by id"
+        )
+    }
+    assert runs["beta"]["kind"] == "parse" and runs["alpha"]["kind"] == "sync"
+    assert runs["alpha"]["stats"]["claims"] == 4  # two records, each a claim + a generated name
+    assert runs["multi"]["stats"]["x_stop"] == "429 Too Many Requests" and runs["multi"]["stats"]["n"] == 4
+    for body in writer.requests:
+        assert len({body["worker"]}) == 1
+
+    owner.execute("truncate run cascade")
+    with pytest.raises(RuntimeError, match="upstream broke"):
+        run_sync(Multi(fail=True), deps)
+    failed = owner.execute("select status, error, stats from run where worker_id like 'multi-%'").fetchone()
+    assert failed["status"] == "failed" and "upstream broke" in failed["error"]
+    assert failed["stats"]["api_calls"] == 4 and failed["stats"]["x_stop"].startswith("429")

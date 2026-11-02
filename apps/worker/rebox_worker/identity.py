@@ -10,9 +10,21 @@ Identity
         worker_kind = "spider"        # connector | spider | parser | enricher (default connector)
 
     or a method ``worker_spec(ctx) -> WorkerSpec`` (e.g. to put its seed list in ``config``).
-    A connector that fetches on behalf of several identities (one per seed set) may also define
-    ``worker_for(rec: RawRecord) -> WorkerSpec | None``: records are then written as that worker,
-    in a run of its own; ``None`` means the connector's main identity.
+
+    A connector that fetches on behalf of several identities (e.g. ``x_spider``: one per seed set)
+    defines ``workers(ctx) -> [ {name, kind?, source?, layers?, config?, description?} ]`` (or
+    ``WorkerSpec`` objects) and ``worker_for(rec) -> str | dict | WorkerSpec | None``. A ``str`` is
+    the name of one of ``workers()``. Every listed worker is registered when the run starts. Each
+    record is written as the worker ``worker_for`` names, in a run of that worker's own (opened on
+    first use); ``None`` (or no hook) means the connector-level identity. A write batch never
+    mixes workers. If ``workers()`` lists the connector-level name itself, that entry (with its
+    config/description) is the connector-level identity.
+
+Run stats
+    Besides the pipeline's counters and ``ctx.add_usage``, a connector may expose ``run_stats``
+    (a dict, or a method returning one: ``api_calls``, ``cost_usd``, ``user_reads``, ``x_stop``,
+    ``budget_stop``, ...). It is merged into the connector-level run's stats at every progress
+    update and when the run closes (ok or failed).
 
 Persistence
     The id lives in the ``worker`` table, not in ``connector_state``: ``POST /internal/workers``
@@ -75,6 +87,51 @@ class WorkerSpec:
         return (self.name, self.kind, self.source)
 
 
+def as_spec(value: Any) -> WorkerSpec:
+    """A WorkerSpec from a ``workers()`` entry: a WorkerSpec, or a dict with at least ``name``."""
+    if isinstance(value, WorkerSpec):
+        return value
+    if isinstance(value, Mapping) and value.get("name"):
+        return WorkerSpec(
+            name=str(value["name"]),
+            kind=str(value.get("kind") or "connector"),
+            source=str(value.get("source") or ""),
+            layers=tuple(value.get("layers") or ()),
+            config=dict(value.get("config") or {}),
+            description=value.get("description"),
+        )
+    raise TypeError(f"not a worker identity: {value!r}")
+
+
+def listed_workers(connector: Connector, ctx: Ctx | None) -> list[WorkerSpec]:
+    """The identities a connector declares with ``workers(ctx)`` (defaults filled in)."""
+    hook = getattr(connector, "workers", None)
+    if not callable(hook):
+        return []
+    out = []
+    for w in hook(ctx) or []:
+        spec = as_spec(w)
+        if not spec.kind or (isinstance(w, Mapping) and not w.get("kind")):
+            spec = WorkerSpec(
+                name=spec.name,
+                kind=getattr(connector, "worker_kind", None) or "connector",
+                source=spec.source,
+                layers=spec.layers,
+                config=spec.config,
+                description=spec.description,
+            )
+        out.append(spec_for(connector, ctx, spec))
+    return out
+
+
+def connector_run_stats(connector: Connector) -> dict[str, Any]:
+    """The connector's own ``run_stats`` (attribute dict or method), or {}."""
+    rs = getattr(connector, "run_stats", None)
+    if callable(rs):
+        rs = rs()
+    return dict(rs) if isinstance(rs, Mapping) else {}
+
+
 def spec_for(connector: Connector, ctx: Ctx | None = None, spec: WorkerSpec | None = None) -> WorkerSpec:
     """The connector's main identity (or ``spec`` from ``worker_for``) with defaults filled in."""
     if spec is None:
@@ -133,32 +190,65 @@ class RunTracker:
         self.kind = kind
         self.new_stats = new_stats
         self.active: dict[tuple[str, str, str], Active] = {}
-        self.main = self._open(spec_for(connector, ctx))
+        self.ids: dict[tuple[str, str, str], str] = {}  # registered worker ids
+        main = spec_for(connector, ctx)
+        # Register every declared identity up front (so seed workers exist even before they
+        # write); runs are opened lazily, on each identity's first batch.
+        self.listed: dict[str, WorkerSpec] = {}
+        try:
+            listed = listed_workers(connector, ctx)
+        except Exception as e:  # noqa: BLE001 - e.g. an unreadable seeds file; resolved lazily
+            log.warning("%s: could not list workers: %s", connector.name, e)
+            listed = []
+        for spec in listed:
+            self.listed[spec.name] = spec
+            if spec.name == main.name and spec.kind == main.kind:
+                main = spec
+            self._register(spec)
+        self.main = self._open(main)
+
+    def _register(self, spec: WorkerSpec) -> str:
+        if spec.key not in self.ids:
+            self.ids[spec.key] = register(self.client, spec)
+        return self.ids[spec.key]
 
     def _open(self, spec: WorkerSpec) -> Active:
-        worker_id = register(self.client, spec)
+        worker_id = self._register(spec)
         run_id = self.client.open_run(worker_id, run_kind(spec, self.kind))
         a = Active(spec, worker_id, run_id, self.new_stats())
         self.active[spec.key] = a
         log.info("%s: writing as %s (run %d)", self.connector.name, worker_id, run_id)
         return a
 
+    def spec_of(self, value: Any) -> WorkerSpec | None:
+        """What ``worker_for`` returned, as a full spec (None = the connector-level identity)."""
+        if value is None or value == "":
+            return None
+        if isinstance(value, str):
+            spec = self.listed.get(worker_name(value)) or WorkerSpec(
+                name=value, kind=getattr(self.connector, "worker_kind", None) or "connector"
+            )
+        else:
+            spec = as_spec(value)
+        return spec_for(self.connector, None, spec)
+
     def for_record(self, rec: RawRecord) -> Active:
         hook = getattr(self.connector, "worker_for", None)
-        spec = hook(rec) if callable(hook) else None
-        if spec is None:
+        spec = self.spec_of(hook(rec)) if callable(hook) else None
+        if spec is None or spec.key == self.main.spec.key:
             return self.main
-        spec = spec_for(self.connector, None, spec)
         return self.active.get(spec.key) or self._open(spec)
 
     def run_stats(self, a: Active, totals: Any) -> dict[str, Any]:
-        """Stats for one run. Fetch-level counters (fetched, skipped, errors, usage) belong to the
-        main run; every run gets the write counters of its own batches."""
+        """Stats for one run. Fetch-level counters (fetched, skipped, errors, usage and the
+        connector's own ``run_stats``) belong to the connector-level run; every run gets the
+        write counters of its own batches."""
         out = a.stats.as_dict()
         if a is self.main:
             for k in ("fetched", "skipped_unchanged", "extract_errors"):
                 out[k] = getattr(totals, k)
             out.update(totals.usage)
+            out.update(connector_run_stats(self.connector))
         return out
 
     def progress(self, totals: Any) -> None:

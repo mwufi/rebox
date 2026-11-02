@@ -180,6 +180,10 @@ describe('runs', () => {
     expect(p2.body.finished_at).not.toBeNull();
     expect(p2.body.duration_s).toBeGreaterThanOrEqual(0);
     expect((await t.patch(`/internal/runs/${run_id}`, { status: 'running' }, ingest)).status).toBe(400);
+    // Connector-reported stats may be any JSON (lists, strings), within a size cap.
+    const fq = await t.patch(`/internal/runs/${run_id}`, { stats: { failed_queries: ['bad'], x_stop: '429' } }, ingest);
+    expect(fq.body.stats).toMatchObject({ failed_queries: ['bad'], x_stop: '429', fetched: 10 });
+    expect((await t.patch(`/internal/runs/${run_id}`, { stats: { big: 'x'.repeat(40_000) } }, ingest)).status).toBe(400);
     expect((await t.patch(`/internal/runs/999999999`, { status: 'ok' }, ingest)).status).toBe(404);
     expect((await t.post('/internal/runs', { worker: w, kind: 'dance' }, ingest)).status).toBe(400);
     expect((await t.post('/internal/runs', { worker: 'ghost-connector-000000', kind: 'sync' }, ingest)).status).toBe(404);

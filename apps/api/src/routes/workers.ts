@@ -69,7 +69,12 @@ const runBody = z.object({ worker: z.string().regex(WORKER_ID_RE), kind: z.enum(
 const runPatchBody = z
   .object({
     status: z.enum(RUN_STATUSES).optional(),
-    stats: z.record(z.string(), z.union([z.number(), z.string(), z.boolean(), z.null()])).optional(),
+    // Pipeline counters plus whatever the connector reports (x_stop, failed_queries, ...): any JSON,
+    // capped in size.
+    stats: z
+      .record(z.string().max(100), z.unknown())
+      .refine((o) => Object.keys(o).length <= 100 && JSON.stringify(o).length <= 32_000, 'stats too large')
+      .optional(),
     error: z.string().max(4000).nullable().optional(),
   })
   .strict();
