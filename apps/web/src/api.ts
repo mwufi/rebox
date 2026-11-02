@@ -22,6 +22,67 @@ export interface Fact {
   source: string;
   source_ref: string;
   updated_at: string;
+  /** CONTRACTS §12: who wrote the winning claim (null for claims from before workers existed). */
+  worker?: string | null;
+  evidence?: Evidence[] | null;
+  /** Distinct (layer, source_ref) rows backing this fact: corroboration. */
+  support?: number;
+}
+
+export interface Evidence {
+  url: string;
+  author?: string;
+  quote?: string;
+  observed_at?: string;
+}
+
+export type WorkerKind = 'connector' | 'spider' | 'parser' | 'enricher' | 'external';
+
+export interface Run {
+  id: number;
+  worker: string;
+  source: string;
+  kind: string;
+  status: 'running' | 'ok' | 'failed';
+  started_at: string;
+  finished_at: string | null;
+  duration_s: number | null;
+  stats: Record<string, number | string | boolean | null>;
+  error: string | null;
+}
+
+/** GET /v0/workers row (CONTRACTS §14). */
+export interface WorkerSummary {
+  id: string;
+  kind: WorkerKind | (string & {});
+  source: string;
+  owner: string;
+  trust: number;
+  status: 'active' | 'paused' | 'revoked';
+  description: string | null;
+  last_seen_at: string | null;
+  claims_total: number;
+  claims_24h: number;
+  runs_ok: number;
+  runs_failed: number;
+  last_run: Run | null;
+}
+
+/** GET /v0/workers/:id */
+export interface WorkerDetail extends Omit<WorkerSummary, 'last_run'> {
+  layers: string[];
+  config: Record<string, unknown>;
+  created_at: string;
+  runs: Run[];
+  throughput: { t: string; n: number }[];
+  predicates: { predicate: string; n: number }[];
+  recent_facts: Fact[];
+}
+
+export interface TimeseriesBucket {
+  t: string;
+  key: string;
+  n: number;
 }
 
 export interface EntityView {
@@ -186,6 +247,16 @@ export function createClient(opts: ClientOptions = {}) {
     query: (q: Query, o: Sig = {}) => call<QueryResult>('POST', '/v0/query', { body: q, ...o }),
     changes: (p: { after?: number; limit?: number } & Sig = {}) =>
       call<{ changes: Change[]; next: number }>('GET', `/v0/changes${qs({ after: p.after, limit: p.limit })}`, p),
+    workers: (o: Sig = {}) => call<WorkerSummary[]>('GET', '/v0/workers', o),
+    worker: (id: string, o: Sig = {}) => call<WorkerDetail>('GET', `/v0/workers/${enc(id)}`, o),
+    timeseries: (
+      p: { metric: 'entities' | 'claims'; by: 'kind' | 'worker' | 'layer'; bucket?: 'hour' | 'day'; since?: string } & Sig,
+    ) =>
+      call<{ buckets: TimeseriesBucket[] }>(
+        'GET',
+        `/v0/stats/timeseries${qs({ metric: p.metric, by: p.by, bucket: p.bucket, since: p.since })}`,
+        p,
+      ),
 
     // ── Admin (§7) ──
     review: (token: string, status: ReviewItem['status'] = 'open', o: Sig = {}) =>

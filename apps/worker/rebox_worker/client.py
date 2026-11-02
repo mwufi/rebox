@@ -1,4 +1,8 @@
-"""Claims writer client: ``POST {API_URL}/internal/claims`` (CONTRACTS §5)."""
+"""Writer API client (CONTRACTS §5, §12).
+
+``POST /internal/claims`` (every batch names its ``worker`` and ``run_id``), ``POST /internal/workers``
+(idempotent registration), ``POST /internal/runs`` and ``PATCH /internal/runs/:id``.
+"""
 
 from __future__ import annotations
 
@@ -71,33 +75,94 @@ class ClaimsClient:
         self.max_backoff_s = max_backoff_s
         self.sleep = sleep
 
-    def write(self, layer: str, claims: Sequence[ClaimWrite], batch_size: int = BATCH_SIZE) -> WriteResult:
-        """Write ``claims`` in batches of at most ``batch_size``; each batch is one transaction."""
+    def write(
+        self,
+        layer: str,
+        claims: Sequence[ClaimWrite],
+        *,
+        worker: str,
+        run_id: int | None = None,
+        batch_size: int = BATCH_SIZE,
+    ) -> WriteResult:
+        """Write ``claims`` as ``worker`` (in ``run_id``) in batches of at most ``batch_size``;
+        each batch is one transaction."""
         total = WriteResult()
         for batch in chunks(claims, batch_size):
-            total += self.write_batch(layer, batch)
+            total += self.write_batch(layer, batch, worker=worker, run_id=run_id)
         return total
 
-    def write_batch(self, layer: str, claims: Sequence[ClaimWrite]) -> WriteResult:
+    def write_batch(
+        self, layer: str, claims: Sequence[ClaimWrite], *, worker: str, run_id: int | None = None
+    ) -> WriteResult:
         if not claims:
             return WriteResult()
-        body = {"layer": layer, "claims": [c.to_request() for c in claims]}
+        body: dict[str, Any] = {"layer": layer, "worker": worker, "claims": [c.to_request() for c in claims]}
+        if run_id is not None:
+            body["run_id"] = run_id
+        data = self._request("POST", "/internal/claims", body)
+        return WriteResult(int(data.get("written", 0)), int(data.get("minted", 0)))
+
+    # ── workers and runs (CONTRACTS §12) ──
+
+    def register_worker(
+        self,
+        *,
+        name: str,
+        kind: str,
+        source: str,
+        layers: Sequence[str],
+        config: dict[str, Any] | None = None,
+        description: str | None = None,
+    ) -> str:
+        """Idempotent on (name, kind, source): returns the existing worker's id, or a new one."""
+        body: dict[str, Any] = {"name": name, "kind": kind, "source": source, "layers": list(layers)}
+        if config:
+            body["config"] = config
+        if description:
+            body["description"] = description
+        return str(self._request("POST", "/internal/workers", body)["id"])
+
+    def open_run(self, worker: str, kind: str) -> int:
+        return int(self._request("POST", "/internal/runs", {"worker": worker, "kind": kind})["run_id"])
+
+    def update_run(
+        self,
+        run_id: int,
+        *,
+        status: str | None = None,
+        stats: dict[str, Any] | None = None,
+        error: str | None = None,
+    ) -> dict[str, Any]:
+        """Merge ``stats`` into the run; ``status`` 'ok'/'failed' closes it."""
+        body: dict[str, Any] = {}
+        if status is not None:
+            body["status"] = status
+        if stats:
+            body["stats"] = stats
+        if error is not None:
+            body["error"] = error[:4000]
+        return self._request("PATCH", f"/internal/runs/{run_id}", body)
+
+    # ── transport ──
+
+    def _request(self, method: str, path: str, body: dict[str, Any]) -> dict[str, Any]:
+        """JSON request with retries on network errors, 429 and 5xx. 400 raises ValidationRejected."""
         attempt = 0
         while True:
             try:
-                resp = self.http.post("/internal/claims", json=body)
+                resp = self.http.request(method, path, json=body)
             except httpx.TransportError as e:
                 error: str = f"network error: {e!r}"
             else:
-                if resp.status_code == 200:
-                    data = resp.json()
-                    return WriteResult(int(data.get("written", 0)), int(data.get("minted", 0)))
+                if resp.status_code in (200, 201):
+                    return _json(resp)
                 if resp.status_code == 400:
                     data = _json(resp)
                     details = data.get("details") or []
                     shown = "; ".join(f"[{d.get('index')}] {d.get('message')}" for d in details[:10])
+                    what = "batch" if path == "/internal/claims" else f"{method} {path}"
                     raise ValidationRejected(
-                        f"writer rejected batch ({len(details)} errors): {shown}", details
+                        f"writer rejected {what} ({len(details)} errors): {shown}", details
                     )
                 if resp.status_code < 500 and resp.status_code != 429:
                     raise WriterError(f"writer returned {resp.status_code}: {resp.text[:500]}")
@@ -107,7 +172,13 @@ class ClaimsClient:
                 raise WriterError(f"giving up after {attempt} attempts: {error}")
             delay = min(self.max_backoff_s, self.backoff_s * 2 ** (attempt - 1)) * random.uniform(0.8, 1.2)
             log.warning(
-                "claims write failed (%s); retry %d/%d in %.1fs", error, attempt, self.max_retries, delay
+                "%s %s failed (%s); retry %d/%d in %.1fs",
+                method,
+                path,
+                error,
+                attempt,
+                self.max_retries,
+                delay,
             )
             self.sleep(delay)
 

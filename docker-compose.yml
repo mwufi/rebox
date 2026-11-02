@@ -2,8 +2,9 @@
 #   cp .env.example .env && docker compose up --build     → http://localhost:3000
 #   docker compose up -d --wait db                         → just Postgres on :54329 (make up)
 # Values come from .env (compose reads it for ${...}); defaults match .env.example.
-# Host ports: API_HOST_PORT (default 3000) and DB_HOST_PORT (default 54329), for machines where
-# those are taken. They only change the published ports; inside the stack nothing changes.
+# Host ports: API_HOST_PORT (default 3000), DB_HOST_PORT (default 54329) and GRAFANA_HOST_PORT
+# (default 3001), for machines where those are taken. They only change the published ports;
+# inside the stack nothing changes. Grafana (dashboard "Rebox graph") is at http://localhost:3001.
 # Containers reach Postgres at db:5432, so the localhost URLs in .env are not used here.
 
 x-api-image: &api-image
@@ -27,6 +28,18 @@ x-worker-env: &worker-env
   USER_AGENT: ${USER_AGENT:-rebox-bot/0.1 (+https://github.com/rebox)}
   GITHUB_TOKEN: ${GITHUB_TOKEN:-}
   X_BEARER_TOKEN: ${X_BEARER_TOKEN:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  EXA_API_KEY: ${EXA_API_KEY:-}
+  PARSER_MODEL: ${PARSER_MODEL:-claude-haiku-5-5}
+  X_MAX_USER_READS_PER_RUN: ${X_MAX_USER_READS_PER_RUN:-2000}
+  X_MAX_POST_READS_PER_RUN: ${X_MAX_POST_READS_PER_RUN:-1000}
+  EXA_MAX_REQUESTS_PER_RUN: ${EXA_MAX_REQUESTS_PER_RUN:-100}
+  PARSER_MAX_CALLS_PER_RUN: ${PARSER_MAX_CALLS_PER_RUN:-2000}
+  X_TOTAL_BUDGET_USD: ${X_TOTAL_BUDGET_USD:-30}
+  X_SPIDER_PAGE_SIZE: ${X_SPIDER_PAGE_SIZE:-1000}
+  X_SPIDER_POST_KINDS: ${X_SPIDER_POST_KINDS:-company}
+  X_SPIDER_PHASES: ${X_SPIDER_PHASES:-following,posts,expansion}
+  SEEDS_FILE: ${SEEDS_FILE:-}
 
 services:
   db:
@@ -49,6 +62,7 @@ services:
     environment:
       MIGRATE_DATABASE_URL: postgres://postgres:dev@db:5432/rebox
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:-rebox_app}
+      METRICS_DB_PASSWORD: ${METRICS_DB_PASSWORD:-rebox_metrics}
     depends_on:
       db: { condition: service_healthy }
     restart: "no"
@@ -61,6 +75,9 @@ services:
       INGEST_TOKEN: ${INGEST_TOKEN:-dev-ingest-token}
       ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-admin-token}
       REBOX_ENV: ${REBOX_ENV:-dev}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      WIKI_MODEL: ${WIKI_MODEL:-claude-haiku-5-5}
+      WIKI_PUBLIC: ${WIKI_PUBLIC:-false}
     ports: ["127.0.0.1:${API_HOST_PORT:-3000}:3000"]
     depends_on:
       migrate: { condition: service_completed_successfully }
@@ -92,6 +109,33 @@ services:
       migrate: { condition: service_completed_successfully }
     restart: unless-stopped
 
+  # Dashboards of the graph growing over time and of every worker (infra/grafana). Read-only:
+  # anonymous viewers, datasource as role rebox_metrics (operational tables only).
+  grafana:
+    image: ${GRAFANA_IMAGE:-grafana/grafana:13.2.5}
+    environment:
+      GF_PATHS_CONFIG: /etc/grafana/rebox.ini
+      REBOX_METRICS_DB_HOST: db:5432
+      REBOX_METRICS_DB_NAME: rebox
+      REBOX_METRICS_DB_SSLMODE: disable
+      METRICS_DB_PASSWORD: ${METRICS_DB_PASSWORD:-rebox_metrics}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./infra/grafana/grafana.ini:/etc/grafana/rebox.ini:ro
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    ports: ["127.0.0.1:${GRAFANA_HOST_PORT:-3001}:3000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
 volumes:
   pgdata: {}
   rawdata: {}
+  grafanadata: {}

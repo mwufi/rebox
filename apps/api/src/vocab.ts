@@ -2,7 +2,7 @@ import type { Db } from './db.js';
 import { NO_VIEW } from './db.js';
 import type { NormalizerName } from './normalize.js';
 
-export type ValueType = 'text' | 'url' | 'date' | 'int' | 'number' | 'bool';
+export type ValueType = 'text' | 'url' | 'date' | 'int' | 'number' | 'bool' | 'json';
 
 export interface PredicateMeta {
   label?: string;

@@ -38,7 +38,17 @@ from psycopg.types.json import Jsonb
 
 from .db import Db
 from .ids import mint_id
-from .models import ClaimInput, ClaimWrite, Decision, EntityRef, IdRef, MintRef, MintSpec, WriteRef
+from .models import (
+    ClaimInput,
+    ClaimWrite,
+    Decision,
+    EntityRef,
+    Evidence,
+    IdRef,
+    MintRef,
+    MintSpec,
+    WriteRef,
+)
 from .normalize import normalize_name
 from .predicates import Predicate, load_predicates
 
@@ -164,8 +174,9 @@ class _Batch:
     # Batch-local cache: decisions already made in this batch.
     by_pair: dict[tuple[str, str, str], Resolved] = field(default_factory=dict)  # (kind, pred, value)
     by_name: dict[tuple[str, str, tuple[str, ...]], Resolved] = field(default_factory=dict)
-    # id -> (record that minted it, its ref), for the generated name claim.
-    minted: dict[str, tuple[str, EntityRef]] = field(default_factory=dict)
+    # id -> (record that minted it, its ref, evidence of the claim that minted it), for the
+    # generated name claim.
+    minted: dict[str, tuple[str, EntityRef, list[Evidence] | None]] = field(default_factory=dict)
     named: set[tuple[str, str]] = field(default_factory=set)  # (record, entity id) with a name claim
     known: dict[str, Candidate] = field(default_factory=dict)  # every canonical id seen, with its age
     # Facts resolved so far in this batch, for the scoped fuzzy pass (not in the DB yet).
@@ -266,8 +277,12 @@ class Resolver:
                 value = pred.normalizer(value)
             except ValueError as e:
                 raise RejectedClaim(f"identity value for {pred.id!r} not normalizable: {e}") from None
-        subject = self._resolve_ref(batch, c.subject, record, c.source_ref)
-        obj = self._resolve_ref(batch, c.object, record, c.source_ref) if c.object is not None else None
+        subject = self._resolve_ref(batch, c.subject, record, c.source_ref, c.evidence)
+        obj = (
+            self._resolve_ref(batch, c.object, record, c.source_ref, c.evidence)
+            if c.object is not None
+            else None
+        )
         if obj is not None and not c.retract:
             batch.edges.add((subject.id, obj.id))
         if pred.id == "name" and isinstance(value, str) and not c.retract:
@@ -282,6 +297,7 @@ class Resolver:
             valid_to=c.valid_to,
             retract=c.retract,
             source_ref=c.source_ref,
+            evidence=c.evidence,
         )
 
     def _check(self, c: ClaimInput) -> Predicate:
@@ -305,7 +321,10 @@ class Resolver:
                 raise RejectedClaim(f"attribute {pred.id!r} must not have an object")
             if c.value is None:
                 raise RejectedClaim(f"attribute {pred.id!r} needs a value")
-            if isinstance(c.value, dict):
+            if pred.meta.get("value_type") == "json":  # e.g. milestone {title, kind, url}
+                if not isinstance(c.value, dict):
+                    raise RejectedClaim(f"attribute {pred.id!r} value must be a JSON object")
+            elif isinstance(c.value, dict):
                 raise RejectedClaim(f"attribute {pred.id!r} value must be a scalar or array")
         return pred
 
@@ -316,7 +335,7 @@ class Resolver:
         The rule depends only on the minting record, never on how records were batched, so
         a replay with a different batch size writes exactly the same claims.
         """
-        for entity_id, (record, ref) in batch.minted.items():
+        for entity_id, (record, ref, evidence) in batch.minted.items():
             if ref.name and (record, entity_id) not in batch.named:
                 batch.res.claims.append(
                     ClaimWrite(
@@ -324,12 +343,22 @@ class Resolver:
                         predicate="name",
                         value=ref.name,
                         source_ref=f"{self.source}:entity:{entity_id}:name",
+                        # The name comes from the claim that minted the entity, so it cites the
+                        # same evidence (parser/enricher workers must cite evidence on every claim).
+                        evidence=evidence,
                     )
                 )
 
     # ── entities: the three passes ──
 
-    def _resolve_ref(self, batch: _Batch, ref: EntityRef, record: str, source_ref: str) -> Resolved:
+    def _resolve_ref(
+        self,
+        batch: _Batch,
+        ref: EntityRef,
+        record: str,
+        source_ref: str,
+        evidence: list[Evidence] | None = None,
+    ) -> Resolved:
         if ref.id is not None:
             return Resolved(ref.id, minted=False)
         r = self._normalize(ref)
@@ -365,7 +394,7 @@ class Resolver:
         if r.name_key:
             batch.names.setdefault(d.resolved.id, set()).add(r.name_key)
         if d.resolved.minted:
-            batch.minted.setdefault(d.resolved.id, (record, ref))
+            batch.minted.setdefault(d.resolved.id, (record, ref, evidence))
             batch.known.setdefault(d.resolved.id, Candidate(d.resolved.id, r.kind, None))
         self._remember(batch, r, context_ids, d.resolved)
         return d.resolved

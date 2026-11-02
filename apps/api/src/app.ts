@@ -14,6 +14,7 @@ import { ApiError, notFound } from './errors.js';
 import { adminRoutes } from './routes/admin.js';
 import { internalRoutes } from './routes/internal.js';
 import { readRoutes } from './routes/read.js';
+import { workerRoutes } from './routes/workers.js';
 import type { VocabCache } from './vocab.js';
 import type { Writer } from './writer.js';
 
@@ -59,10 +60,11 @@ export function createApp(deps: Deps) {
     if (isApiPath(c.req.path)) {
       c.set(
         'principal',
-        authenticate(deps.config, {
-          authorization: c.req.header('authorization'),
-          viewer: c.req.header('x-rebox-viewer'),
-        }),
+        await authenticate(
+          deps.config,
+          { authorization: c.req.header('authorization'), viewer: c.req.header('x-rebox-viewer') },
+          deps.db,
+        ),
       );
     }
     await next();
@@ -75,6 +77,7 @@ export function createApp(deps: Deps) {
   app.route('/', readRoutes(deps));
   app.route('/', internalRoutes(deps));
   app.route('/', adminRoutes(deps));
+  app.route('/', workerRoutes(deps));
 
   const dir = deps.publicDir;
   if (dir && existsSync(dir) && statSync(dir).isDirectory()) {

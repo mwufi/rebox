@@ -1,0 +1,22 @@
+# Postgres datasource for the "Rebox graph" dashboard. Grafana connects as the read-only role
+# rebox_metrics (migration 0005: operational tables only, never claim/entity or worker.token_hash).
+# Values come from the grafana service environment (docker-compose.yml).
+apiVersion: 1
+datasources:
+  - name: rebox_metrics
+    uid: rebox-metrics
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: ${REBOX_METRICS_DB_HOST}
+    user: rebox_metrics
+    isDefault: true
+    editable: false
+    jsonData:
+      database: ${REBOX_METRICS_DB_NAME}
+      sslmode: ${REBOX_METRICS_DB_SSLMODE}
+      postgresVersion: 1600
+      timescaledb: false
+      maxOpenConns: 4
+      maxIdleConns: 2
+    secureJsonData:
+      password: ${METRICS_DB_PASSWORD}
