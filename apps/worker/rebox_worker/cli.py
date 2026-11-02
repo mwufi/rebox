@@ -10,6 +10,8 @@ rebox-worker workers list          worker identities with claim and run counts
 rebox-worker workers register <c>  resolve (create on first use) a connector's worker id
 rebox-worker workers show <id>     one worker and its recent runs
 rebox-worker coverage FILE.csv     which rows of a list Rebox knows (S14)
+rebox-worker export --layers L,... --out FILE    write layers to a bundle (.rebox.jsonl.gz)
+rebox-worker import FILE [--dry-run]             merge a bundle in through the resolver
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ from collections.abc import Sequence
 from contextlib import contextmanager
 from typing import Any
 
-from . import __version__, coverage, identity, jobs
+from . import __version__, coverage, exchange, identity, jobs
 from .client import ClaimsClient
 from .config import ConfigError, Settings
 from .connectors import REGISTRY, Ctx, UnknownConnector, get_connector
@@ -265,6 +267,40 @@ def cmd_workers_show(args: argparse.Namespace, settings: Settings) -> int:
     return 0
 
 
+def cmd_export(args: argparse.Namespace, settings: Settings) -> int:
+    layers = [x.strip() for x in args.layers.split(",") if x.strip()]
+    with Db(settings.database_url, max_size=1) as db:
+        summary = exchange.export_layers(db, layers, args.out, source_instance=args.instance)
+    print(summary.render())
+    return 0
+
+
+def cmd_import(args: argparse.Namespace, settings: Settings) -> int:
+    opts = exchange.ImportOptions(
+        dry_run=args.dry_run,
+        layers=[x.strip() for x in args.layers.split(",") if x.strip()] if args.layers else None,
+        match_website=args.match_website,
+        batch_claims=args.batch,
+        examples=args.examples,
+    )
+    client: ClaimsClient | None = None
+    if not args.dry_run:
+        api_url, token = settings.require_writer()
+        client = ClaimsClient(api_url, token, user_agent=settings.user_agent)
+    try:
+        with Db(settings.database_url, max_size=2) as db:
+            try:
+                report = exchange.import_bundle(args.file, db, client, opts)
+            except exchange.ImportAborted as e:
+                print(f"rebox-worker: import aborted, nothing written: {e}", file=sys.stderr)
+                return 1
+    finally:
+        if client is not None:
+            client.close()
+    print(json.dumps(report.as_dict(), indent=1, default=str) if args.json else report.render())
+    return 1 if report.aborted else 0
+
+
 def _table(rows: Sequence[dict[str, Any]], cols: list[str]) -> None:
     table = [[_cell(r[c]) for c in cols] for r in rows]
     widths = [max(len(c), *(len(row[i]) for row in table)) for i, c in enumerate(cols)]
@@ -340,6 +376,29 @@ def build_parser() -> argparse.ArgumentParser:
     ws.set_defaults(func=cmd_workers_show)
 
     coverage.add_parser(sub)  # rebox-worker coverage FILE.csv (S14)
+    ex = sub.add_parser(
+        "export", help="write whole layers to a bundle (.rebox.jsonl.gz) for another instance"
+    )
+    ex.add_argument(
+        "--layers", required=True, help="comma-separated layer ids, e.g. public/x_spider,public/exa"
+    )
+    ex.add_argument("--out", required=True, help="bundle path, e.g. tonight.rebox.jsonl.gz")
+    ex.add_argument("--instance", help="name of this instance in the bundle header (default: database name)")
+    ex.set_defaults(func=cmd_export)
+
+    im = sub.add_parser(
+        "import", help="merge a bundle into this instance through the resolver (docs/MERGE.md)"
+    )
+    im.add_argument("file")
+    im.add_argument("--dry-run", action="store_true", help="read only: report matches, new claims, conflicts")
+    im.add_argument("--layers", help="comma-separated subset of the bundle's layers")
+    im.add_argument("--match-website", action="store_true", help="also match entities by website (weak key)")
+    im.add_argument(
+        "--batch", type=int, default=exchange.BATCH_CLAIMS, help="bundle claims per resolver batch"
+    )
+    im.add_argument("--examples", type=int, default=10, help="examples per section of the report")
+    im.add_argument("--json", action="store_true", help="print the report as JSON")
+    im.set_defaults(func=cmd_import)
     return p
 
 
@@ -354,7 +413,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         settings = Settings.from_env()
         return int(args.func(args, settings) or 0)
-    except (ConfigError, UnknownConnector) as e:
+    except (ConfigError, UnknownConnector, exchange.ExchangeError) as e:
         print(f"rebox-worker: {e}", file=sys.stderr)
         return 2
 
