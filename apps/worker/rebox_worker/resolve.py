@@ -7,12 +7,25 @@ For every entity described by an ``EntityRef`` the resolver decides, in order (C
      Several distinct entities -> open an ``ambiguous_match`` review item, use the oldest.
   2. **Scoped fuzzy.** The ref's ``context`` entities resolved, and a same-kind entity with
      an equal normalized name has an edge to one of them -> match (confidence 0.8).
-  3. **Mint.** A deterministic id (``ids.mint_id``). If that id already exists (an earlier
-     run minted it), it is a match, not a new entity.
+  3. **Company name** (``company`` refs with no identity key only; persons never). Un-merged
+     companies with a visible ``name`` that folds (``names.fold_name``) equal to the ref's.
+     A keyed one (with an identity claim) is a target only if *safe*
+     (``names.is_safe_name_target``: a wikidata claim, a domain whose label is the name, or
+     5+ distinct subjects with edges to it). Exactly one keyed and safe -> that one (0.7);
+     several keyed with a safe one -> the oldest safe one, plus a ``possible_duplicate``
+     review item (once per entity set). Otherwise, if the name may converge
+     (``names.converges_by_name``: 2+ tokens or 6+ chars) -> the name-only company with the
+     most claims, tie oldest (0.6). Placeholder names ("stealth", "self-employed") skip
+     this pass.
+  4. **Mint.** A deterministic id (``ids.mint_id``). A company whose name may converge is
+     minted from its folded name (``{"name": folded}``), so every later mention converges on
+     it; other identity-less refs (short company names too) are scoped to their record. If
+     the id already exists (an earlier run minted it), it is a match, not a new entity.
 
 Every decision becomes a ``resolution_log`` row. A batch-local cache makes one batch resolve
-consistently: the same identity value, or the same identity-less (kind, name, context),
-always gets the same id, even before the writer has stored it.
+consistently: the same identity value, the same identity-less (kind, name, context), or the
+same folded company name (pass 3/4), always gets the same id, even before the writer has
+stored it.
 
 Claims are pre-checked against the vocabulary with the writer's rules (CONTRACTS §5) so one
 bad claim is reported and dropped instead of failing the whole write batch with a 400.
@@ -37,7 +50,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from .db import Db
-from .ids import mint_id
+from .ids import NAME_KEY, mint_id
 from .models import (
     ClaimInput,
     ClaimWrite,
@@ -49,6 +62,7 @@ from .models import (
     MintSpec,
     WriteRef,
 )
+from .names import converges_by_name, fold_name, is_placeholder_company, is_safe_name_target
 from .normalize import normalize_name
 from .predicates import Predicate, load_predicates
 
@@ -76,7 +90,34 @@ select k.p as predicate, c.value_text as value, c.subject
   ) as c
 """
 
+# Pass 3 candidates: companies with a public name that is word-similar (pg_trgm ``%>``, GIN
+# index on search_name) to a folded name of the batch. search_name has no RLS (it only holds
+# names from public layers, CONTRACTS §2a); ``claim`` does, so ``name % $1`` there could not use
+# an index as rebox_app. Folded equality is decided in Python against every visible name claim
+# of the candidates (search_name keeps one name per entity and layer).
+#
+# One UNION ALL branch per name, each with its own bound value: the GIN index is only usable
+# when the planner sees the value (a lateral join over unnest() hides it and gets a seq scan).
+NAME_CANDIDATES_BRANCH = """(
+  select %s::text as folded, s.entity_id
+    from search_name s
+    join entity e on e.id = s.entity_id and e.kind = 'company'
+   where s.name %%> %s
+   order by similarity(s.name, %s) desc, s.entity_id
+   limit {limit})"""
+NAME_CANDIDATES_CHUNK = 100  # names per query
+
+
+def name_candidates_sql(n: int, limit: int) -> str:
+    """The pass 3 candidate query for ``n`` folded names (params: each name three times)."""
+    return "\nunion all\n".join([NAME_CANDIDATES_BRANCH.format(limit=int(limit))] * n)
+
+
+NAME_CANDIDATE_LIMIT = 100  # per folded name; equal names have the highest similarity
+
 FUZZY_CONFIDENCE = 0.8
+NAME_KEYED_CONFIDENCE = 0.7
+NAME_ONLY_CONFIDENCE = 0.6
 AMBIGUOUS_CONFIDENCE = 0.5
 MAX_MERGE_DEPTH = 20
 
@@ -100,6 +141,16 @@ class Candidate:
     @property
     def age_key(self) -> tuple[int, Any, str]:
         return (1, 0, self.id) if self.created_at is None else (0, self.created_at, self.id)
+
+
+@dataclass(frozen=True)
+class NameCandidate:
+    """A company found by folded name (pass 3), with what the pass ranks it by."""
+
+    entity: Candidate
+    keyed: bool  # has a visible identity claim
+    claims: int  # visible, live claims with it as subject
+    safe: bool = False  # keyed and names.is_safe_name_target (wikidata / domain label / in-edges)
 
 
 @dataclass
@@ -182,6 +233,12 @@ class _Batch:
     # Facts resolved so far in this batch, for the scoped fuzzy pass (not in the DB yet).
     edges: set[tuple[str, str]] = field(default_factory=set)  # (subject id, object id)
     names: dict[str, set[str]] = field(default_factory=dict)  # id -> normalized names
+    # Pass 3: folded company name -> companies in the DB with that name (prefetched), keyed
+    # companies resolved earlier in this batch with that name, and the batch's decision.
+    name_hits: dict[str, list[NameCandidate]] = field(default_factory=dict)
+    keyed_names: dict[str, set[str]] = field(default_factory=dict)
+    keyed_facts: dict[str, tuple[bool, set[str]]] = field(default_factory=dict)  # id -> (wikidata, domains)
+    by_folded: dict[str, Resolved] = field(default_factory=dict)
     res: Resolution = field(default_factory=Resolution)
 
 
@@ -193,8 +250,25 @@ class _Ref:
     pairs: tuple[Pair, ...]  # sorted, de-duplicated
     name: str | None
     name_key: str  # normalize_name(name) or ""
+    folded: str  # fold_name(kind, name) or ""
     context: tuple[EntityRef, ...]
     dropped: tuple[dict[str, Any], ...]  # identity values that failed normalization
+
+    @property
+    def by_company_name(self) -> bool:
+        """Pass 3 applies: a company with no identity key and a real (non-placeholder) name."""
+        return (
+            self.kind == "company"
+            and not self.pairs
+            and bool(self.folded)
+            and not is_placeholder_company(self.folded)
+        )
+
+    @property
+    def mints_by_name(self) -> bool:
+        """Pass 3/4 may converge this ref without a safe keyed target: match a name-only
+        company, or mint from the folded name. Short one-word names ("base") may not."""
+        return self.by_company_name and converges_by_name(self.folded)
 
 
 class Resolver:
@@ -253,17 +327,20 @@ class Resolver:
                         ],
                     )
             for rv in res.reviews:
+                # An ambiguous match is re-opened if it recurs after being closed; a possible
+                # duplicate is opened once per entity set (a dismissed one stays dismissed).
                 conn.execute(
                     """insert into review_item (kind, entity_ids, reason, evidence)
                        select %(kind)s, %(ids)s::text[], %(reason)s, %(evidence)s
                        where not exists (select 1 from review_item
-                                          where status = 'open' and kind = %(kind)s
+                                          where (status = 'open' or %(once)s) and kind = %(kind)s
                                             and entity_ids = %(ids)s::text[])""",
                     {
                         "kind": rv.kind,
                         "ids": rv.entity_ids,
                         "reason": rv.reason,
                         "evidence": Jsonb(rv.evidence),
+                        "once": rv.kind == "possible_duplicate",
                     },
                 )
 
@@ -371,6 +448,7 @@ class Resolver:
         d = (
             self._hard_keys(batch, r)
             or self._scoped_fuzzy(batch, r, context_ids)
+            or self._company_name(batch, r)
             or self._mint(batch, r, record)
         )
         batch.res.logs.append(
@@ -393,6 +471,16 @@ class Resolver:
             batch.res.reviews.append(d.review)
         if r.name_key:
             batch.names.setdefault(d.resolved.id, set()).add(r.name_key)
+        if r.kind == "company" and r.folded:
+            how = d.evidence[0].get("pass") if d.evidence else None
+            if r.pairs:
+                batch.keyed_names.setdefault(r.folded, set()).add(d.resolved.id)
+                wd, doms = batch.keyed_facts.setdefault(d.resolved.id, (False, set()))
+                doms.update(v for p, v in r.pairs if p == "domain")
+                if any(p == "wikidata" for p, _ in r.pairs) and not wd:
+                    batch.keyed_facts[d.resolved.id] = (True, doms)
+            elif how == "company_name" or (how == "mint" and r.mints_by_name):
+                batch.by_folded.setdefault(r.folded, d.resolved)
         if d.resolved.minted:
             batch.minted.setdefault(d.resolved.id, (record, ref, evidence))
             batch.known.setdefault(d.resolved.id, Candidate(d.resolved.id, r.kind, None))
@@ -470,15 +558,89 @@ class Resolver:
             batch, r, list(found.values()), evidence, confidence=FUZZY_CONFIDENCE, how="name within context"
         )
 
-    def _mint(self, batch: _Batch, r: _Ref, record: str) -> _Decision:
-        """Pass 3: a deterministic id (CONTRACTS §3).
+    def _company_name(self, batch: _Batch, r: _Ref) -> _Decision | None:
+        """Pass 3: an identity-less company ref -> an existing company with the same folded name.
 
-        Identity-less entities are keyed by ``{record}#{kind}:{normalized name}``: stable across
-        replays, and distinct for two unnamed-key entities in the same record.
+        Candidates: companies in the DB (``_prefetch_names``) plus keyed companies resolved
+        earlier in this batch. A keyed candidate is only a target when it is *safe*
+        (``names.is_safe_name_target``): exact names alone link generic words ("Capital",
+        "Base") to unrelated companies. Without a safe one, the ref may still converge on a
+        name-only company, unless its name is too short (``names.converges_by_name``).
+        ``None`` -> pass 4 (a name mint, or a record-scoped one for short names).
+        """
+        if not r.by_company_name:
+            return None
+        decided = batch.by_folded.get(r.folded)
+        if decided is not None:
+            return _Decision(
+                decided,
+                "matched",
+                NAME_ONLY_CONFIDENCE,
+                [{"pass": "company_name", "name": r.folded, "entity": decided.id, "batch": True}],
+            )
+        found: dict[str, NameCandidate] = {c.entity.id: c for c in batch.name_hits.get(r.folded, [])}
+        for eid in sorted(batch.keyed_names.get(r.folded, ())):
+            cand = batch.known.get(eid) or Candidate(eid, "company", None)
+            prev = found.get(cand.id)
+            wikidata, domains = batch.keyed_facts.get(eid, (False, set()))
+            safe = (prev is not None and prev.safe) or is_safe_name_target(
+                r.folded, has_wikidata=wikidata, domains=domains
+            )
+            found[cand.id] = NameCandidate(cand, True, prev.claims if prev else 0, safe)
+        if not found:
+            return None
+        keyed = sorted((c for c in found.values() if c.keyed), key=lambda c: c.entity.age_key)
+        safe = [c for c in keyed if c.safe]
+        evidence = [
+            {
+                "pass": "company_name",
+                "name": r.folded,
+                "entity": c.entity.id,
+                "keyed": c.keyed,
+                "safe": c.safe,
+                "claims": c.claims,
+            }
+            for c in sorted(found.values(), key=lambda c: c.entity.id)
+        ]
+        if safe:
+            chosen = safe[0].entity  # the oldest safe one
+            resolved = Resolved(chosen.id, minted=chosen.created_at is None)
+            if len(keyed) == 1:
+                return _Decision(resolved, "matched", NAME_KEYED_CONFIDENCE, evidence)
+            ids = sorted(c.entity.id for c in keyed)
+            review = ReviewRow(
+                entity_ids=ids,
+                reason=f"{len(ids)} companies with identity keys are named {r.folded!r}; "
+                f"used the oldest safe match ({chosen.id})",
+                evidence=evidence,
+                kind="possible_duplicate",
+            )
+            return _Decision(resolved, "review", AMBIGUOUS_CONFIDENCE, evidence, review)
+        if not r.mints_by_name:
+            return None  # a short generic name: no convergence without a safe keyed target
+        # Name-only companies (unsafe keyed ones are never targets): the best-attested, then oldest.
+        name_only = [c for c in found.values() if not c.keyed]
+        if not name_only:
+            return None
+        best = min(name_only, key=lambda c: (-c.claims, c.entity.age_key)).entity
+        return _Decision(
+            Resolved(best.id, minted=best.created_at is None), "matched", NAME_ONLY_CONFIDENCE, evidence
+        )
+
+    def _mint(self, batch: _Batch, r: _Ref, record: str) -> _Decision:
+        """Pass 4: a deterministic id (CONTRACTS §3).
+
+        A company eligible for pass 3 whose name may converge (``_Ref.mints_by_name``) is keyed
+        by its folded name, so every record that names it converges on one id. Other
+        identity-less entities (persons, short company names, placeholders) are keyed by
+        ``{record}#{kind}:{normalized name}``: stable across replays, and distinct for two
+        unnamed-key entities in the same record.
         """
         identity: dict[str, list[str]] = {}
         for p, v in r.pairs:
             identity.setdefault(p, []).append(v)
+        if r.mints_by_name:
+            identity[NAME_KEY] = [r.folded]
         ref_key = f"{record}#{r.kind}:{r.name_key}"
         entity_id = mint_id(r.kind, identity, self.source, ref_key)
 
@@ -491,13 +653,13 @@ class Resolver:
                 1.0,
                 [{"pass": "mint", "existing": True, "minted_id": entity_id}],
             )
-        basis = "identity" if r.pairs else "source_ref"
-        return _Decision(
-            Resolved(entity_id, minted=True),
-            "minted",
-            1.0,
-            [{"pass": "mint", "basis": basis, **({"ref": ref_key} if not r.pairs else {})}],
-        )
+        if r.pairs:
+            evidence: dict[str, Any] = {"pass": "mint", "basis": "identity"}
+        elif r.mints_by_name:
+            evidence = {"pass": "mint", "basis": "name", "name": r.folded}
+        else:
+            evidence = {"pass": "mint", "basis": "source_ref", "ref": ref_key}
+        return _Decision(Resolved(entity_id, minted=True), "minted", 1.0, [evidence])
 
     def _pick(
         self,
@@ -569,6 +731,7 @@ class Resolver:
             pairs=tuple(sorted(pairs)),
             name=ref.name,
             name_key=normalize_name(ref.name) if ref.name else "",
+            folded=fold_name(ref.kind, ref.name),
             context=tuple(ref.context or ()),
             dropped=tuple(dropped),
         )
@@ -579,17 +742,22 @@ class Resolver:
         Only predicates with ``meta.identity = true`` reach here (``_normalize`` drops others).
         """
         wanted: set[Pair] = set()
+        folded: set[str] = set()
 
-        def walk(ref: EntityRef | None) -> None:
+        def walk(ref: EntityRef | None, *, context: bool = False) -> None:
             if ref is None or ref.id is not None:
                 return
-            wanted.update(self._normalize(ref).pairs)
+            r = self._normalize(ref)
+            wanted.update(r.pairs)
+            if r.by_company_name and not context:  # context refs are never name-matched
+                folded.add(r.folded)
             for c in ref.context or ():
-                walk(c)
+                walk(c, context=True)
 
         for c in claims:
             walk(c.subject)
             walk(c.object)
+        self._prefetch_names(batch, folded)
         if not wanted:
             return
         preds, values = zip(*sorted(wanted), strict=True)
@@ -602,6 +770,81 @@ class Resolver:
             hits = batch.db_hits.setdefault((row["predicate"], row["value"]), [])
             if cand not in hits:
                 hits.append(cand)
+
+    def _prefetch_names(self, batch: _Batch, folded: set[str]) -> None:
+        """Pass 3 lookup for the whole batch: folded company name -> ``NameCandidate``s.
+
+        Four queries (plus one per 100 names): candidates by trigram (``name_candidates_sql``),
+        every visible name claim of the candidates (folded and compared here), then for the
+        canonical entities their claim count, identity keys (keyed? wikidata? domains?) and
+        incoming non-``follows`` edges, which decide ``NameCandidate.safe``.
+        """
+        if not folded:
+            return
+        conn = batch.conn
+        names_list = sorted(folded)
+        rows: list[dict[str, Any]] = []
+        for i in range(0, len(names_list), NAME_CANDIDATES_CHUNK):
+            chunk = names_list[i : i + NAME_CANDIDATES_CHUNK]
+            sql = name_candidates_sql(len(chunk), NAME_CANDIDATE_LIMIT)
+            rows += conn.execute(sql, [v for f in chunk for v in (f, f, f)]).fetchall()
+        raw_ids = sorted({row["entity_id"] for row in rows})
+        if not raw_ids:
+            return
+        names = conn.execute(
+            """select subject, value_text as name from claim
+                where subject = any(%s::text[]) and predicate = 'name'
+                  and object_id is null and not retract""",
+            (raw_ids,),
+        ).fetchall()
+        canon = self._canonicalize(batch, raw_ids)
+        # folded name -> canonical ids of the companies that carry it
+        matches: dict[str, set[str]] = {}
+        for row in names:
+            f = fold_name("company", row["name"] or "")
+            cand = canon.get(row["subject"])
+            if f in folded and cand is not None and cand.kind == "company":
+                matches.setdefault(f, set()).add(cand.id)
+        ids = sorted(set().union(*matches.values())) if matches else []
+        if not ids:
+            return
+        identity_preds = sorted(p.id for p in self.predicates.values() if p.is_identity)
+        stats = {
+            row["subject"]: row
+            for row in conn.execute(
+                """select subject, count(*)::int as claims,
+                          bool_or(object_id is null and predicate = any(%(idp)s::text[])) as keyed,
+                          bool_or(object_id is null and predicate = 'wikidata') as wikidata,
+                          array_agg(distinct value_text)
+                            filter (where object_id is null and predicate = 'domain') as domains
+                     from claim where subject = any(%(ids)s::text[]) and not retract
+                    group by subject""",
+                {"idp": identity_preds, "ids": ids},
+            ).fetchall()
+        }
+        # Safety rule (c): distinct subjects with a non-`follows` edge to the candidate.
+        incoming = {
+            row["object_id"]: row["n"]
+            for row in conn.execute(
+                """select object_id, count(distinct subject)::int as n
+                     from claim where object_id = any(%s::text[]) and predicate <> 'follows' and not retract
+                    group by object_id""",
+                (ids,),
+            ).fetchall()
+        }
+        for f, cids in matches.items():
+            hits: list[NameCandidate] = []
+            for cid in sorted(cids):
+                st = stats.get(cid) or {}
+                keyed = bool(st.get("keyed"))
+                safe = keyed and is_safe_name_target(
+                    f,
+                    has_wikidata=bool(st.get("wikidata")),
+                    domains=[d for d in st.get("domains") or () if d],
+                    incoming_subjects=incoming.get(cid, 0),
+                )
+                hits.append(NameCandidate(batch.known[cid], keyed, int(st.get("claims") or 0), safe))
+            batch.name_hits[f] = hits
 
 
 def _kind_of(ref: EntityRef) -> str | None:
