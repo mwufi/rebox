@@ -34,7 +34,9 @@ from rebox_worker.dedupe import (
     MergeError,
     Profile,
     fold_name,
+    registrable_label,
     run_dedupe,
+    safe_target,
     strong_conflicts,
     target_key,
 )
@@ -123,7 +125,24 @@ class FakeAdmin:
                 raise ValueError(f"{dst} is itself merged into {rows[dst][2]}")
             if rows[src][1] != rows[dst][1]:
                 raise ValueError("kind mismatch")
+            rid = body.get("review_id")
+            if rid is not None:
+                rv = conn.execute(
+                    "select status, entity_ids from review_item where id = %s for update", (rid,)
+                ).fetchone()
+                if rv is None:
+                    raise ValueError(f"review item {rid} not found")
+                if rv[0] != "open":
+                    raise ValueError(f"review item {rid} is already {rv[0]}")
+                if src not in rv[1]:
+                    raise ValueError(f"{src} is not a candidate of review item {rid}")
             conn.execute("update entity set merged_into = %s where id = %s", (dst, src))
+            if rid is not None:
+                conn.execute(
+                    "update review_item set status = 'merged', resolved_by = 'admin', resolved_at = now()"
+                    " where id = %s",
+                    (rid,),
+                )
             conn.execute(
                 "insert into merge_log (op, from_id, into_id, actor) values ('merge', %s, %s, 'admin')",
                 (src, dst),
@@ -133,7 +152,7 @@ class FakeAdmin:
                 " values ('merge', null, %s, %s) returning seq",
                 (src, dst),
             ).fetchone()[0]
-        return {"merged": {"from": src, "into": dst}, "review_id": None, "seq": seq}
+        return {"merged": {"from": src, "into": dst}, "review_id": rid, "seq": seq}
 
     def split(self, body: dict[str, Any]) -> dict[str, Any]:
         eid = body["id"]
@@ -430,7 +449,7 @@ def test_merge_errors_are_counted_and_the_run_continues(db, client, g, owner):
     g.entity("company", "e2", "Err", layer="public/exa", domain="err.com")
 
     class Refusing:
-        def merge(self, f: str, i: str) -> None:
+        def merge(self, f: str, i: str, review_id: int | None = None) -> None:
             raise MergeError(f"merge {f} -> {i}: HTTP 400: nope")
 
     rep = dedupe(db, client, Refusing())
@@ -492,6 +511,82 @@ def test_name_only_company_convergence(db, client, merger, g, owner):
     # idempotent
     rep2 = dedupe(db, client, merger)
     assert rep2.stats["name_only_merged"] == 0 and rep2.stats["review_opened"] == 0
+
+
+def test_safe_target_rules():
+    assert registrable_label("google.com") == "google"
+    assert registrable_label("app.notion.so") == "notion"
+    assert registrable_label("acme.co.uk") == "acme"
+    assert registrable_label("shop.acme.com.au") == "acme"
+    assert registrable_label("co.uk") == "co"  # degenerate, never equal to a real name
+    assert registrable_label("localhost") is None
+    assert safe_target(_p("t", wikidata="Q1"), ["capital"], 0) == "wikidata"
+    assert safe_target(_p("t", domain=["x.com", "ramp.com"]), ["ramp"], 0) == "domain ramp.com"
+    assert safe_target(_p("t", domain="scale.com"), ["scale ai"], 0) is None
+    assert safe_target(_p("t", domain="scaleai.com"), ["scale ai"], 0) == "domain scaleai.com"
+    assert safe_target(_p("t", domain="acme.co.uk"), ["acme"], 0) == "domain acme.co.uk"
+    assert safe_target(_p("t", x_handle="capital"), ["capital"], 4) is None
+    assert safe_target(_p("t", x_handle="capital"), ["capital"], 5) == "5 referrers"
+
+
+def test_name_only_safe_targets_and_short_names(db, client, merger, g, owner):
+    # one keyed "Capital" (an X account: no wikidata, no capital.* domain, few referrers) -> review
+    cap = g.entity("company", "cap", "Capital", layer="public/x_spider", x_handle="capital", x_id="9")
+    cap_n = g.entity("company", "capn", "capital", layer="public/x_ai")
+    # keyed by a matching domain -> merge
+    ramp = g.entity("company", "ramp", "Ramp", layer="public/x_spider", domain="ramp.com", x_id="10")
+    ramp_n = g.entity("company", "rampn", "Ramp", layer="public/x_ai")
+    # keyed by an X handle only, but well referenced (5 people work there) -> merge
+    acme = g.entity("company", "acme", "Acme Robotics", layer="public/x_spider", x_handle="acmerobo")
+    for i in range(5):
+        g.edge(
+            g.entity("person", f"emp{i}", f"Emp {i}", layer="public/hn", hn_user=f"emp{i}"), "worked_at", acme
+        )
+    acme_n = g.entity("company", "acmen", "Acme Robotics, Inc.", layer="public/x_ai")
+    # no keyed company: short names are left alone, distinctive ones converge
+    m1 = g.entity("company", "meta1", "Meta", layer="public/x_ai")
+    m2 = g.entity("company", "meta2", "Meta", layer="public/x_ai")
+    lux1 = g.entity("company", "lux1", ["Lux Capital", "Lux Capital"], layer="public/x_ai")
+    lux2 = g.entity("company", "lux2", "Lux Capital", layer="public/x_ai")
+
+    rep = dedupe(db, client, merger)
+    m = merged(owner)
+    assert m == {ramp_n: ramp, acme_n: acme, lux2: lux1}
+    assert cap_n not in m and m1 not in m and m2 not in m
+    assert rep.stats["name_only_unsafe"] == 1 and rep.stats["name_only_skipped_short"] == 1
+    assert rep.stats["name_only_merged"] == 3
+    assert rep.skipped_short == [("meta", 2)]
+    (rv,) = reviews(owner)
+    assert rv["entity_ids"] == sorted([cap, cap_n]) and rv["reason"].startswith("name_only_unsafe_target")
+    assert rv["evidence"][0]["safe"] is None and rv["evidence"][0]["referrers"] == 0
+    reasons = {d.target.id: d.reason for d in rep.decisions if d.action == "merge"}
+    assert "domain ramp.com" in reasons[ramp] and "5 referrers" in reasons[acme]
+    # idempotent: nothing merged or reviewed again
+    rep2 = dedupe(db, client, merger)
+    assert rep2.stats["name_only_merged"] == 0 and rep2.stats["review_opened"] == 0
+    assert rep2.stats["name_only_unsafe"] == 1 and rep2.stats["review_existing"] == 1
+
+
+def test_merge_resolves_an_open_review_of_exactly_that_pair(db, client, merger, admin, g, owner):
+    a = g.entity("company", "ra", "Res", wikidata="Q42", domain="res.com")
+    b = g.entity("company", "rb", "Res", layer="public/exa", domain="res.com")
+    c = g.entity("company", "rc", "Other", layer="public/exa", domain="other.com")
+    pair = owner.execute(
+        "insert into review_item (kind, entity_ids, reason) values ('ambiguous_match', %s, 'x') returning id",
+        (sorted([a, b]),),
+    ).fetchone()["id"]
+    wider = owner.execute(
+        "insert into review_item (kind, entity_ids, reason)"
+        " values ('possible_duplicate', %s, 'y') returning id",
+        (sorted([a, b, c]),),
+    ).fetchone()["id"]
+    dry = Dedupe(db, dry_run=True).run()
+    assert dry.decisions[0].result == f"would_merge 1, resolves review {pair}"
+    rep = dedupe(db, client, merger)
+    assert admin.calls == [("/v0/admin/merge", {"from": b, "into": a, "review_id": pair})]
+    assert rep.stats["reviews_resolved"] == 1 and merged(owner) == {b: a}
+    status = {r["id"]: r["status"] for r in owner.execute("select id, status from review_item")}
+    assert status == {pair: "merged", wider: "open"}
 
 
 # ── phase 3: name + neighbor ──
@@ -664,7 +759,14 @@ def test_dedupe_against_the_real_api(real_api, db, owner):
             "company", "rex", "Figma", layer="public/exa", domain="figma.com", website="https://figma.com"
         )
         nf = g.entity("company", "rnf", "Figma", layer="public/x_ai")
+        amb = owner.execute(
+            "insert into review_item (kind, entity_ids, reason)"
+            " values ('ambiguous_match', %s, 'r') returning id",
+            (sorted([ex, wd]),),
+        ).fetchone()["id"]
         rep = run_dedupe(db, client=client, merger=merger)
+        rv = owner.execute("select status, resolved_by from review_item where id = %s", (amb,)).fetchone()
+        assert rv == {"status": "merged", "resolved_by": "admin"} and rep.stats["reviews_resolved"] == 1
         assert merged(owner) == {ex: wd, nf: wd}
         assert rep.stats["auto_merged"] == 1 and rep.stats["name_only_merged"] == 1
         log = owner.execute("select op, from_id, into_id, actor from merge_log order by id").fetchall()

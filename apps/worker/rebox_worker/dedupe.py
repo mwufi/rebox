@@ -28,10 +28,15 @@ feed are written by the one place that owns merges. Review items go to ``review_
    ``wikidata, domain, github, x_handle, x_id, hn_user, website, url`` claim at all. By folded
    name (``fold_name``; exact equality):
 
-   * exactly one *keyed* company has that name -> merge every name-only one into it;
+   * exactly one *keyed* company has that name and it is a *safe target* (``safe_target``: a
+     ``wikidata`` claim, a ``domain`` whose registrable label is the name without spaces or
+     punctuation, or >= 5 distinct referrers by non-follows edges) -> merge every name-only one
+     into it; not safe (an X account named "Capital") -> review, reason
+     ``name_only_unsafe_target``;
    * several keyed companies have it -> one review item listing them (no merge);
    * none -> merge the name-only companies among themselves into the one with most claims
-     (tie: oldest).
+     (tie: oldest), but only for a distinctive name (two words or 6+ characters); shorter ones
+     ("ramp", "meta") are left alone, counted as ``name_only_skipped_short``.
 
    A name-only company is matched by its main names (``Profile.main_folds``), so one stray
    name never chains two companies together.
@@ -40,14 +45,18 @@ feed are written by the one place that owns merges. Review items go to ``review_
    direction, ``follows`` excluded; for people also places, a hub everyone is based_in) to the
    same entity -> review item, reason ``name+neighbor``. Never merged automatically.
 
+A merge of exactly the two entities of an open ``ambiguous_match`` / ``possible_duplicate``
+item passes its ``review_id``, so the API marks the item merged.
+
 Review items are not reopened: an open or dismissed ``possible_duplicate`` item for the same set
 of entities suppresses a new one. A second run finds nothing to merge (merged entities are no
 longer roots). ``--limit N`` acts on at most N groups (merges or reviews); the rest wait.
 
 The run is recorded as worker ``dedupe-enricher-<6 digits>`` (kind ``enricher``, run kind
 ``enrich``) with stats ``{groups, auto_merged, review_opened, skipped_conflict,
-name_only_merged, ...}``. ``--dry-run`` prints every group, the decision and the target, and
-writes nothing (no worker, run, merge or review item).
+name_only_merged, name_only_unsafe, name_only_skipped_short, reviews_resolved, ...}``.
+``--dry-run`` prints every group, the decision and the target, and writes nothing (no worker,
+run, merge or review item).
 """
 
 from __future__ import annotations
@@ -85,6 +94,21 @@ REVIEW_KIND = "possible_duplicate"
 LEGAL_FORMS = ("inc", "llc", "ltd", "corp", "corporation", "co", "gmbh", "sa")
 MAX_DEPTH = 20
 MIN_FOLDED_LEN = 2
+# A keyed company is a safe target for name-only merges with this many distinct referrers (phase 2).
+SAFE_MIN_REFERRERS = 5
+# Name-only companies with no keyed match are merged among themselves only for distinctive names:
+# at least two words or this many characters ("palantir" yes, "ramp" / "meta" / "base" no).
+MIN_ORPHAN_NAME_LEN = 6
+# Two-label public suffixes for ``registrable_label`` (the label left of them is the name).
+TWO_PART_SUFFIXES = frozenset(
+    {
+        "co.uk", "org.uk", "ac.uk", "gov.uk", "me.uk", "ltd.uk", "plc.uk",
+        "com.au", "net.au", "org.au", "co.nz", "org.nz", "co.jp", "ne.jp", "or.jp",
+        "co.kr", "co.in", "com.br", "com.cn", "com.sg", "com.mx", "com.tr", "com.hk",
+        "com.tw", "co.za", "co.il", "com.ar", "co.id", "com.my", "com.ph", "com.vn",
+    }
+)  # fmt: skip
+OPEN_REVIEW_KINDS = ("ambiguous_match", REVIEW_KIND)  # resolved by a merge of exactly their pair
 # Phase 3 neighbors that say nothing about a *person's* identity: half the people are based_in
 # San Francisco. (Two same-named companies based in the same city are worth a look.)
 PERSON_HUB_PREFIXES = ("rbx:place:",)
@@ -118,6 +142,26 @@ def fold_name(name: str, kind: str) -> str:
                 break
             s = shorter
     return s.strip(" ,")
+
+
+def registrable_label(domain: str) -> str | None:
+    """The label left of the public suffix: ``google.com`` -> ``google``, ``acme.co.uk`` ->
+    ``acme``, ``app.notion.so`` -> ``notion`` (a simple rule: the label before the last dot, or
+    before the last two when they are a known two-part suffix)."""
+    labels = [x for x in domain.lower().strip(".").split(".") if x]
+    if len(labels) >= 3 and ".".join(labels[-2:]) in TWO_PART_SUFFIXES:
+        return labels[-3]
+    return labels[-2] if len(labels) >= 2 else None
+
+
+def squash(folded: str) -> str:
+    """A folded name without spaces or punctuation (``"scale ai"`` -> ``"scaleai"``)."""
+    return "".join(ch for ch in folded if ch.isalnum())
+
+
+def distinctive(folded: str) -> bool:
+    """Distinctive enough to merge name-only companies on it alone (two words or 6+ characters)."""
+    return len(folded.split()) >= 2 or len(folded) >= MIN_ORPHAN_NAME_LEN
 
 
 # ── profiles ──────────────────────────────────────────────────────────────
@@ -170,6 +214,21 @@ union
 select d.root, c.subject as other from d
   join claim c on c.object_id = d.id
  where not c.retract and c.predicate <> 'follows'
+"""
+
+
+# Phase 2: distinct entities with a non-follows edge into each candidate target (and into what
+# is merged into it).
+REFERRERS_SQL = """
+with recursive d(root, id, depth) as (
+    select e.id, e.id, 0 from entity e where e.id = any(%(ids)s::text[])
+  union all
+    select d.root, e.id, d.depth + 1 from d join entity e on e.merged_into = d.id
+     where d.depth < %(depth)s
+)
+select distinct d.root, c.subject from d
+  join claim c on c.object_id = d.id
+ where not c.retract and c.predicate <> 'follows' and c.subject <> d.id
 """
 
 
@@ -273,6 +332,23 @@ def strong_conflicts(kind: str, members: Sequence[Profile]) -> list[dict[str, An
     return out
 
 
+def safe_target(target: Profile, folded: Iterable[str], referrers: int) -> str | None:
+    """Why a keyed company is a safe target for name-only companies named ``folded``, or None.
+
+    Safe when it has a ``wikidata`` claim, or a ``domain`` whose registrable label is the name
+    without spaces or punctuation (``ramp.com`` for "ramp"), or at least ``SAFE_MIN_REFERRERS``
+    distinct entities with a non-follows edge into it."""
+    if target.keys.get("wikidata"):
+        return "wikidata"
+    names = {squash(f) for f in folded} - {""}
+    for dom in sorted(target.keys.get("domain", ())):
+        if registrable_label(dom) in names:
+            return f"domain {dom}"
+    if referrers >= SAFE_MIN_REFERRERS:
+        return f"{referrers} referrers"
+    return None
+
+
 # ── admin API ─────────────────────────────────────────────────────────────
 
 
@@ -304,8 +380,11 @@ class AdminClient:
         self.backoff_s = backoff_s
         self.sleep = sleep
 
-    def merge(self, from_id: str, into_id: str) -> dict[str, Any]:
-        body = {"from": from_id, "into": into_id}
+    def merge(self, from_id: str, into_id: str, *, review_id: int | None = None) -> dict[str, Any]:
+        """Merge ``from_id`` into ``into_id``; ``review_id`` also resolves that review item."""
+        body: dict[str, Any] = {"from": from_id, "into": into_id}
+        if review_id is not None:
+            body["review_id"] = review_id
         error = ""
         for attempt in range(self.max_retries + 1):
             try:
@@ -356,6 +435,7 @@ class Decision:
     result: str = ""  # merged / review_opened / review_exists / deferred / planned / error...
     merged: int = 0
     errors: list[str] = field(default_factory=list)
+    resolved: list[int] = field(default_factory=list)  # review items the merges resolved
 
     @property
     def ids(self) -> list[str]:
@@ -397,6 +477,7 @@ class Report:
     decisions: list[Decision] = field(default_factory=list)
     worker: str | None = None
     run_id: int | None = None
+    skipped_short: list[tuple[str, int]] = field(default_factory=list)  # (folded name, companies)
     stats: dict[str, int] = field(
         default_factory=lambda: {
             "groups": 0,
@@ -405,6 +486,9 @@ class Report:
             "skipped_conflict": 0,
             "name_only_merged": 0,
             "name_only_groups": 0,
+            "name_only_unsafe": 0,
+            "name_only_skipped_short": 0,
+            "reviews_resolved": 0,
             "name_neighbor_groups": 0,
             "review_existing": 0,
             "merge_errors": 0,
@@ -419,6 +503,7 @@ class Report:
             "groups_by_predicate": self.groups_by_predicate,
             "stats": self.stats,
             **({"worker": self.worker, "run_id": self.run_id} if self.worker else {}),
+            "name_only_skipped_short": [{"folded": f, "companies": n} for f, n in self.skipped_short],
             "decisions": [d.as_dict() for d in self.decisions],
         }
 
@@ -476,7 +561,10 @@ class Dedupe:
         self._acted = 0
         self._splits: list[tuple[str, str]] | None = None
         self._dismissed: list[tuple[int, list[str]]] = []
-        self._reviewed: set[tuple[str, ...]] = set()  # review sets opened (or planned) in this run
+        self._reviewed: set[tuple[str, ...]] = set()
+        self._open_pairs: dict[frozenset[str], int] | None = (
+            None  # open review items of two ids  # review sets opened (or planned) in this run
+        )
 
     # ── driver ──
 
@@ -551,6 +639,35 @@ class Dedupe:
                 out.append({"dismissed_review": rid})
         return out
 
+    def _open_review_pairs(self) -> dict[frozenset[str], int]:
+        """Open ambiguous_match / possible_duplicate items naming exactly two entities, by pair:
+        a merge of exactly that pair passes the item's ``review_id`` so the API resolves it."""
+        if self._open_pairs is None:
+            with self.db.view() as conn:
+                rows = conn.execute(
+                    """select id, entity_ids from review_item
+                        where status = 'open' and kind = any(%s) and cardinality(entity_ids) = 2
+                        order by id""",
+                    (list(OPEN_REVIEW_KINDS),),
+                ).fetchall()
+            self._open_pairs = {}
+            for r in rows:
+                self._open_pairs.setdefault(frozenset(r["entity_ids"]), int(r["id"]))
+        return self._open_pairs
+
+    def _referrers(self, conn: psycopg.Connection, ids: Iterable[str]) -> dict[str, int]:
+        """Root -> number of distinct entities with a non-follows edge into it (or into what is
+        merged into it, also by this run's planned merges)."""
+        roots = set(ids)
+        if not roots:
+            return {}
+        query = roots | {c for c in self.planned if self._follow(c) in roots}
+        rows = conn.execute(REFERRERS_SQL, {"ids": sorted(query), "depth": MAX_DEPTH}).fetchall()
+        subjects: dict[str, set[str]] = defaultdict(set)
+        for r in rows:
+            subjects[self._follow(r["root"])].add(r["subject"])
+        return {r: len(subjects[r] - {r}) for r in roots}
+
     def _follow(self, x: str) -> str:
         seen: set[str] = set()
         while x in self.planned and x not in seen:
@@ -608,15 +725,25 @@ class Dedupe:
             d.result = "deferred"
             self.report.stats["deferred"] += 1
             return
+        pairs = self._open_review_pairs()
         for m in sorted(d.members, key=target_key):
             if m.id == d.target.id:
                 continue
+            rid = pairs.pop(frozenset((m.id, d.target.id)), None)
             if self.dry_run:
                 self.planned[m.id] = d.target.id
                 d.merged += 1
+                if rid is not None:
+                    d.resolved.append(rid)
                 continue
             try:
-                self.merger.merge(m.id, d.target.id)
+                try:
+                    self.merger.merge(m.id, d.target.id, review_id=rid)
+                except MergeError as e:
+                    if rid is None or "review item" not in str(e):
+                        raise
+                    rid = None  # resolved meanwhile: merge without it
+                    self.merger.merge(m.id, d.target.id, review_id=None)
             except MergeError as e:
                 log.warning("dedupe: %s", e)
                 d.errors.append(str(e))
@@ -624,8 +751,13 @@ class Dedupe:
                 continue
             self.planned[m.id] = d.target.id
             d.merged += 1
+            if rid is not None:
+                d.resolved.append(rid)
+        self.report.stats["reviews_resolved"] += len(d.resolved)
         self.report.stats[stat] += d.merged
         d.result = ("would_merge" if self.dry_run else "merged") + f" {d.merged}"
+        if d.resolved:
+            d.result += f", resolves review {', '.join(map(str, d.resolved))}"
         if d.errors:
             d.result += f", {len(d.errors)} failed"
 
@@ -724,18 +856,40 @@ class Dedupe:
             fs = {f for n in ns for f in n.main_folds()}
             return sorted(fs & within if within is not None else fs)
 
+        with self.db.view() as conn:
+            referrers = self._referrers(conn, into)
         decisions: list[Decision] = []
         for tid, ns in sorted(into.items()):
             t, fs = profs[tid], label(ns, profs[tid].folds())
-            d = Decision(
-                "name_only",
-                kind,
-                "merge",
-                [t, *ns],
-                f"name-only {', '.join(map(repr, fs))} -> the one keyed company",
-                t,
-            )
-            d.evidence = [{"folded": fs, "name_only": sorted(n.id for n in ns)}]
+            why = safe_target(t, fs, referrers.get(tid, 0))
+            ev = {
+                "folded": fs,
+                "name_only": sorted(n.id for n in ns),
+                "safe": why,
+                "referrers": referrers.get(tid, 0),
+            }
+            if why:
+                d = Decision(
+                    "name_only",
+                    kind,
+                    "merge",
+                    [t, *ns],
+                    f"name-only {', '.join(map(repr, fs))} -> the one keyed company ({why})",
+                    t,
+                )
+            else:
+                # One keyed company has the name, but nothing says it is *the* company of that name
+                # (an X account called "Capital"): ask instead of merging.
+                self.report.stats["name_only_unsafe"] += 1
+                d = Decision(
+                    "name_only",
+                    kind,
+                    "review",
+                    [t, *ns],
+                    f"name_only_unsafe_target: name-only {', '.join(map(repr, fs))} -> {t.display!r}"
+                    f" (no wikidata, no matching domain, {referrers.get(tid, 0)} referrers)",
+                )
+            d.evidence = [ev]
             decisions.append(d)
         for ids, ns in sorted(ambiguous.items()):
             fs = label(ns)
@@ -750,6 +904,10 @@ class Dedupe:
             decisions.append(d)
         for f, ns in sorted(orphans.items()):
             if len(ns) < 2:
+                continue
+            if not distinctive(f):  # "ramp", "meta", "base": too generic to merge on, too noisy to review
+                self.report.stats["name_only_skipped_short"] += 1
+                self.report.skipped_short.append((f, len(ns)))
                 continue
             t = min(ns, key=lambda p: (-p.claims, p.created_at, p.id))
             d = Decision("name_only", kind, "merge", ns, f"name-only {f!r}, no keyed company has it", t)
@@ -886,6 +1044,12 @@ def format_summary(report: Report) -> str:
     for d in report.decisions:
         acts[(d.phase, d.action)] += 1
     lines.append("decisions: " + ", ".join(f"{p}/{a} {n}" for (p, a), n in sorted(acts.items())))
+    if report.skipped_short:
+        shown = ", ".join(f"{f!r} x{n}" for f, n in report.skipped_short[:30])
+        more = f" (+{len(report.skipped_short) - 30} more)" if len(report.skipped_short) > 30 else ""
+        lines.append(
+            f"name-only groups left alone (name too short): {len(report.skipped_short)}: {shown}{more}"
+        )
     lines.append(("would: " if report.dry_run else "stats: ") + json.dumps(report.stats, sort_keys=True))
     return "\n".join(lines)
 

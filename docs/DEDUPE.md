@@ -20,7 +20,7 @@ entity counts with everything already merged into it). Three phases, in order:
 | phase | finds | decision |
 | --- | --- | --- |
 | **1. shared key** | entities of the same kind sharing a value of `wikidata`, `domain`, `github`, `x_handle`, `x_id` or `hn_user` (groups that share members are unioned) | **merge**, unless two members have *conflicting strong keys* → **review** |
-| **2. name-only companies** | companies with no `wikidata/domain/github/x_handle/x_id/hn_user/website/url` claim at all, by folded name | one keyed company with that name → **merge** into it; several → **review** (no merge); none → **merge** the name-only ones into the one with most claims |
+| **2. name-only companies** | companies with no `wikidata/domain/github/x_handle/x_id/hn_user/website/url` claim at all, by folded name | one keyed company with that name and it is a *safe target* → **merge** into it; one but not safe → **review** (`name_only_unsafe_target`); several → **review** (no merge); none → **merge** the name-only ones into the one with most claims, if the name is distinctive (two words or 6+ characters), else leave them alone |
 | **3. name + neighbor** | same kind, same folded name, and an edge (either direction) to the same entity | always **review**, reason `name+neighbor` |
 
 **Conflicting strong keys** (phase 1): two members with different values of `wikidata` or `x_id`
@@ -30,6 +30,21 @@ normal and do not block a merge. Two "Figma" entities with different QIDs are re
 **Target** of a merge: the member with a `wikidata` claim, else the one with most claims, tie → the
 oldest `created_at`. Phase 2 merges name-only companies into the keyed one; without one, into the
 name-only company with most claims (tie: oldest).
+
+**Safe target** (phase 2): a keyed company only absorbs name-only companies when something says it
+is *the* company of that name, not just an X account that happens to be called "Capital" or "Base":
+
+- it has a `wikidata` claim; or
+- one of its `domain`s has a registrable label equal to the name without spaces or punctuation
+  (`google.com` for "google", `scaleai.com` for "scale ai"; the label before the last dot, or before
+  the last two for two-part suffixes such as `co.uk` / `com.au`); or
+- at least 5 distinct entities point at it with a non-`follows` edge (worked_at, founded, ...).
+
+Otherwise the keyed company and the name-only ones go to review with reason
+`name_only_unsafe_target` (stat `name_only_unsafe`). Name-only companies with **no** keyed match
+converge only on a distinctive name (two words or 6+ characters: "palantir", "lux capital"); short
+ones ("ramp", "meta", "base") are left alone without a review item (stat
+`name_only_skipped_short`; the dry run lists them).
 
 **Folded name** (phases 2 and 3): lowercase, trimmed, a trailing `(...)` dropped, whitespace
 collapsed; companies also drop trailing legal forms (`inc`, `llc`, `ltd`, `corp`, `corporation`,
@@ -46,6 +61,9 @@ companies together). Folded names shorter than two characters are ignored.
   look);
 - a group in which an admin **split** two members (`merge_log` op `split`), or that contains two
   members of a **dismissed** `possible_duplicate` item, is reviewed instead of merged. Undo sticks.
+
+A merge of exactly the two entities of an open `ambiguous_match` or `possible_duplicate` item passes
+the item's `review_id`, so the API marks it `merged` (stat `reviews_resolved`).
 
 Review items are not reopened: an open or dismissed `possible_duplicate` item for the same set of
 entities (sorted ids) suppresses a new one, also within one run. A second run therefore finds nothing
@@ -83,6 +101,9 @@ in a run of kind `enrich`, with stats:
 | `auto_merged` | entities merged away in phase 1 |
 | `skipped_conflict` | phase-1 groups reviewed instead of merged (conflict, split or dismissal) |
 | `name_only_merged` / `name_only_groups` | phase 2 merges / decisions |
+| `name_only_unsafe` | phase 2 matches refused because the one keyed company is not a safe target (reviewed) |
+| `name_only_skipped_short` | phase 2 groups without a keyed match left alone (name too short) |
+| `reviews_resolved` | open review items resolved by a merge of exactly their pair |
 | `name_neighbor_groups` | phase-3 groups |
 | `review_opened` / `review_existing` | new review items / ones already open or dismissed |
 | `merge_errors` | merges the admin API refused (e.g. merged concurrently); the run carries on |
