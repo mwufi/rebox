@@ -704,18 +704,21 @@ def test_cli_export_and_dry_run(bundle, tmp_path, app_url, target_urls, tgt_db, 
     assert cli.main(["import", str(out), "--layers", "public/nope", "--dry-run"]) == 2
 
 
-class _StubWriter:
+class _StubWriter(ClaimsClient):
     """Accepts everything except claims whose source_ref is in ``bad`` (a 400 naming them), like
-    the real writer does for a value its normalizer disagrees on."""
+    the real writer does for a value its normalizer disagrees on. The import goes through the
+    real ``ClaimsClient.write(..., drop_rejected=True)``."""
 
     def __init__(self, bad: set[str]):
+        super().__init__("http://stub.invalid", "stub", admin_token="")
         self.bad = bad
         self.written: list[str] = []
         self.runs: dict[int, dict] = {}
+        self.registered: list[dict] = []
 
-    def _request(self, method, path, body):
-        assert (method, path) == ("POST", "/internal/workers")
-        return {"id": body["id"]}
+    def register_worker(self, **kw):
+        self.registered.append(kw)
+        return kw["id"] or f"{kw['name']}-{kw['kind']}-000001"
 
     def open_run(self, worker, kind):
         self.runs[len(self.runs) + 1] = {"worker": worker, "kind": kind}
@@ -757,6 +760,28 @@ def test_writer_rejection_drops_only_the_named_claims(tmp_path, tgt_db):
     lc = report.layers["public/s"]
     assert (lc.claims, lc.new, lc.written, lc.rejected) == (3, 3, 2, 1)
     assert stub.runs[1]["status"] == "ok" and stub.runs[1]["stats"]["rejected"] == 1
+
+
+def test_workers_register_through_the_client_with_ids_and_table_trust(tmp_path, tgt_db):
+    """Bundle workers register with their own id and keep the target's trust; claims without a
+    worker (a bundle from an instance without migration 0008) go to the target's
+    ``<source>-connector`` with its table trust (config/trust.yaml: wikidata 0.9)."""
+    a = _ref("rbx:person:aaaa", "A", x_handle="a")
+    worker = {"id": "s-spider-000001", "kind": "spider", "source": "s", "trust": 0.8, "layers": ["public/s"]}
+    claims = [
+        {"layer": "public/s", "worker": worker["id"], "subject": a, "object": None, "retract": False,
+         "predicate": "name", "value": "A", "source_ref": "s:a:name"},
+        {"layer": "public/wikidata", "worker": None, "subject": a, "object": None, "retract": False,
+         "predicate": "name", "value": "Ada A", "source_ref": "wd:a:name"},
+    ]  # fmt: skip
+    path = tmp_path / "w.rebox.jsonl.gz"
+    _write_bundle(path, claims, [worker])
+    stub = _StubWriter(set())
+    report = import_bundle(path, tgt_db, stub, ImportOptions())  # type: ignore[arg-type]
+    got = {(r["name"], r["id"], r["trust"]) for r in stub.registered}
+    assert got == {("s", "s-spider-000001", None), ("wikidata", None, 0.9)}
+    assert {w.target_id for w in report.workers} == {"s-spider-000001", "wikidata-connector-000001"}
+    assert sorted(stub.written) == ["s:a:name", "wd:a:name"]
 
 
 def test_ambiguous_match_prefers_the_bundles_own_id(tmp_path, tgt_db, target_urls):
