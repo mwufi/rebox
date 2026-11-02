@@ -35,7 +35,13 @@ insert into predicate (id, subject_kinds, object_kind, cardinality, meta) values
   ('url',         '{launch,event}', null, 'one', '{"label":"URL","value_type":"url","identity":true,"normalize":"url"}'),
   ('hn_story',    '{launch}',  null, 'one',  '{"label":"HN story","value_type":"text","identity":true,"normalize":"exact"}'),
   ('points',      '{launch}',  null, 'one',  '{"label":"Points","value_type":"int","filterable":true}'),
+  -- X identity, profile and history (0005)
+  ('x_id',        '{person,company}', null, 'one',  '{"label":"X id","value_type":"text","identity":true,"normalize":"exact"}'),
+  ('avatar',      '{person,company}', null, 'one',  '{"label":"Avatar","value_type":"url"}'),
+  ('milestone',   '{person,company,launch}', null, 'many', '{"label":"Milestone","value_type":"json","props":{"title":"text","kind":"text","url":"url"},"timeline":true}'),
   -- edges
+  ('follows',     '{person,company}', '*', 'many', '{"label":"Follows","filterable":true}'),
+  ('acquired',    '{company}', 'company', 'many', '{"label":"Acquired","filterable":true,"timeline":true}'),
   ('worked_at',   '{person}',  'company', 'many', '{"label":"Worked at","props":{"title":"text"},"filterable":true}'),
   ('founded',     '{person}',  'company', 'many', '{"label":"Founded","filterable":true}'),
   ('ceo_of',      '{person}',  'company', 'many', '{"label":"CEO of","filterable":true}'),

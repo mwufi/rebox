@@ -190,7 +190,16 @@ Every decision writes `resolution_log`. Batch-local cache so one batch resolves 
 | `REBOX_ENV` | api, worker | `dev` \| `prod` |
 | `USER_AGENT` | worker | `rebox-bot/0.1 (+https://rebox.example)` |
 | `GITHUB_TOKEN` | worker (optional) | enables live GitHub connector |
-| `X_BEARER_TOKEN` | worker (optional) | enables live X connector |
+| `X_BEARER_TOKEN` | worker (optional) | enables live X connectors |
+| `ANTHROPIC_API_KEY` | worker (parsers), api (wiki) | enables AI parsing and wikis |
+| `EXA_API_KEY` | worker (optional) | enables Exa discovery |
+| `PARSER_MODEL` | worker | `claude-haiku-5-5` |
+| `WIKI_MODEL` | api | `claude-haiku-5-5` |
+| `WIKI_PUBLIC` | api | `false` (true lets anonymous viewers generate wikis) |
+| `X_MAX_USER_READS_PER_RUN` / `X_MAX_POST_READS_PER_RUN` | worker | `2000` / `1000` |
+| `EXA_MAX_REQUESTS_PER_RUN` | worker | `100` |
+| `PARSER_MAX_CALLS_PER_RUN` | worker | `2000` |
+| `METRICS_DB_PASSWORD` | migrate, grafana | password for role `rebox_metrics` |
 | `AWS_REGION` | worker (s3 raw store) | `us-west-2` |
 | `SCHEDULE_INTERVAL_S` | compose scheduler | `900` |
 
@@ -205,3 +214,33 @@ Every decision writes `resolution_log`. Batch-local cache so one batch resolves 
 - `apps/api`: `pnpm --filter @rebox/api build` must emit `dist/server.js`; the image runs `node dist/server.js` from `/app/apps/api` and serves static files from `apps/api/public` (resolve it relative to `dist/..`).
 - `apps/worker`: console script `rebox-worker` must support `--help`; the image runs from `/app` with fixtures at `/app/fixtures/raw/<source>` (resolve fixtures relative to the repo root, overridable by `FIXTURES_DIR`).
 - Commit `pnpm-lock.yaml` and `apps/worker/uv.lock`; images use frozen/locked installs when present.
+
+## 12. Provenance: workers, runs, evidence (migration 0005)
+
+Every write comes from a **worker** (a named, accountable writer) inside a **run**. Internal spiders and external contributors are the same thing with different trust.
+
+- **Worker id:** `<name>-<kind>-<6 digits>`, e.g. `dbooth-spider-292929`, `hn-connector-104233`, `xbio-parser-551021`. Kinds: `connector`, `spider`, `parser`, `enricher`, `external`. A worker's identity is stable across runs; `worker.config` holds what makes it distinct (e.g. its seed list).
+- **Default trust** (0–1): connector 0.8, spider 0.8, parser 0.6, enricher 0.5, external 0.3. Admins can change it.
+- **Registration** (ingest token): `POST /internal/workers {name, kind, source, layers, config?, description?, id?}` → `{id}`; idempotent on `(name, kind, source)` when `id` is omitted (returns the existing worker). External workers: `POST /v0/admin/workers` (admin token) → `{id, token}`, token shown once, format `rbxw_<worker id>_<32 hex>`, stored as sha256 in `worker.token_hash`.
+- **Runs:** `POST /internal/runs {worker, kind}` → `{run_id}`; `PATCH /internal/runs/:id {status?, stats?, error?}` (stats merge). The worker pipeline opens a run per sync/replay/parse and closes it with final stats (`fetched, claims, written, minted, matched, review, rejected, api_calls, cost_usd`).
+- **Writer (§5) additions:** request body gains `"worker": "<id>"` (required) and `"run_id"` (optional); each claim may carry `"evidence": [{"url", "author"?, "quote"?, "observed_at"?}]`. Validation: worker exists and is `active`; `layer` ∈ `worker.layers` (a `public/<source>` layer is still auto-created); evidence is **required** when the worker kind is `parser`, `enricher` or `external`. The ingest token may act as any internal worker (`owner = 'rebox'`); an external token acts only as its own worker. `last_seen_at` is updated on every write.
+- **Fold tie-break within a scope:** higher `worker.trust` first, then newest `updated_at`.
+- **Fact view (§6) additions:** `worker` (id), `evidence` (array or null), and `support` = number of distinct (layer, source_ref) rows across the viewer's visible layers that back the same fact key (corroboration).
+- **Predicates:** `object_kind = '*'` means any entity kind (used by `follows`). New in the seed: `x_id` (identity), `avatar`, `milestone` (attribute, many, value `{title, kind, url}`, dated by `valid_from`), `follows` (→ `*`), `acquired` (company → company). `meta.timeline = true` marks predicates that belong on timelines.
+
+## 13. Discovery frontier (migration 0005)
+
+Spiders record what they have discovered but not yet indexed in `frontier (source, key, kind, label, score, depth, discovered_by, status, payload)`. It is operational state, not graph facts. `score` ranks what to index next (e.g. how many seed accounts follow an X account). Spiders must respect per-run budgets (env, §9).
+
+## 14. Read API additions
+
+| Method + path | Returns |
+| --- | --- |
+| `GET /v0/workers` | `[{id, kind, source, owner, trust, status, last_seen_at, claims_total, claims_24h, runs_ok, runs_failed, last_run}]` |
+| `GET /v0/workers/:id` | worker + recent runs + `throughput` (claims per hour, last 48 h) + claims by predicate + 20 recent facts |
+| `GET /v0/stats/timeseries?metric=entities\|claims&by=kind\|worker\|layer&bucket=hour\|day&since=` | `{"buckets": [{"t", "key", "n"}]}` (entities = first claim per subject; kind from the id prefix) |
+| `GET /v0/entities/:id/timeline` | `{"events": [{"at", "kind", "title", "predicate", "other": EntityRef\|null, "fact": Fact}]}` newest first: dated facts (`valid_from`/`valid_to` of edges and `milestone`s), incoming dated edges, and "first seen in Rebox" |
+| `GET /v0/entities/:id/wiki` | `{content_md, model, generated_at, input_seq, stale: bool}` or 404 |
+| `POST /v0/entities/:id/wiki` | generates (or regenerates if stale) from the entity's public facts + 1-hop neighbors; admin token required unless `WIKI_PUBLIC=true`; returns the wiki |
+
+Grafana reads operational tables directly as role `rebox_metrics` (no access to `claim`/`entity`).
