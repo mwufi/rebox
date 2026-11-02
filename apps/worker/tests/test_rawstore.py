@@ -218,3 +218,13 @@ def test_cli_raw_reindex(db, owner, tmp_path, app_url, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert '"indexed": 1' in out and "rebox-worker replay hn" in out
     assert [r[0] for r in _index_rows(owner)] == ["story:1"]
+
+
+def test_reindex_treats_sub_second_index_times_as_the_same_version(db, owner, tmp_path):
+    """Files keep fetched_at to the second (RawRecord.to_json); the pipeline indexes the
+    in-memory record with microseconds. That is the same version, not a stale index row."""
+    store = FileRawStore(tmp_path / "raw", db)
+    store.put(rec({"n": 1}, ext="story:1", when=WHEN.replace(microsecond=815048)))
+    stats = store.reindex("hn")
+    assert (stats.up_to_date, stats.stale, stats.missing) == (1, 0, 0)
+    assert _index_rows(owner)[0][2] == WHEN.replace(microsecond=815048)  # untouched
