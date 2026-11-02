@@ -1,0 +1,11 @@
+{
+  "id": "person:ada",
+  "kind": "person",
+  "name": "Ada Example",
+  "identity": {"github": "ada-example", "x_handle": "x.com/ada_example"},
+  "attrs": {"headline": "Building robots at Acme (example fixture)", "location": "San Francisco"},
+  "edges": [
+    {"predicate": "worked_at", "dir": "out", "value": {"title": "CTO"}, "valid_from": "2019-03-01",
+     "entity": {"kind": "company", "identity": {"domain": "acme-robotics.example"}}}
+  ]
+}

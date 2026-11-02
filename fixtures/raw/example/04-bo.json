@@ -1,0 +1,11 @@
+{
+  "id": "person:bo",
+  "kind": "person",
+  "name": "Bo  Example.",
+  "context": [{"kind": "company", "identity": {"domain": "www.acme-robotics.example"}}],
+  "attrs": {"headline": "Cofounder, Acme Robotics (example fixture)"},
+  "edges": [
+    {"predicate": "invested_in", "dir": "out",
+     "entity": {"kind": "company", "identity": {"domain": "https://globex.example/"}}}
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "company:acme",
+  "kind": "company",
+  "name": "Acme Robotics",
+  "identity": {"domain": "https://www.Acme-Robotics.example/about", "github": "@acme-robotics"},
+  "attrs": {"description": "Fictional warehouse robots company (example fixture).", "founded_year": 2019},
+  "edges": [
+    {"predicate": "founded", "dir": "in",
+     "entity": {"kind": "person", "name": "Ada Example", "identity": {"github": "https://github.com/Ada-Example"}}},
+    {"predicate": "founded", "dir": "in",
+     "entity": {"kind": "person", "name": "Bo Example"}}
+  ]
+}
