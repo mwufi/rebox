@@ -51,10 +51,12 @@ Under RLS, Postgres uses an index only when the operator is leakproof. `value #>
 | --- | --- | --- |
 | `qid` | uppercase, must match `Q\d+` | `q42` → `Q42` |
 | `handle` | lowercase, strip leading `@`, strip URL prefix | `https://x.com/Jack` → `jack` |
-| `domain` | lowercase host, strip scheme, `www.`, port, path | `https://www.Stripe.com/about` → `stripe.com` |
-| `url` | lowercase scheme+host, drop `www.`, drop trailing `/`, drop query/fragment | `https://www.acme.ai/` → `https://acme.ai` |
+| `domain` | lowercase host, strip scheme, port, path, and a leading `www.` only if the rest still contains a dot | `https://www.Stripe.com/about` → `stripe.com` |
+| `url` | lowercase scheme+host, drop a leading `www.` only if the rest still contains a dot, drop trailing `/`, drop query/fragment | `https://www.acme.ai/` → `https://acme.ai`; `http://www.com` → `http://www.com` |
 | `email` | lowercase, trim | |
 | `exact` | trim only | |
+
+Both services must agree exactly: shared cases live in `contracts/normalize-cases.json`, and both test suites run them.
 
 Name matching (resolver fuzzy pass): lowercase, strip punctuation and accents, collapse whitespace.
 
