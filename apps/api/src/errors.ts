@@ -6,7 +6,7 @@ export interface ErrorDetail {
 
 export class ApiError extends Error {
   constructor(
-    readonly status: 400 | 401 | 403 | 404 | 503,
+    readonly status: 400 | 401 | 403 | 404 | 409 | 503,
     readonly code: string,
     message: string,
     readonly details?: ErrorDetail[],
@@ -22,3 +22,4 @@ export class ApiError extends Error {
 export const validation = (details: ErrorDetail[]) => new ApiError(400, 'validation', 'validation failed', details);
 export const badRequest = (message: string) => validation([{ index: -1, message }]);
 export const notFound = (message = 'not found') => new ApiError(404, 'not_found', message);
+export const conflict = (message: string) => new ApiError(409, 'conflict', message);

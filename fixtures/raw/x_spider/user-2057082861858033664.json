@@ -1,0 +1,25 @@
+{
+ "content_hash": "sha256:42343488f2dccded1b65d3f3b290cffe23b13068fada7f16a60f43d950aa9d20",
+ "external_id": "user:2057082861858033664",
+ "fetched_at": "2026-11-02T10:48:32Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2026-05-20T12:55:53.000Z",
+   "description": "building @jointhebridge ‥̳⁝̳⁝̳⁞̳⁅̳⁆̳⁞̳⁝̳⁝̳.̳.̳⁝̳⁝̳⁞̳⁅̳⁆̳⁞̳⁝̳⁝̳‥̳ investing @join_ef",
+   "id": "2057082861858033664",
+   "location": "London, England",
+   "name": "elian",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/2096741956781215744/u-7te_an_normal.jpg",
+   "public_metrics": {
+    "followers_count": 450,
+    "following_count": 449
+   },
+   "url": "",
+   "username": "elian_mcc",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/elian_mcc"
+}

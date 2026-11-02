@@ -1,0 +1,20 @@
+{
+ "content_hash": "sha256:d717ee88678ec761ecb23baef0be5c959e23f150091cbf23b8c5a09efd0fede5",
+ "external_id": "post:2114117767980884097",
+ "fetched_at": "2026-11-02T10:48:49Z",
+ "payload": {
+  "author": {
+   "id": "18576537",
+   "username": "IDF"
+  },
+  "post": {
+   "created_at": "2026-10-24T22:12:08.000Z",
+   "id": "2114117767980884097",
+   "lang": "en",
+   "text": "⭕️ Following the terror attack on Friday, in which 2 IDF soldiers fell and additional soldiers were wounded, security forces launched a targeted operation in the area of Hebron from which the terrorists emerged, with the aim of dismantling terrorist infrastructure and preventing"
+  },
+  "type": "x_post"
+ },
+ "source": "x_spider",
+ "url": "https://x.com/IDF/status/2114117767980884097"
+}

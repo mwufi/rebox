@@ -4,6 +4,7 @@ import type { EntityRef, Fact } from '../api';
 import { HANDLE_LABEL, avatarOf, displayName, handleOf, initials, kindLabel, scopeOf, sourceCode, sourceHue, type HandleKind } from '../lib/format';
 
 export const entityPath = (id: string) => `/e/${encodeURIComponent(id)}`;
+export const workerPath = (id: string) => `/workers/${encodeURIComponent(id)}`;
 export const graphPath = (id: string) => `/e/${encodeURIComponent(id)}/graph`;
 
 export function KindGlyph({ kind }: { kind: string }) {
@@ -75,23 +76,6 @@ export function Avatar({
   );
 }
 
-/** "Source ↗" links for a fact's evidence (CONTRACTS §12), plus its support count when > 1. */
-export function Evidence({ fact }: { fact: Pick<Fact, 'evidence' | 'support'> }) {
-  const ev = Array.isArray(fact.evidence) ? fact.evidence.filter((e) => typeof e?.url === 'string' && /^https?:\/\//i.test(e.url)) : [];
-  const support = typeof fact.support === 'number' && fact.support > 1 ? fact.support : null;
-  if (!ev.length && !support) return null;
-  return (
-    <span className="evidence-links">
-      {ev.slice(0, 3).map((e) => (
-        <a key={e.url} href={e.url} target="_blank" rel="noopener noreferrer nofollow" title={e.quote ?? e.url}>
-          Source{e.author ? ` · ${e.author}` : ''} ↗
-        </a>
-      ))}
-      {support && <span className="support" title="Distinct sources backing this fact">{support} sources</span>}
-    </span>
-  );
-}
-
 /** A citation mark for one fact: source code + hue; layer and source_ref on hover/focus. */
 export function SourceBadge({ fact }: { fact: Pick<Fact, 'source' | 'layer' | 'source_ref' | 'updated_at'> }) {
   const style = { '--h': sourceHue(fact.source) } as CSSProperties;
@@ -113,6 +97,54 @@ export function SourceBadge({ fact }: { fact: Pick<Fact, 'source' | 'layer' | 's
         {'\n'}
         <span style={{ opacity: 0.65 }}>updated {fact.updated_at.slice(0, 10)}</span>
       </span>
+    </span>
+  );
+}
+
+/** Host of an evidence URL, for the "Source ↗" link title. */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * CONTRACTS §12 provenance for one fact: "2 sources" when corroborated, the writing worker, and
+ * each evidence link as "Source ↗" with its author. Renders nothing for a plain, single-source,
+ * unattributed fact.
+ */
+export function FactProvenance({ fact }: { fact: Pick<Fact, 'worker' | 'evidence' | 'support'> }) {
+  const support = fact.support ?? 1;
+  const evidence = fact.evidence ?? [];
+  if (support < 2 && !fact.worker && evidence.length === 0) return null;
+  return (
+    <span className="fact-prov">
+      {support > 1 && (
+        <span className="support" title={`${support} independent source records back this fact`}>
+          {support} sources
+        </span>
+      )}
+      {evidence.map((e, i) => (
+        <a
+          key={`${e.url}|${i}`}
+          className="evidence"
+          href={e.url}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          title={[e.quote ? `“${e.quote}”` : null, hostOf(e.url), e.observed_at ? `observed ${e.observed_at.slice(0, 10)}` : null]
+            .filter(Boolean)
+            .join('\n')}
+        >
+          Source ↗{e.author && <span className="by"> · {e.author}</span>}
+        </a>
+      ))}
+      {fact.worker && (
+        <Link to={workerPath(fact.worker)} className="worker-link" title={`written by worker ${fact.worker}`}>
+          {fact.worker}
+        </Link>
+      )}
     </span>
   );
 }

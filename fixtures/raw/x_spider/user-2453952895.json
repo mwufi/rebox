@@ -1,0 +1,38 @@
+{
+ "content_hash": "sha256:0f87e700f967de8cfec72e735f640af28cd14103f5939658ffb032968054c3fd",
+ "external_id": "user:2453952895",
+ "fetched_at": "2026-11-02T10:48:34Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2014-04-20T01:44:10.000Z",
+   "description": "Chief Revenue Officer",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "display_url": "factory.ai",
+       "end": 23,
+       "expanded_url": "http://factory.ai",
+       "start": 0,
+       "url": "https://t.co/Y30Bkkzce1"
+      }
+     ]
+    }
+   },
+   "id": "2453952895",
+   "location": "San Francisco, CA",
+   "name": "Marcello Gallo",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/1803947200348868608/x46Kw4EI_normal.jpg",
+   "public_metrics": {
+    "followers_count": 371,
+    "following_count": 676
+   },
+   "url": "https://t.co/Y30Bkkzce1",
+   "username": "mgbosyyz",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/mgbosyyz"
+}

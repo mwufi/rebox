@@ -10,6 +10,8 @@ Every connector sends `USER_AGENT` (default `rebox-bot/0.1`; set it to `rebox-bo
 | Hacker News launches | `public/hn` | hourly (3600) | nothing |
 | GitHub | `public/github` | weekly (604800) | `GITHUB_TOKEN` (disabled without it) |
 | X profiles | `public/x` | weekly (604800) | `X_BEARER_TOKEN` (disabled without it) |
+| X following-graph spider | `public/x_spider` | on demand only (`scheduled = False`, paid API) | `X_BEARER_TOKEN`, `config/seeds.yaml` |
+| Exa discovery | `public/exa` | daily (86400) | `EXA_API_KEY` (disabled without it), `config/seeds.yaml` |
 
 ---
 
@@ -96,3 +98,68 @@ One raw record per organization (`external_id = <QID>`), holding all of its bind
 **Predicates** (on the existing entity, matched by `x_handle`): `x_followers`; `headline` (people) or `description` (companies); `location` (people); `website` (expanded, never t.co); `name` only if the entity has none. Posts and engagement are out of scope for v0.
 
 **source_ref.** `x:<handle>:<predicate>:<kind>`.
+
+---
+
+## X following-graph spider — `x_spider`
+
+**What.** Rebox's own crawler. It finds out who the best-connected SF people follow on X (people and companies) and ranks those accounts by how many seed accounts follow them. Code: `connectors/x_spider.py`, using the shared client `xapi.py`. Seeds: `config/seeds.yaml` → `seeds: {<set>: [<username>, …]}` (override the path with `SEEDS_FILE`). Each seed set is its own worker identity, `<set>-spider-<6 digits>`. `XSpider.workers()` lists them, and `XSpider.worker_for(record)` returns the seed set a `x_following` record belongs to (`payload.seed_set`; null for expansion pages). Starting sets are `dbooth: [davidbooth]`, `yoni: [yoni_michael]` and `sf-core: []`.
+
+**Fetched**, in priority order. Each phase starts only when the one before it has finished:
+1. Seeds: `GET /2/users/by?usernames=…`. Ids are cached in the cursor.
+2. **Direct following of every seed:** `GET /2/users/:id/following?max_results=…&user.fields=description,location,url,entities,public_metrics,profile_image_url,verified_type,created_at`. Seeds are crawled round robin, and in each round the remaining user budget is split evenly between the seeds that are not finished yet. `max_results` = min(`X_SPIDER_PAGE_SIZE` (1000), that share). Pages resume through `pagination_token`, which is stored in the cursor.
+3. **Posts**, only once every seed's following is complete: `GET /2/users/:id/tweets?exclude=replies,retweets&max_results=≤20` for the top-scored frontier accounts whose kind is in `X_SPIDER_POST_KINDS` (default `company`). Within a score, SF/Bay Area accounts come first.
+4. **Depth-1 expansion**, only once every seed's following is complete: the top frontier *people* at depth 1 that look like SF people are crawled like seeds, until the budget is spent. "Look like SF people" means the location or bio mentions SF, the Bay Area, Berkeley, Oakland, Palo Alto, …, or there is no location and at least 2 seeds follow them. Crawled accounts are marked `fetched` in the frontier.
+
+`X_SPIDER_PHASES` (default `following,posts,expansion`) restricts a run to some phases. Running only `posts`, for example, skips the "following first" gate.
+
+**Spend guard (X is pay-per-use).** Estimated price: $0.01 per user object and $0.005 per post, charged on the objects actually returned (X sends no cost headers today). Limits:
+- per run: `X_MAX_USER_READS_PER_RUN` (default 2000) and `X_MAX_POST_READS_PER_RUN` (default 1000);
+- in total: `X_TOTAL_BUDGET_USD` (default 30). Cumulative estimated spend `{user_reads, post_reads, api_calls, usd}` is kept in `connector_state.cursor.spend` and written to the DB **after every call**, so a crash cannot lose it.
+
+A request is sent only if its worst case (`max_results` objects) fits both limits. Page sizes shrink to fit the budget, and the run stops cleanly when nothing fits (`budget_stop`). The spider also stops at once, **without retrying**, on 401, 402, 429, a 403 that mentions a usage cap or credits, or `x-rate-limit-remaining: 0` (`x_stop`). Both are recorded in the run stats and in `cursor.last_run`. 5xx and network errors are retried 3 times with backoff. Protected or suspended accounts are skipped (`crawl[id].error`). Run stats (`XSpider.run_stats`, also stored in `cursor.last_run`) are `api_calls`, `cost_usd`, `user_reads`, `post_reads`, `x_total_spent_usd`, `x_total_budget_usd`, and `budget_stop` / `x_stop` / `posts_stop` / `waiting` / `expansion` when they apply. The connector has `scheduled = False`, so it runs only when someone runs `sync x_spider` or `enqueue x_spider`.
+
+**Cursor.** `{"seeds": {username: id|"missing"}, "crawl": {x_id: {next, done, pages, users, depth, expansion?, error?, completed_at?}}, "posts_done": [x_id], "spend": {…}, "last_run": {…}}`. It is saved after every page. A `--limit` run keeps only the progress of its last complete page.
+
+**Frontier** (`frontier`, `source='x_spider'`): `key` = X user id, `kind` = `person`|`company` (from `classify`), `label` = username, `payload` = the user object, `depth` = 0 for seeds (`discovered_by = ["seed-set:<set>"]`) and seed depth + 1 for accounts they follow. `discovered_by` = usernames of the accounts that follow it, and `score` = the number of those distinct accounts. Re-reading a page never inflates a score.
+
+**Raw records** (payload shapes; the AI parser slice S9 consumes them):
+- `x_user`, `external_id = user:<x id>`, url `https://x.com/<username>`:
+  `{"type": "x_user", "user": <X user object as returned: id, username, name, description, location?, url?, entities? {url.urls[].expanded_url, description.urls[], description.mentions[]…}, public_metrics {followers_count, following_count, tweet_count, listed_count, like_count, media_count}, profile_image_url, verified_type?, created_at>}`
+- `x_following`, `external_id = following:<seed x id>:<page no>`, url `https://x.com/<seed>/following`:
+  `{"type": "x_following", "seed": <seed user object>, "seed_set": "<set>"|null, "depth": 0|1, "page": n, "users": [<user object>, …]}`
+- `x_post`, `external_id = post:<post id>`, url `https://x.com/<author>/status/<id>`:
+  `{"type": "x_post", "post": {id, text, created_at, lang, entities?, public_metrics, conversation_id, edit_history_tweet_ids}, "author": {"id", "username"}}`
+
+**Classification** (`classify`, deterministic). An account is a `company` when `verified_type` is `business` or `government`, when the bio says "official account", or when company signals score ≥ 2 and outweigh person signals. Company signals: a company-like name ("… Labs/AI/Capital/Ventures/HQ…"), handle = name + ai/hq/labs/… (`@TectonAI` "Tecton"), the website is the account's own (host label = handle or name, `get-`/`try-` prefixes, `-ai`/`-labs` suffixes), "we/our/join us" voice, product phrases. Person signals: first person, pronouns, roles (founder, CEO, partner at, ex-…, prev), and a "First Last" name. Everything else is a `person`. On the live sample (148 accounts) 10 came out as companies.
+
+**Predicates** (`x_user`; the subject is matched by `x_id`, then `x_handle`, then `domain` for companies):
+- both kinds: `x_id`, `x_handle`, `name` (display name without emoji), `avatar` (`profile_image_url` at 400×400; the default avatar is dropped), `x_followers`
+- person: `headline` (bio with t.co links expanded), `location`, `website` (`entities.url` expanded, never t.co)
+- company: `description` (bio), plus `website` and `domain` only when the site is the company's own
+- `x_following` → `follows` edges seed → account (`object_kind '*'`, no props). Edge refs carry no name, so the account's own `x_user` record names it. `x_post` produces no claims.
+
+**source_ref.** `x_spider:user:<x id>:<predicate>`; `x_spider:follows:<seed x id>:<x id>`.
+
+**License / terms.** X developer terms. Public profile fields and public posts only. Fixtures (`fixtures/raw/x_spider/`) are real public accounts, trimmed to the fields above, with 13 accounts per seed page.
+
+---
+
+## Exa discovery — `exa`
+
+**What.** Fresh SF startup activity found through Exa web search: recent launches, seed and Series A announcements, YC launches, and named startups the architect lists. Code: `connectors/exa.py`. Queries: `config/seeds.yaml` → `exa.queries`. Each query is a string or `{q, category?, days?, num? (≤ 25), include_domains?}`.
+
+**Fetched.** `POST https://api.exa.ai/search` with header `x-api-key`. Request fields: `numResults` ≤ 25, `type: auto`, `contents: {text: {maxCharacters: 3000}, highlights, summary}`, `startPublishedDate` = now − `days` (default 30), and `category` / `includeDomains` when the query sets them. A query with `include_domains` gets no date filter unless it sets `days`; the `company`/`people` categories never get one, because Exa rejects it with a 400. A 400 skips that query (`failed_queries` in the stats) and the run continues. 429/5xx are retried. Budget: `EXA_MAX_REQUESTS_PER_RUN` (default 100) requests per run, round robin over the queries (`cursor.next_query`). The cost Exa reports (`costDollars.total`) is summed into the run stats as `cost_usd`, together with `api_calls`, `results`, `homepages` and `queries`.
+
+**Raw record** `exa_result`, `external_id = url:<normalized url>` (a page found by two queries in one run is stored once):
+`{"type": "exa_result", "query", "category", "url", "url_key", "domain", "homepage": bool, "title", "published_date", "author", "text" (≤ 3000 chars), "highlights": [str], "summary", "image", "favicon"}`.
+`homepage` = the URL is the root (or a language root) of a host that is not a platform, news site or directory. The parser slice extracts articles.
+
+**Frontier** (`source='exa'`): one row per homepage domain. `kind` = `company`, `label` = cleaned name, `discovered_by` = `exa:<query>`, `score` = the number of distinct queries that found it.
+
+**Predicates** (homepages only; articles produce none): company `domain` (identity), `name` (the title segment that matches the host, without "(YC S26)", e.g. "Ditto | Your college matchmaker" on ditto.ai → "Ditto"), `website` (site root), `yc_batch` when the title carries one. **source_ref** `exa:domain:<domain>:<predicate>`.
+
+**Named startups** (checked by hand in Nov 2026): Ditto → `ditto.ai` (AI matchmaker for college students; $9.2M seed led by Peak XV); Known → `known.com` (swipeless dating with a short voice call; X @dateknown; $9.7M seed, Dec 2025; formerly knowndating.com, which Exa does not index).
+
+**License / terms.** Exa API terms. The raw store keeps titles, URLs, short text excerpts and highlights. Fixtures (`fixtures/raw/exa/`, 20 results) are trimmed to 600 characters of text, with email addresses redacted.
+

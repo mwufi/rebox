@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react';
 import type { Timeline as TimelineData, TimelineEvent } from '../api';
 import { relativeTime } from '../lib/format';
 import { eventDate, eventKey, groupByYear, isHeadline } from '../lib/timeline';
-import { EntityLink, Evidence, SourceBadge } from './bits';
+import { EntityLink, FactProvenance, SourceBadge } from './bits';
 
 const PREVIEW = 12;
 
@@ -82,7 +82,7 @@ function Event({ e }: { e: TimelineEvent }) {
               Link ↗
             </a>
           )}
-          {fact && <Evidence fact={fact} />}
+          {fact && <FactProvenance fact={fact} />}
           {fact && <SourceBadge fact={fact} />}
         </span>
       </div>

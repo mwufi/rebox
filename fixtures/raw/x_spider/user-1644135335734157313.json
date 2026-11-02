@@ -1,0 +1,37 @@
+{
+ "content_hash": "sha256:fdc89de289f7240d6bc6804a9e01609e5b548d4aa90e3369df57105a999bd1a0",
+ "external_id": "user:1644135335734157313",
+ "fetched_at": "2026-11-02T10:48:34Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2023-04-07T00:29:56.000Z",
+   "description": "Toward self-improving software",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "display_url": "factory.com",
+       "end": 23,
+       "expanded_url": "http://factory.com",
+       "start": 0,
+       "url": "https://t.co/vafK4qyMCx"
+      }
+     ]
+    }
+   },
+   "id": "1644135335734157313",
+   "name": "Factory",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/1768168785733980160/a4hWTSfN_normal.jpg",
+   "public_metrics": {
+    "followers_count": 59276,
+    "following_count": 50
+   },
+   "url": "https://t.co/vafK4qyMCx",
+   "username": "factory",
+   "verified_type": "business"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/factory"
+}

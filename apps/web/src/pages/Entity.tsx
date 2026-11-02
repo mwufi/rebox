@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiError, isRedirect, type EntityView, type Fact } from '../api';
-import { CopyButton, EntityLink, Icon, KindTag, Skel, SkelRows, SourceBadge, graphPath } from '../components/bits';
+import { CopyButton, EntityLink, FactProvenance, Icon, KindTag, Skel, SkelRows, SourceBadge, graphPath } from '../components/bits';
 import { groupFacts, sourcesOf, type FactGroup, type PredicateIndex } from '../lib/facts';
 import { dateRange, displayName, edgeProps, hrefFor, plural, sourceCode, sourceHue, valueText } from '../lib/format';
 import { primeCache, useApi, useAsync, usePredicates, useTitle } from '../lib/hooks';
@@ -41,6 +41,7 @@ export function EdgeGroup({ group, side }: { group: FactGroup; side: 'object' | 
               <span className="main">
                 <EntityLink entity={other} />
                 {props && <span className="props">{props}</span>}
+                <FactProvenance fact={f} />
               </span>
               <span className={`when${range && f.valid_from && !f.valid_to ? ' current' : ''}`}>{range}</span>
               <SourceBadge fact={f} />
@@ -71,6 +72,7 @@ function KeyAttrs({ groups }: { groups: FactGroup[] }) {
                 <Value fact={f} />
               </span>
               <SourceBadge fact={f} />
+              <FactProvenance fact={f} />
             </dd>
           ))}
         </div>
@@ -87,9 +89,12 @@ function AttrList({ groups }: { groups: FactGroup[] }) {
           <dt>{g.label}</dt>
           <dd>
             {g.facts.map((f) => (
-              <span className="val" key={`${f.layer}|${valueText(f.value)}`}>
-                <Value fact={f} />
-                <SourceBadge fact={f} />
+              <span className="val-wrap" key={`${f.layer}|${valueText(f.value)}`}>
+                <span className="val">
+                  <Value fact={f} />
+                  <SourceBadge fact={f} />
+                </span>
+                <FactProvenance fact={f} />
               </span>
             ))}
           </dd>
@@ -142,6 +147,7 @@ export function EntityBody({ view, preds }: { view: EntityView; preds: Predicate
           <p className="entity-desc">
             <span>{valueText(descFact.value)}</span>
             <SourceBadge fact={descFact} />
+            <FactProvenance fact={descFact} />
           </p>
         )}
         <div className="entity-actions">

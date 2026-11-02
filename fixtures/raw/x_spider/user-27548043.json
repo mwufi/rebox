@@ -1,0 +1,38 @@
+{
+ "content_hash": "sha256:7bab49fc4b5a7df032a07f050d5133a2e75efd63c0366ac3e4d51bf3df960efe",
+ "external_id": "user:27548043",
+ "fetched_at": "2026-11-02T10:48:34Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2009-03-30T01:01:19.000Z",
+   "description": "MTS at @FactoryAI; previously at: Meta, Airbnb, Brex & Opendoor",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "display_url": "alvinsng.com",
+       "end": 23,
+       "expanded_url": "https://alvinsng.com",
+       "start": 0,
+       "url": "https://t.co/8bDnQ85wOb"
+      }
+     ]
+    }
+   },
+   "id": "27548043",
+   "location": "San Francisco, CA",
+   "name": "Alvin Sng",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/1633939103124451328/Z57AZpU7_normal.jpg",
+   "public_metrics": {
+    "followers_count": 6178,
+    "following_count": 634
+   },
+   "url": "https://t.co/8bDnQ85wOb",
+   "username": "alvinsng",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/alvinsng"
+}
