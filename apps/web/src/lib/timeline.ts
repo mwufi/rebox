@@ -46,3 +46,40 @@ export function isHeadline(e: Pick<TimelineEvent, 'kind' | 'headline'>): boolean
 }
 
 export const eventKey = (e: TimelineEvent, i: number) => e.key ?? `${e.at}|${e.kind}|${e.title}|${i}`;
+
+/** One report behind a milestone event (S18; `sources` on milestone events). */
+export interface EventSource {
+  url: string;
+  title: string;
+  layer: string;
+}
+
+/** A timeline event as the API sends it, with the S18 milestone fields. */
+export type SourcedEvent = TimelineEvent & { sources?: EventSource[]; support?: number };
+
+const isHttp = (u: unknown): u is string => typeof u === 'string' && /^https?:\/\//i.test(u);
+
+/** The milestone's sources (http(s) urls only), oldest first; a pre-S18 milestone's own url. */
+export function eventSources(e: SourcedEvent): EventSource[] {
+  if (Array.isArray(e.sources)) return e.sources.filter((s) => isHttp(s?.url));
+  const v = e.fact?.value;
+  const url = v && typeof v === 'object' ? (v as { url?: unknown }).url : null;
+  return e.kind === 'milestone' && isHttp(url) ? [{ url, title: e.title, layer: e.fact?.layer ?? '' }] : [];
+}
+
+/** How many distinct sources report the event (1 unless it is a cluster of reports). */
+export function sourceCount(e: SourcedEvent): number {
+  return typeof e.support === 'number' && e.support > 0 ? e.support : Math.max(1, eventSources(e).length);
+}
+
+/** A milestone several sources reported: shown once, with "N sources". */
+export const isCluster = (e: SourcedEvent): boolean => e.kind === 'milestone' && sourceCount(e) > 1;
+
+/** "techcrunch.com" for a source link label. */
+export function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
