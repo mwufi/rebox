@@ -1,7 +1,7 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { EntityRef, Fact } from '../api';
-import { displayName, kindLabel, scopeOf, sourceCode, sourceHue } from '../lib/format';
+import { HANDLE_LABEL, avatarOf, displayName, handleOf, initials, kindLabel, scopeOf, sourceCode, sourceHue, type HandleKind } from '../lib/format';
 
 export const entityPath = (id: string) => `/e/${encodeURIComponent(id)}`;
 export const graphPath = (id: string) => `/e/${encodeURIComponent(id)}/graph`;
@@ -20,11 +20,75 @@ export function KindTag({ kind, plural }: { kind: string; plural?: boolean }) {
 }
 
 export function EntityLink({ entity, className }: { entity: EntityRef; className?: string }) {
+  const handle = handleOf(entity);
   return (
     <Link to={entityPath(entity.id)} className={`elink ${className ?? ''}`} title={entity.id} data-kind={entity.kind}>
       <KindGlyph kind={entity.kind} />
-      <span className={`elink-name${entity.name ? '' : ' unnamed'}`}>{displayName(entity)}</span>
+      <EntityName entity={entity} handle={handle} />
     </Link>
+  );
+}
+
+/** The display name; a handle-only name reads "@name" with a quiet "HN handle" hint. */
+export function EntityName({ entity, handle }: { entity: Pick<EntityRef, 'id' | 'name'>; handle: HandleKind | null }) {
+  if (!handle) return <span className={`elink-name${entity.name ? '' : ' unnamed'}`}>{displayName(entity)}</span>;
+  return (
+    <>
+      <span className="elink-name is-handle">{displayName(entity)}</span>
+      <HandleHint kind={handle} />
+    </>
+  );
+}
+
+export function HandleHint({ kind }: { kind: HandleKind }) {
+  return (
+    <span className="handle-hint" title={`Only known by this ${HANDLE_LABEL[kind]}; no real name yet`}>
+      {HANDLE_LABEL[kind]}
+    </span>
+  );
+}
+
+/**
+ * Avatar image when the entity has one (http(s) only, no referrer, lazy); otherwise initials on a
+ * kind-tinted tile. Broken images fall back to initials.
+ */
+export function Avatar({
+  entity,
+  size = 28,
+  className,
+}: {
+  entity: { id: string; kind: string; name: string | null; avatar?: string | null; facts?: { predicate: string; value: unknown }[] };
+  size?: number;
+  className?: string;
+}) {
+  const src = avatarOf(entity);
+  const [broken, setBroken] = useState(false);
+  const style = { width: size, height: size, fontSize: Math.max(9, Math.round(size * 0.38)) } as CSSProperties;
+  return (
+    <span className={`avatar ${className ?? ''}`} data-kind={entity.kind} style={style} aria-hidden="true">
+      {src && !broken ? (
+        <img src={src} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
+      ) : (
+        initials(displayName(entity))
+      )}
+    </span>
+  );
+}
+
+/** "Source ↗" links for a fact's evidence (CONTRACTS §12), plus its support count when > 1. */
+export function Evidence({ fact }: { fact: Pick<Fact, 'evidence' | 'support'> }) {
+  const ev = Array.isArray(fact.evidence) ? fact.evidence.filter((e) => typeof e?.url === 'string' && /^https?:\/\//i.test(e.url)) : [];
+  const support = typeof fact.support === 'number' && fact.support > 1 ? fact.support : null;
+  if (!ev.length && !support) return null;
+  return (
+    <span className="evidence-links">
+      {ev.slice(0, 3).map((e) => (
+        <a key={e.url} href={e.url} target="_blank" rel="noopener noreferrer nofollow" title={e.quote ?? e.url}>
+          Source{e.author ? ` · ${e.author}` : ''} ↗
+        </a>
+      ))}
+      {support && <span className="support" title="Distinct sources backing this fact">{support} sources</span>}
+    </span>
   );
 }
 

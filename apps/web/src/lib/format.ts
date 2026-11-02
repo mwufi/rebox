@@ -11,6 +11,18 @@ export function shortDate(iso: string | null): string | null {
   return m ? `${m} ${y}` : y;
 }
 
+/**
+ * Predicates that happen at one moment (a launch, a post, an acquisition, a milestone): they show
+ * one date, never a range running on to "now".
+ */
+export const POINT_IN_TIME: ReadonlySet<string> = new Set(['launched', 'posted', 'attended', 'milestone', 'acquired', 'invested_in']);
+
+/** The date text for a fact row, and whether it is an open (current) range. */
+export function factWhen(f: { predicate: string; valid_from: string | null; valid_to: string | null }): { text: string; current: boolean } {
+  if (POINT_IN_TIME.has(f.predicate)) return { text: shortDate(f.valid_from ?? f.valid_to) ?? '', current: false };
+  return { text: dateRange(f.valid_from, f.valid_to), current: Boolean(f.valid_from && !f.valid_to) };
+}
+
 /** "2019 – 2021", "2019 –", "– 2021", or "" when the fact has no validity. */
 export function dateRange(from: string | null, to: string | null): string {
   const a = shortDate(from);
@@ -116,3 +128,39 @@ export const kindLabel = (k: string, n = 2) =>
 
 /** Fallback when an entity has no name. */
 export const displayName = (ref: { id: string; name: string | null }) => ref.name ?? ref.id.split(':').slice(2).join(':');
+
+export type HandleKind = 'hn' | 'x';
+
+/**
+ * Whether an entity's only name is a handle (its name equals its HN user or X handle). Uses the
+ * API's `handle` hint on refs, or the view's own identity facts.
+ */
+export function handleOf(e: {
+  name: string | null;
+  handle?: HandleKind | null;
+  facts?: { predicate: string; value: unknown }[];
+}): HandleKind | null {
+  if (e.handle === 'hn' || e.handle === 'x') return e.handle;
+  if (!e.name || !e.facts) return null;
+  const n = e.name.replace(/^@/, '').toLowerCase();
+  const has = (p: string) => e.facts!.some((f) => f.predicate === p && typeof f.value === 'string' && f.value.toLowerCase() === n);
+  if (has('hn_user')) return 'hn';
+  if (has('x_handle')) return 'x';
+  return null;
+}
+
+export const HANDLE_LABEL: Record<HandleKind, string> = { hn: 'HN handle', x: 'X handle' };
+
+/** A safe http(s) avatar URL from a ref (`avatar`) or a view's `avatar` fact; else null. */
+export function avatarOf(e: { avatar?: string | null; facts?: { predicate: string; value: unknown }[] }): string | null {
+  const v = e.avatar ?? e.facts?.find((f) => f.predicate === 'avatar')?.value;
+  return typeof v === 'string' && /^https?:\/\/\S+$/i.test(v) ? v : null;
+}
+
+/** One or two initials for an avatar placeholder. */
+export function initials(name: string): string {
+  const words = name.replace(/^@/, '').split(/[\s._-]+/).filter(Boolean);
+  const a = words[0]?.[0] ?? '?';
+  const b = words.length > 1 ? words[words.length - 1]![0] : '';
+  return (a + (b ?? '')).toUpperCase();
+}
