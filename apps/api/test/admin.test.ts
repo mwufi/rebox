@@ -2,6 +2,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { ADMIN, INGEST, nameClaim, ref, setupApp, uid } from './helpers.js';
 
 const t = setupApp();
+// Unique per run: other test files share the database and use real-looking batches.
+const BATCH = `ADM${process.pid}`;
 const admin = { authorization: `Bearer ${ADMIN}` };
 
 async function openReview(ids: string[], reason = 'same name, different domains') {
@@ -48,7 +50,7 @@ describe('merge', () => {
       nameClaim(target, 'Quillwork'),
       nameClaim(dupe, 'Quillwork Inc'),
       nameClaim(founder, 'Odile Fernsby'),
-      { subject: ref(dupe), predicate: 'yc_batch', value: 'W31', source_ref: `adm:${dupe}:yc` },
+      { subject: ref(dupe), predicate: 'yc_batch', value: BATCH, source_ref: `adm:${dupe}:yc` },
       { subject: ref(founder), predicate: 'founded', object: ref(dupe), source_ref: `adm:${founder}:founded` },
     ]);
     expect(r.status).toBe(200);
@@ -106,7 +108,7 @@ describe('merge', () => {
   it('reads follow the merge', async () => {
     const v = (await t.get(`/v0/entities/${target}`)).body;
     expect(v.merged_from).toEqual([dupe]);
-    expect(v.facts.find((f: any) => f.predicate === 'yc_batch').value).toBe('W31');
+    expect(v.facts.find((f: any) => f.predicate === 'yc_batch').value).toBe(BATCH);
     expect(v.incoming.map((f: any) => [f.predicate, f.subject.id])).toEqual([['founded', founder]]);
 
     const redirect = (await t.get(`/v0/entities/${dupe}`)).body;
@@ -119,7 +121,7 @@ describe('merge', () => {
     const hits = (await t.get('/v0/search?q=quillwork')).body.map((h: any) => h.id);
     expect(hits).toContain(target);
     expect(hits).not.toContain(dupe);
-    const q = await t.post('/v0/query', { find: 'company', where: [{ attr: { predicate: 'yc_batch', eq: 'W31' } }] });
+    const q = await t.post('/v0/query', { find: 'company', where: [{ attr: { predicate: 'yc_batch', eq: BATCH } }] });
     expect(q.body.results.map((x: any) => x.id)).toEqual([target]);
   });
 
@@ -152,7 +154,7 @@ describe('merge', () => {
     const v = (await t.get(`/v0/entities/${dupe}`)).body;
     expect(v.redirect).toBe(top);
     expect(v.entity.merged_from).toEqual([target, dupe].sort());
-    expect(v.entity.facts.find((f: any) => f.predicate === 'yc_batch').value).toBe('W31');
+    expect(v.entity.facts.find((f: any) => f.predicate === 'yc_batch').value).toBe(BATCH);
     // undo so later tests see the original shape
     expect((await t.post('/v0/admin/split', { id: target }, admin)).status).toBe(200);
   });
