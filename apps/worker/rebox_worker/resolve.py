@@ -44,24 +44,24 @@ from .predicates import Predicate, load_predicates
 
 log = logging.getLogger(__name__)
 
-# Pass 1 lookup: every (identity predicate, normalized value) of a batch in one query, as one
-# probe of claim_value_idx ((predicate, (value #>> '{}')) where object_id is null) per predicate.
+# Pass 1 lookup: every (identity predicate, normalized value) of a batch in one query.
 #
-# Why the lateral shape: as rebox_app, RLS puts `layer_id = any(rebox_visible())` in front of
-# every claim scan, and only leakproof conditions may be evaluated before it. `#>>`
-# (jsonb_extract_path_text) is not leakproof, so the value half of claim_value_idx cannot be an
-# index condition for the app role, only a filter. A plain join over unnest() then lets the
-# planner hash-join against *every* visible claim (via claim_layer_idx); the per-predicate
-# lateral probe keeps it on claim_value_idx (predicate prefix). See the S2 report.
+# Under RLS, Postgres evaluates only leakproof conditions before the policy filter
+# (`layer_id = any(rebox_visible())`), so an index condition must use a leakproof operator.
+# `value #>> '{}'` is not leakproof; `claim.value_text` (a stored generated column, migration
+# 0004) compared with text `=` is. So each (predicate, value) pair is a true index lookup on
+# claim_value_text_idx ((predicate, value_text) where object_id is null), as rebox_app too
+# (CONTRACTS §2a). The per-predicate lateral keeps one index probe per predicate with
+# `value_text = any(values)`, so the plan does not depend on the unnest row estimate.
 HARD_KEY_SQL = """
-select k.p as predicate, c.v as value, c.subject
+select k.p as predicate, c.value_text as value, c.subject
   from (select p, array_agg(v) as vs
           from unnest(%s::text[], %s::text[]) as u(p, v)
          group by p) as k
   cross join lateral (
-        select distinct (c.value #>> '{}') as v, c.subject
+        select distinct c.value_text, c.subject
           from claim c
-         where c.predicate = k.p and (c.value #>> '{}') = any (k.vs)
+         where c.predicate = k.p and c.value_text = any (k.vs)
            and c.object_id is null and not c.retract
   ) as c
 """
@@ -416,7 +416,7 @@ class Resolver:
                   where e.object_id is not null and not e.retract
                     and (e.object_id = any(%(ctx)s) or e.subject = any(%(ctx)s))
                )
-               select distinct nb.id, n.value #>> '{}' as name
+               select distinct nb.id, n.value_text as name
                  from neighbor nb
                  join claim n on n.subject = nb.id and n.predicate = 'name'
                              and n.object_id is null and not n.retract

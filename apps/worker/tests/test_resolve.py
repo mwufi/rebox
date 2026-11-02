@@ -255,3 +255,60 @@ def test_only_identity_predicates_are_hard_keys(resolver, owner):
     resolver.commit(res)
     [row] = owner.execute("select identity from resolution_log").fetchall()
     assert row["identity"]["invalid"][0]["predicate"] == "yc_batch"
+
+
+def _seed_bulk(owner, n=5000):
+    owner.execute(
+        "insert into entity (id, kind, home_layer) "
+        "select 'rbx:company:c' || g, 'company', 'public/manual' from generate_series(1, %s) g",
+        (n,),
+    )
+    owner.execute(
+        "insert into claim (layer_id, subject, predicate, value, source_ref) "
+        "select 'public/manual', 'rbx:company:c' || g, p, to_jsonb(p || '-' || g), 'seed:' || g "
+        "from generate_series(1, %s) g, unnest(array['domain', 'name', 'github', 'x_handle']) p",
+        (n,),
+    )
+    owner.execute("analyze claim")
+
+
+def _plan_nodes(plan) -> list[dict]:
+    out: list[dict] = []
+    if isinstance(plan, dict):
+        out.append(plan)
+        for v in plan.values():
+            out += _plan_nodes(v)
+    elif isinstance(plan, list):
+        for v in plan:
+            out += _plan_nodes(v)
+    return out
+
+
+def test_hard_key_query_plan_uses_value_text_index_under_rls(db, owner):
+    """As rebox_app (RLS on), on 20k analyzed claims, pass 1 is an index lookup on
+    claim_value_text_idx with value_text in the index condition (CONTRACTS §2a)."""
+    from psycopg import ClientCursor
+
+    from rebox_worker.resolve import HARD_KEY_SQL
+
+    _seed_bulk(owner)
+    assert owner.execute("select count(*) n from claim").fetchone()["n"] >= 10_000
+    preds = ["domain", "github", "domain"]
+    values = ["domain-7", "github-1", "domain-4242"]
+    with db.view() as conn:
+        assert conn.execute("select current_user u").fetchone()["u"] == "rebox_app"
+        cur = ClientCursor(conn)
+        cur.execute("explain (format json) " + HARD_KEY_SQL, (preds, values))
+        plan = cur.fetchone()["QUERY PLAN"]
+        hits = conn.execute(HARD_KEY_SQL, (preds, values)).fetchall()
+    nodes = _plan_nodes(plan)
+    scans = [n for n in nodes if n.get("Relation Name") == "claim"]
+    assert scans and all(n.get("Index Name") == "claim_value_text_idx" for n in scans), plan
+    # Both columns are index conditions (not post-RLS filters): a true lookup.
+    assert all("value_text = ANY" in n.get("Index Cond", "") for n in scans), plan
+    assert all("predicate = " in n.get("Index Cond", "") for n in scans), plan
+    assert sorted((h["predicate"], h["value"]) for h in hits) == [
+        ("domain", "domain-4242"),
+        ("domain", "domain-7"),
+        ("github", "github-1"),
+    ]
