@@ -14,7 +14,8 @@ A connector is one file in this package with one class:
             ...  # pure: RawRecord -> claims, no network, no DB
 
 Register it with one line in ``connectors/__init__.py``. Optional: ``enabled(ctx) -> bool``
-(e.g. False without an API token; the scheduler then skips it).
+(e.g. False without an API token; the scheduler then skips it), and ``scheduled = False`` to
+keep a connector out of the automatic schedule (it then runs only on ``sync``/``enqueue``).
 """
 
 from __future__ import annotations
@@ -24,11 +25,14 @@ import os
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import httpx
 
 from ..models import ClaimInput, CursorUpdate, RawRecord
+
+if TYPE_CHECKING:
+    from ..db import Db
 
 
 @runtime_checkable
@@ -45,6 +49,11 @@ class Connector(Protocol):
 def is_enabled(connector: Connector, ctx: Ctx) -> bool:
     check = getattr(connector, "enabled", None)
     return bool(check(ctx)) if callable(check) else True
+
+
+def is_scheduled(connector: Connector) -> bool:
+    """False for connectors that only run on demand (e.g. ``example``, which is test data)."""
+    return bool(getattr(connector, "scheduled", True))
 
 
 def fixtures_root(environ: Mapping[str, str] | None = None) -> Path:
@@ -67,11 +76,18 @@ def fixtures_root(environ: Mapping[str, str] | None = None) -> Path:
 
 @dataclass
 class Ctx:
-    """What a connector's ``fetch`` may use. Built by the pipeline from Settings."""
+    """What a connector's ``fetch`` (and ``enabled``) may use. Built by the CLI from Settings.
+
+    ``env`` is the worker's environment (tokens such as GITHUB_TOKEN, X_BEARER_TOKEN); the CLI and
+    the scheduler pass ``os.environ``. ``db`` is the worker's own pool (role ``rebox_app``, use
+    ``db.view()``), for connectors that read the graph (X enriches handles already in it); the
+    pipeline fills it in, so connectors never open their own connection.
+    """
 
     user_agent: str = "rebox-bot/0.1"
     limit: int | None = None  # stop after this many raw records (dev runs)
     env: Mapping[str, str] = field(default_factory=dict)  # e.g. GITHUB_TOKEN, X_BEARER_TOKEN
+    db: Db | None = None
     fixtures: Path = field(default_factory=fixtures_root)
     log: logging.Logger = field(default_factory=lambda: logging.getLogger("rebox_worker.connector"))
 

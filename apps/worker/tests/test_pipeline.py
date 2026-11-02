@@ -245,13 +245,18 @@ def test_job_without_source_fails_instead_of_sticking(deps, owner):
 
 
 def test_cli_schedule_due(env, owner, capsys, monkeypatch):
-    # github and x are disabled without their tokens (S4); hn and wikidata need none.
+    # github and x are disabled without their tokens (S4); hn and wikidata need none; example is
+    # test data and never scheduled.
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
-    monkeypatch.delenv("X_BEARER_TOKEN", raising=False)
+    monkeypatch.setenv("X_BEARER_TOKEN", "")  # compose passes empty values for unset tokens
     assert cli.main(["schedule-due"]) == 0
-    assert capsys.readouterr().out.strip() == "schedule-due: enqueued example, hn, wikidata"
+    assert capsys.readouterr().out.strip() == "schedule-due: enqueued hn, wikidata"
     assert cli.main(["schedule-due"]) == 0
     assert capsys.readouterr().out.strip() == "schedule-due: enqueued nothing"
+    # A token in the environment (Ctx(env=os.environ)) enables the connector on the next run.
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    assert cli.main(["schedule-due"]) == 0
+    assert capsys.readouterr().out.strip() == "schedule-due: enqueued github"
 
 
 def test_cli_unknown_source_and_missing_env(env, monkeypatch, capsys):

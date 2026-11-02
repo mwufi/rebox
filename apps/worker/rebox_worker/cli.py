@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import signal
 import sys
 import time
@@ -50,7 +51,7 @@ def open_deps(settings: Settings, *, limit: int | None = None, need_writer: bool
             db=db,
             raw=RawStore.from_url(settings.raw_store, db),
             client=client,
-            ctx=Ctx(user_agent=settings.user_agent, limit=limit, env=settings.extra),
+            ctx=Ctx(user_agent=settings.user_agent, limit=limit, env=settings.extra, db=db),
             lock_url=settings.database_url,
         )
     finally:
@@ -138,7 +139,8 @@ def cmd_replay(args: argparse.Namespace, settings: Settings) -> int:
 
 def cmd_schedule_due(args: argparse.Namespace, settings: Settings) -> int:
     with Db(settings.database_url, max_size=1) as db:
-        enqueued = jobs.schedule_due(db, {name: cls() for name, cls in REGISTRY.items()})
+        ctx = Ctx(user_agent=settings.user_agent, env=os.environ, db=db)
+        enqueued = jobs.schedule_due(db, {name: cls() for name, cls in REGISTRY.items()}, ctx)
     print("schedule-due: enqueued " + (", ".join(enqueued) if enqueued else "nothing"))
     return 0
 

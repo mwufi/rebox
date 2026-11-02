@@ -27,14 +27,14 @@ def test_disabled_without_token(name, var, monkeypatch):
     assert is_enabled(conn, ctx(env={var: "t"}))
 
 
-def test_schedule_due_skips_disabled(monkeypatch):
-    """jobs.schedule_due builds Ctx() without env, so enabled() must also see os.environ."""
-    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+def test_enabled_reads_ctx_env_only(monkeypatch):
+    """Tokens come from ctx.env (the CLI and scheduler pass os.environ); blank means unset."""
+    monkeypatch.setenv("GITHUB_TOKEN", "from-process-env")
     from rebox_worker.connectors.base import Ctx
 
     assert not is_enabled(GitHub(), Ctx())
-    monkeypatch.setenv("GITHUB_TOKEN", "t")
-    assert is_enabled(GitHub(), Ctx())
+    assert not is_enabled(GitHub(), Ctx(env={"GITHUB_TOKEN": "  "}))
+    assert is_enabled(GitHub(), Ctx(env={"GITHUB_TOKEN": "t"}))
 
 
 def test_registry_has_all_connectors():

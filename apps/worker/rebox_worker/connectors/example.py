@@ -33,6 +33,7 @@ class Example:
     name = "example"
     layer = "public/example"
     interval_s = 86400
+    scheduled = False  # test data: runs only on `rebox-worker sync example`, never on the schedule
 
     # ── fetch: the only part that does I/O ──
     def fetch(self, ctx: Ctx, cursor: dict | None) -> Iterator[RawRecord | CursorUpdate]:

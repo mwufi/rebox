@@ -1,7 +1,7 @@
 """X profiles (``public/x``): enrichment of entities that already have an ``x_handle``.
 
 Enrichment, not discovery: the handles come from the graph (Wikidata, GitHub, ...), read as
-``rebox_app`` with all public layers visible (``DATABASE_URL`` from the worker environment).
+``rebox_app`` with all public layers visible, through the worker's pool (``ctx.db``).
 Live mode needs ``X_BEARER_TOKEN``; without it ``enabled()`` is False and ``fetch`` refuses to
 run. Nobody has provided a token yet, so the connector is built and tested against synthetic
 fixtures (``fixtures/raw/x/``, fake handles only) served through an httpx mock transport.
@@ -33,7 +33,6 @@ from typing import Any
 
 import httpx
 
-from ..db import Db
 from ..models import ClaimInput, CursorUpdate, EntityRef, RawRecord
 from .base import Ctx
 from .github import token
@@ -183,12 +182,11 @@ class X:
 
 
 def graph_handles(ctx: Ctx) -> dict[str, list[dict[str, Any]]]:
-    """handle -> [{"kind", "named"}] for every x_handle in the public graph."""
-    url = ctx.env.get("DATABASE_URL")
-    if not url:
-        raise RuntimeError("x connector needs DATABASE_URL to read the handles already in the graph")
+    """handle -> [{"kind", "named"}] for every x_handle in the public graph (via ``ctx.db``)."""
+    if ctx.db is None:
+        raise RuntimeError("x connector needs ctx.db to read the handles already in the graph")
     out: dict[str, list[dict[str, Any]]] = {}
-    with Db(url, max_size=1) as db, db.view() as conn:
+    with ctx.db.view() as conn:
         for row in conn.execute(HANDLES_SQL):
             out.setdefault(row["handle"], []).append({"kind": row["kind"], "named": bool(row["named"])})
     return out
