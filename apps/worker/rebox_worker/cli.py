@@ -12,6 +12,7 @@ rebox-worker workers show <id>     one worker and its recent runs
 rebox-worker coverage FILE.csv     which rows of a list Rebox knows (S14)
 rebox-worker export --layers L,... --out FILE    write layers to a bundle (.rebox.jsonl.gz)
 rebox-worker import FILE [--dry-run]             merge a bundle in through the resolver
+rebox-worker raw reindex <source>  index raw files a crashed run left out of raw_record (S16)
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ from collections.abc import Sequence
 from contextlib import contextmanager
 from typing import Any
 
-from . import __version__, coverage, exchange, identity, jobs
+from . import __version__, coverage, exchange, identity, jobs, rawstore
 from .client import ClaimsClient
 from .config import ConfigError, Settings
 from .connectors import REGISTRY, Ctx, UnknownConnector, get_connector
@@ -402,6 +403,7 @@ def build_parser() -> argparse.ArgumentParser:
     im.set_defaults(func=cmd_import)
 
     add_dedupe_parser(sub)  # rebox-worker dedupe [--dry-run] (S15)
+    rawstore.add_parser(sub)  # rebox-worker raw reindex SOURCE [--dry-run] (S16)
     return p
 
 
