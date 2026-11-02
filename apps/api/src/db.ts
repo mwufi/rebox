@@ -9,6 +9,11 @@ export type Frag = postgres.PendingQuery<postgres.Row[]>;
 export interface View {
   visible: readonly string[];
   writable: readonly string[];
+  /**
+   * Also make every public layer visible, read from the `layer` table inside the same
+   * rebox_set_view statement (never stale). The writer uses this; reads use the 30s cache.
+   */
+  allPublic?: boolean;
 }
 
 export const NO_VIEW: View = { visible: [], writable: [] };
@@ -26,18 +31,28 @@ export interface Db {
 
 const PUBLIC_LAYERS_TTL_MS = 30_000;
 
-export function createDb(url: string, opts: { max?: number } = {}): Db {
+export interface DbOptions {
+  max?: number;
+  /** Called with every statement's SQL and parameters (tests use it to EXPLAIN real queries). */
+  onQuery?: (query: string, params: unknown[]) => void;
+}
+
+export function createDb(url: string, opts: DbOptions = {}): Db {
   const sql = postgres(url, {
     max: opts.max ?? 10,
     idle_timeout: 30,
     onnotice: () => {},
+    ...(opts.onQuery ? { debug: (_conn: number, query: string, params: unknown[]) => opts.onQuery!(query, params) } : {}),
     // Date-only valid_from values must mean UTC midnight regardless of the server's TimeZone.
     connection: { TimeZone: 'UTC', application_name: 'rebox-api' },
   });
 
   async function withView<T>(view: View, fn: (tx: Tx) => Promise<T>): Promise<T> {
     const result = await sql.begin(async (tx) => {
-      await tx`select rebox_set_view(${[...view.visible]}::text[], ${[...view.writable]}::text[])`;
+      const visible = view.allPublic
+        ? tx`array(select id from layer where scope = 'public') || ${[...view.visible]}::text[]`
+        : tx`${[...view.visible]}::text[]`;
+      await tx`select rebox_set_view(${visible}, ${[...view.writable]}::text[])`;
       return fn(tx);
     });
     return result as T;

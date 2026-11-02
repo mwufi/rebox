@@ -77,12 +77,6 @@ export async function readView(db: Db, p: Principal): Promise<View> {
   return { visible: [...pub, ...extra], writable: [] };
 }
 
-/** Ingest: sees public layers and the target layer; may write only the target layer. */
-export async function writerView(db: Db, layer: string): Promise<View> {
-  const pub = await db.publicLayers();
-  return { visible: pub.includes(layer) ? pub : [...pub, layer], writable: [layer] };
-}
-
 /** Admin (merge/split): sees and writes all public layers. */
 export async function adminView(db: Db): Promise<View> {
   const pub = await db.publicLayers();

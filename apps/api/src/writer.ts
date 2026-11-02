@@ -4,7 +4,7 @@
  */
 import { z } from 'zod';
 import type { Db, Tx } from './db.js';
-import { writerView } from './auth.js';
+import { isIsoDate, isoToMs } from './dates.js';
 import { ApiError, validation, type ErrorDetail } from './errors.js';
 import { checkNormalized, isNormalizerName } from './normalize.js';
 import { isEdge, type Predicate, type Vocab, type VocabCache } from './vocab.js';
@@ -13,18 +13,13 @@ export const MAX_BATCH = 1000;
 
 const ENTITY_ID_RE = /^(rbx|local):([a-z]+):[a-z0-9-]+$/;
 const LAYER_RE = /^(?:(public|firm)\/([a-z0-9_-]+)|(team|user)\/([a-z0-9_.-]+)\/([a-z0-9_-]+))$/;
-// ISO 8601 date or timestamp; Postgres does the final parse.
-const ISO_RE = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}(?::?\d{2})?)?)?$/;
 
 const entityId = z.string().regex(ENTITY_ID_RE, 'must match (rbx|local):<kind>:<[a-z0-9-]+>');
 const refSchema = z.union([
   z.object({ id: entityId }).strict(),
   z.object({ mint: z.object({ id: entityId, kind: z.string().regex(/^[a-z]+$/) }).strict() }).strict(),
 ]);
-const isoDate = z
-  .string()
-  .regex(ISO_RE, 'must be an ISO date or timestamp')
-  .refine((s) => !Number.isNaN(Date.parse(s.length === 10 ? `${s}T00:00:00Z` : s)), 'is not a real date');
+const isoDate = z.string().refine(isIsoDate, 'must be a valid ISO date or timestamp');
 
 const claimSchema = z
   .object({
@@ -136,9 +131,11 @@ function validateClaim(c: ClaimIn, vocab: Vocab, layer: ParsedLayer): string[] {
     }
   } else {
     if (c.object) errors.push(`${p.id} is an attribute: object is not allowed`);
-    const typeErr = checkValueType(p, c.value);
+    // Retracting a `one` attribute hides whatever value wins, so the retract needs no value.
+    const valuelessRetract = c.retract === true && p.cardinality === 'one' && (c.value === null || c.value === undefined);
+    const typeErr = valuelessRetract ? null : checkValueType(p, c.value);
     if (typeErr) errors.push(typeErr);
-    else if (p.meta.identity && isNormalizerName(p.meta.normalize)) {
+    else if (!valuelessRetract && p.meta.identity && isNormalizerName(p.meta.normalize)) {
       const values = Array.isArray(c.value) ? c.value : [c.value];
       for (const v of values) {
         const err = checkNormalized(p.meta.normalize, v);
@@ -150,13 +147,11 @@ function validateClaim(c: ClaimIn, vocab: Vocab, layer: ParsedLayer): string[] {
   if (p.meta.private && layer.scope === 'public') {
     errors.push(`${p.id} is private and cannot be written to a public layer`);
   }
-  if (c.valid_from && c.valid_to && toTimestamp(c.valid_from) > toTimestamp(c.valid_to)) {
+  if (c.valid_from && c.valid_to && isoToMs(c.valid_from) > isoToMs(c.valid_to)) {
     errors.push('valid_from must not be after valid_to');
   }
   return errors;
 }
-
-const toTimestamp = (s: string): number => Date.parse(s.length === 10 ? `${s}T00:00:00Z` : s);
 
 function parseBody(body: unknown): { layer: ParsedLayer; claims: ClaimIn[] } {
   const parsed = bodySchema.safeParse(body);
@@ -209,8 +204,9 @@ async function ensureLayer(tx: Tx, layer: ParsedLayer): Promise<boolean> {
 }
 
 /**
- * Inserts minted entities that don't exist yet. An existing id (anywhere, even outside the view)
- * is reused, not an error; its kind must match. Returns the number of new entities.
+ * Inserts minted entities that don't exist yet. An existing id is reused, not an error; whether it
+ * is visible and of the right kind is checked afterwards by checkReferences. Returns the number of
+ * new entities.
  */
 async function mintEntities(tx: Tx, layer: string, mints: Map<string, MintRequest>): Promise<number> {
   if (mints.size === 0) return 0;
@@ -249,6 +245,8 @@ async function checkReferences(tx: Tx, claims: ClaimIn[]): Promise<void> {
 /**
  * Upserts claims on the claim_identity_uq key. Duplicate keys within one batch keep the last
  * occurrence (latest write wins) since ON CONFLICT cannot touch a row twice in one statement.
+ * Re-sending an unchanged claim is a no-op: no updated_at bump (which would reorder the fold's
+ * "newest wins" tie-break) and no `change` row. Returns the number of rows inserted or changed.
  */
 async function upsertClaims(tx: Tx, layer: string, claims: ClaimIn[]): Promise<number> {
   const byKey = new Map<string, Record<string, unknown>>();
@@ -278,7 +276,9 @@ async function upsertClaims(tx: Tx, layer: string, claims: ClaimIn[]): Promise<n
       valid_from timestamptz, valid_to timestamptz, retract boolean, source_ref text)
     on conflict (layer_id, source_ref, subject, predicate, coalesce(object_id, ''))
     do update set value = excluded.value, valid_from = excluded.valid_from, valid_to = excluded.valid_to,
-                  retract = excluded.retract, updated_at = now()`;
+                  retract = excluded.retract, updated_at = now()
+    where (claim.value, claim.valid_from, claim.valid_to, claim.retract)
+          is distinct from (excluded.value, excluded.valid_from, excluded.valid_to, excluded.retract)`;
   return result.count;
 }
 
@@ -300,7 +300,9 @@ export function createWriter(db: Db, vocabCache: VocabCache): Writer {
       details.push(...mintDetails);
       if (details.length) throw validation(details.sort((a, b) => a.index - b.index));
 
-      const view = await writerView(db, layer.id);
+      // CONTRACTS §2: the ingest token sees all public layers (read fresh, inside the same
+      // statement) plus the target layer, and writes only the target layer.
+      const view = { visible: [layer.id], writable: [layer.id], allPublic: true };
       try {
         const result = await db.withView(view, async (tx) => {
           const created = await ensureLayer(tx, layer);

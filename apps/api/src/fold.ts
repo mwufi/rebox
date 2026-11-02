@@ -7,7 +7,8 @@
  * - Fold key = root + predicate + (canonical other entity for edges | value for `many`
  *   attributes | nothing for `one` attributes).
  * - Winner per key = narrowest layer scope (user > team > firm > public), then newest
- *   updated_at, then highest id (deterministic). Winners with retract = true are dropped.
+ *   updated_at, then a claim made on the root itself over one inherited from a merged-away
+ *   entity, then highest id (deterministic). Winners with retract = true are dropped.
  * - Edges whose other side is not visible (RLS on entity) are dropped, so private ids never leak.
  */
 import type { Tx } from './db.js';
@@ -75,7 +76,7 @@ export async function foldFacts(tx: Tx, opts: FoldOptions): Promise<FoldedRow[]>
       select r.root, c.member from roots r join canon c on c.root = r.root
     ),
     cand as (
-      select g.root, c.id, c.predicate, c.subject, c.object_id, c.value, c.valid_from, c.valid_to,
+      select g.root, (g.member = g.root) as direct, c.id, c.predicate, c.subject, c.object_id, c.value, c.valid_from, c.valid_to,
              c.retract, c.layer_id, c.source_ref, c.updated_at, l.scope, l.source,
              case when c.object_id is null then null else coalesce(oc.root, ${otherCol}) end as other,
              case when p.object_kind is not null then coalesce(oc.root, ${otherCol})
@@ -91,7 +92,7 @@ export async function foldFacts(tx: Tx, opts: FoldOptions): Promise<FoldedRow[]>
     winners as (
       select distinct on (root, predicate, fold_key) *
       from cand
-      order by root, predicate, fold_key, scope desc, updated_at desc, id desc
+      order by root, predicate, fold_key, scope desc, updated_at desc, direct desc, id desc
     )
     select w.root, w.id::text as claim_id, w.predicate, w.subject, w.object_id, w.other, w.value,
            w.valid_from, w.valid_to, w.layer_id, w.source, w.source_ref, w.updated_at
