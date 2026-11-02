@@ -25,10 +25,13 @@ claims. ``origin_id`` is the source's canonical id, also only a hint.
 Import (``import_bundle``)
     1. Plan workers: every worker of the bundle keeps its id on the target (``POST
        /internal/workers`` with an explicit ``id``; idempotent). The same id with a different
-       kind/source/owner on the target aborts the import before anything is written. Claims
-       without a worker (written before migration 0005, on an instance without 0008) are
-       written as the target's ``<source>-connector`` worker, registered with its table trust
-       (``config/trust.yaml``).
+       kind/source/owner on the target aborts the import before anything is written. A bundle
+       worker new on the target registers with the target's table trust
+       (``identity.trust_for``, marker ``config.trust_source='table'``; S19), like a local
+       worker; one that already exists keeps its trust (the report shows the difference).
+       Claims without a worker (written before migration 0005, on an instance without 0008)
+       are written as the target's ``<source>-connector`` worker, registered with its table
+       trust (``config/trust.yaml``).
     2. Stream the claims in batches, grouped by (layer, worker), through ``ImportResolver``,
        then diff them against the target (same layer + source_ref + subject + predicate +
        object): unchanged claims are not sent, so re-importing a bundle writes nothing (no
@@ -582,6 +585,7 @@ class WorkerPlan:
     problem: str | None = None
     target_id: str | None = None
     target_trust: float | None = None
+    table_trust: float | None = None  # what a worker new on the target registers with (trust.yaml)
     run_id: int | None = None
     stats: RunStats = field(default_factory=RunStats)
 
@@ -591,7 +595,11 @@ class WorkerPlan:
 
     @property
     def write_trust(self) -> float:
-        return self.target_trust if self.target_trust is not None else DEFAULT_TRUST.get(self.kind, 0.5)
+        if self.target_trust is not None:
+            return self.target_trust
+        if self.table_trust is not None:
+            return self.table_trust
+        return DEFAULT_TRUST.get(self.kind, 0.5)
 
 
 @dataclass
@@ -912,6 +920,13 @@ class _Importer:
                 self.report.workers.append(plan)
                 if row is None:
                     plan.action = "register (new)"
+                    if plan.bundle_id:
+                        # New on the target: the target's table trust, like a local worker (S19).
+                        plan.table_trust = _table_trust(plan.kind, plan.source)
+                        if plan.table_trust is not None:
+                            plan.action += f", table trust {plan.table_trust}"
+                            if abs(plan.table_trust - plan.trust) > 1e-6:
+                                plan.action += f" (bundle had {plan.trust})"
                     continue
                 plan.target_id = row["id"]
                 plan.target_trust = float(row["trust"])
@@ -932,17 +947,23 @@ class _Importer:
     def _register_workers(self) -> None:
         assert self.client is not None
         for plan in self.report.workers:
+            config = plan.config
+            if plan.table_trust is not None:
+                # The source's trust marker describes the source's table; the target's own
+                # (register_worker) is set from the target's table.
+                config = {k: v for k, v in config.items() if k not in ("trust_source", "trust_table")}
             got = self.client.register_worker(
                 name=plan.name,
                 kind=plan.kind,
                 source=plan.source,
                 layers=plan.layers,
-                config=plan.config or None,
+                config=config or None,
                 description=plan.description,
                 id=plan.bundle_id,
-                # A bundle worker keeps the target's trust; the target's own connector (claims
-                # without a worker) gets its table trust.
-                trust=None if plan.bundle_id else plan.trust,
+                # A bundle worker new on the target and the target's own connector (claims
+                # without a worker) get the target's table trust; a bundle worker that already
+                # exists on the target keeps its trust (trust=None: never touched).
+                trust=plan.table_trust if plan.bundle_id else plan.trust,
             )
             if plan.bundle_id and got != plan.bundle_id:
                 raise ImportAborted(f"registered {plan.bundle_id} but the target returned {got}")
@@ -1234,6 +1255,15 @@ class _Importer:
                 names.setdefault(r["subject"], r["value_text"])
         for o in shown:
             o.target_name = names.get(o.target)
+
+
+def _table_trust(kind: str, source: str) -> float | None:
+    """``identity.trust_for``, or None (kind default) if the table cannot be read."""
+    try:
+        return trust_for(kind, source)
+    except (OSError, ValueError) as e:
+        log.warning("trust table: %s; %s/%s registers with its kind default", e, kind, source)
+        return None
 
 
 def _ts(v: Any) -> datetime | None:
