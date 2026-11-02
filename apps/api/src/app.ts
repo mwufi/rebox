@@ -14,7 +14,10 @@ import { ApiError, notFound } from './errors.js';
 import { adminRoutes } from './routes/admin.js';
 import { internalRoutes } from './routes/internal.js';
 import { readRoutes } from './routes/read.js';
+import { timelineRoutes } from './routes/timeline.js';
+import { wikiRoutes } from './routes/wiki.js';
 import type { VocabCache } from './vocab.js';
+import type { WikiSettings } from './wiki/model.js';
 import type { Writer } from './writer.js';
 
 export interface Deps {
@@ -25,6 +28,8 @@ export interface Deps {
   /** Static explorer build; served only if the directory exists. */
   publicDir?: string | null;
   log?: (line: Record<string, unknown>) => void;
+  /** Wiki generation (S10); absent = disabled. */
+  wiki?: WikiSettings;
 }
 
 export type AppEnv = { Variables: RequestIdVariables & { principal: Principal } };
@@ -73,6 +78,8 @@ export function createApp(deps: Deps) {
     return c.json({ ok, db: ok }, ok ? 200 : 503);
   });
   app.route('/', readRoutes(deps));
+  app.route('/', timelineRoutes(deps));
+  app.route('/', wikiRoutes({ ...deps, log }));
   app.route('/', internalRoutes(deps));
   app.route('/', adminRoutes(deps));
 

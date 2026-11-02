@@ -6,6 +6,7 @@ import { createApp } from './app.js';
 import { loadConfig } from './config.js';
 import { createDb } from './db.js';
 import { createVocabCache } from './vocab.js';
+import { wikiSettingsFromEnv } from './wiki/model.js';
 import { createWriter } from './writer.js';
 
 const config = loadConfig();
@@ -15,7 +16,7 @@ const writer = createWriter(db, vocab);
 // public/ sits next to dist/ (and src/), independent of the working directory.
 const publicDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
 
-const app = createApp({ config, db, vocab, writer, publicDir });
+const app = createApp({ config, db, vocab, writer, publicDir, wiki: wikiSettingsFromEnv() });
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
   console.log(JSON.stringify({ at: new Date().toISOString(), level: 'info', msg: 'listening', port: info.port, env: config.env }));
 });
