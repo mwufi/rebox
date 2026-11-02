@@ -1,0 +1,51 @@
+{
+ "content_hash": "sha256:23a56370c274c89f15b6e9beaa79c877b7662eac264d59efeef34779946892c1",
+ "external_id": "Q140157903",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "email infrastructure company for AI agents"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Primitive"
+   },
+   {
+    "prop": "P2002",
+    "value": "primitive"
+   },
+   {
+    "prop": "P2037",
+    "value": "primitivedotdev"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-01-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://primitive.dev"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q140157903"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q140157903"
+}

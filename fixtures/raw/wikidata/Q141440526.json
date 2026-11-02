@@ -1,0 +1,47 @@
+{
+ "content_hash": "sha256:2040165137f8a6d7ea5ff3b7e6d1b1336796ae9cbd42900f6317ed7ee9ec3252",
+ "external_id": "Q141440526",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "American software company making tools for Autodesk Civil 3D"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Setline"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q1058914"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-01-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://setline.ai"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q141440526"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q141440526"
+}

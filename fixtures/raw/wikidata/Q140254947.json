@@ -1,0 +1,47 @@
+{
+ "content_hash": "sha256:75048e6db06123fce65d5b53931c7290b5e21184239e392724e4c5700f4f45fb",
+ "external_id": "Q140254947",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "Redefining the future of law for the companies inventing the next decade."
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Arceus Legal"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q1494322"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q22137024"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-01-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://arceus.legal/"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q140254947"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q140254947"
+}

@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:c4b9ae87e3957eb9782ebf4fdc5f40b43cf1dd778f08c97dc1be92faf1a03d86",
+ "external_id": "story:26015145",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_yshuster",
+   "story_26015145",
+   "launch_hn"
+  ],
+  "author": "yshuster",
+  "created_at": "2021-02-03T16:21:54Z",
+  "created_at_i": 1612369314,
+  "num_comments": 0,
+  "objectID": "26015145",
+  "points": 2,
+  "title": "Launch HN: Balance (YC S20) – The First B2B Checkout",
+  "url": "https://www.youtube.com/watch?v=PzvAifwMu6Y&t=5s"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=26015145"
+}

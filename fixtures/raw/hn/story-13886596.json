@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:4aba1d31ef99165be6b623ca50c405f433a606f037dcb8d2f99c509e38235996",
+ "external_id": "story:13886596",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_tmacaulay",
+   "story_13886596",
+   "launch_hn"
+  ],
+  "author": "tmacaulay",
+  "created_at": "2017-03-16T16:55:50Z",
+  "created_at_i": 1489683350,
+  "num_comments": 66,
+  "objectID": "13886596",
+  "points": 178,
+  "story_text": "Hi HN! We’re the founders of the Centre for Effective Altruism, a nonprofit from Oxford, UK in the YC W17 batch. We’re the creators of Effective Altruism (EA) Funds, (<a href=\"https:&#x2F;&#x2F;app.effectivealtruism.org&#x2F;funds&#x2F;\" rel=\"nofollow\">https:&#x2F;&#x2F;app.effectivealtruism.org&#x2F;funds&#x2F;</a>) high-impact, individual giving portfolios, managed by expert researchers. It&#x27;s like Vanguard for charity.<p>We created EA Funds because we became frustrated with how difficult it was to find the best giving opportunities as an individual donor. Using EA Funds, you choose a problem area, and our fund managers find the best giving opportunities. Our initial funds are all managed by Program Officers at the Open Philanthropy Project, a $10B private foundation. In the future, we hope to expand the number of funds, building a competitive marketplace for giving, where the amount of funding a charity receives is directly correlated with the amount of good they do.<p>We started out 7 years ago, when 23 of our friends pledged to give 10% of their income to the most effective charities they could find. Since then, 2700 people have joined us, donating $33M, including $17M last year. We’ve found that some of the most cost-effective charities can buy one year of perfect health (a DALY) for as little as $80, while others have no effect. A study in the US found that $10B was spent each year on social programs that had been proven to have no effect on outcomes, and a further $1B was spent on programs that were actively harmful. We built EA Funds to replicate the success of groups like the Gates Foundation and GiveWell. By pooling our resources and utilising the expertise of our research community, we can give individual donors the same impact per dollar as billion dollar foundations.<p>We’d love to hear your feedback and answer questions about effective altruism, donating effectively or hear your stories about the charity sector!<p>(Edit: originally said QALY instead of DALY, but that was a typo, as commenters pointed out.)",
+  "title": "Launch HN: Effective Altruism Funds (YC W17 Nonprofit)"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=13886596"
+}

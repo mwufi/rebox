@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:2c85615a5701ebc70d79c9e764ccc9aec0f667a3dd6553af3502e724b1a95785",
+ "external_id": "story:27131148",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_sneek_",
+   "story_27131148",
+   "launch_hn"
+  ],
+  "author": "sneek_",
+  "created_at": "2021-05-12T15:02:00Z",
+  "created_at_i": 1620831720,
+  "num_comments": 0,
+  "objectID": "27131148",
+  "points": 2,
+  "story_text": "Hey HN - I am SUPER excited to announce that Payload, a TypeScript and developer-first CMS that we&#x27;ve been working on for almost 3 years, just launched on Product Hunt.<p>Check it out!<p>https:&#x2F;&#x2F;www.producthunt.com&#x2F;posts&#x2F;payload-cms",
+  "title": "Launch HN: Payload – A Developer-First TypeScript and React Headless CMS"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=27131148"
+}

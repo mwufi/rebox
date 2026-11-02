@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:4959f2385c5c3067473137ee7148723ee473f7924b4a2b0cb9616cabf1cd6e97",
+ "external_id": "story:20341281",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_alexS",
+   "story_20341281",
+   "launch_hn"
+  ],
+  "author": "alexS",
+  "created_at": "2019-07-03T03:07:23Z",
+  "created_at_i": 1562123243,
+  "num_comments": 0,
+  "objectID": "20341281",
+  "points": 1,
+  "title": "Launch HN: Calenvy.com – scheduling powered by email (like I Want Sandy)",
+  "url": "https://calenvy.com"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=20341281"
+}

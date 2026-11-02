@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:e058c71071d982f48a3ba0950ad97a4188e0b51a4297f234af43c34b957225d4",
+ "external_id": "story:17128443",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_nahollander",
+   "story_17128443",
+   "launch_hn"
+  ],
+  "author": "nahollander",
+  "created_at": "2018-05-22T18:51:13Z",
+  "created_at_i": 1527015073,
+  "num_comments": 162,
+  "objectID": "17128443",
+  "points": 184,
+  "story_text": "Greetings HN!<p>My name’s Nadav Hollander, and I’m the founder of Dharma Labs (<a href=\"https:&#x2F;&#x2F;dharma.io\" rel=\"nofollow\">https:&#x2F;&#x2F;dharma.io</a>). At Dharma, we are creating a suite of protocols, standards, and developer tools for issuing and administering tokenized debt agreements on the Ethereum blockchain.<p>After three extensive external security audits of our smart contracts, we are releasing the public beta of Dharma Protocol v1 on the Ethereum mainnet -- developers can take a crack at building decentralized lending applications at docs.dharma.io, and non-developers can try out borrowing and lending a wide variety of crypto-assets using Dharma Plex (<a href=\"https:&#x2F;&#x2F;plex.dharma.io\" rel=\"nofollow\">https:&#x2F;&#x2F;plex.dharma.io</a>).<p>I first became interested in the cryptocurrency ecosystem in 2015, when I took Dan Boneh’s class on Bitcoin &amp; Cryptocurrencies at Stanford. Though the technology was (and still is) quite immature, I fell in love with the nascent space, and subsequently worked as an engineer at Coinbase.<p>At Coinbase, I was struck by the fact that a huge amount of users’ cryptocurrency was sitting idle in cold storage, instead of being deployed in some capacity as dollars would in a savings account.  The advent of generic, programmable blockchains like Ethereum presented an intriguing possibility -- what if we could build borderless infrastructure for borrowing and saving that wouldn’t require a company like Coinbase to sit in the middle?<p>That’s why I started working on Dharma -- a framework for originating, issuing, crowdfunding, and trading debt on blockchains like Ethereum.  In essence, what we do is create tools, standards, and smart contracts that developers can use to build profitable lending applications that can tap into a borderless pool of credit liquidity.  These tools are all fully open source and free to use -- there is no native “Dharma token” that users are forced to leverage in some capacity.<p>We look forward to hearing HN’s feedback &#x2F; thoughts!",
+  "title": "Launch HN: Dharma (YC S17) an open protocol for borrowing/lending cryptoassets"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=17128443"
+}

@@ -1,0 +1,24 @@
+{
+ "content_hash": "sha256:4586716a04e3f67b2f36d76728fd659c8df8492aa117c298f0e843b624b93b28",
+ "external_id": "story:36309120",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_zenorocha",
+   "story_36309120",
+   "launch_hn"
+  ],
+  "author": "zenorocha",
+  "created_at": "2023-06-13T12:16:25Z",
+  "created_at_i": 1686658585,
+  "num_comments": 270,
+  "objectID": "36309120",
+  "points": 432,
+  "story_text": "Hi HN! I&#x27;m Zeno, founder of Resend (<a href=\"https:&#x2F;&#x2F;resend.com\">https:&#x2F;&#x2F;resend.com</a>). We&#x27;re building a modern email sending platform focused on providing the best developer experience.<p>Why? When you look at all the biggest competitors like Sendgrid, Mailgun, Postmark, and SparkPost, you&#x27;ll notice that they were all founded around 2009&#x2F;2010, and they all have been acquired by now. Because of that, it&#x27;s common to see them only prioritizing enterprise requirements and optimizing for sales-led growth.<p>Nobody is building an exceptional developer experience. Nobody is trying to innovate. There isn&#x27;t a single developer-first email platform in the market today. We want to change that.<p>Email sending is the kind of thing that you should integrate and forget, but instead, you have…<p>- Templates that are hard to build: Typically, you can only send emails using HTML or plain text. Although we support both, we&#x27;re introducing a new way of developing and sending your emails. With Resend, you can code your email using React instead of outdated &lt;table&gt; layouts thanks to our open source project (<a href=\"https:&#x2F;&#x2F;react.email\" rel=\"nofollow noreferrer\">https:&#x2F;&#x2F;react.email</a>).<p>- Slow performance: Current solutions only offer a single region for email sending, even when all your end users are located in another part of the world. We allow you to choose what region your emails should be sent from (US, Europe, or LATAM), which minimizes latency and improves time-to-inbox.<p>- Poor observability: Most tools keep you in the dark without knowing what really happened after you sent an email. Resend exposes all the events associated with your email via webhooks.<p>- Designed for marketers only: Existing solutions are too generic and built exclusively for product marketers and product managers. We&#x27;re building a platform with a clean REST API and SDKs for Node.js, Python, Ruby, Elixir, Go, and Java. We also have examples of how to send emails using Vercel Edge Functions, Cloudflare Workers, Supabase Edge Functions, and other serverless solutions.<p>What&#x27;s our backstory? When I was a CPO at Liferay, I faced the problem of sending emails at scale. We had enterprise customers complaining about deliverability, and I&#x27;ve been frustrated with existing services ever since. More recently, as a VP of Developer Experience at WorkOS, I once again had to deal with emails landing in the spam folder. After looking at all the different solutions out there, I&#x27;ve been obsessed with the idea of solving this problem once and for all.<p>We need to stop developing emails like it&#x27;s 2010 and rethink how email can be done in 2023 and beyond. We believe that email development needs a revamp. A renovation. Modernized for the way we build apps today. That&#x27;s why we&#x27;re building Resend.<p>What issues have you had with email sending? I would love to hear your ideas, experiences, and feedback on any and all of the above.",
+  "title": "Launch HN: Resend (YC W23) – Email API for developers using React",
+  "url": "https://resend.com"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=36309120"
+}

@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:1bce5b24055037cec6543cc11d1d967379a07efc8edfab1c32684e4c21c8ffc8",
+ "external_id": "story:24908400",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_steve8708",
+   "story_24908400",
+   "launch_hn"
+  ],
+  "author": "steve8708",
+  "created_at": "2020-10-27T15:34:53Z",
+  "created_at_i": 1603812893,
+  "num_comments": 0,
+  "objectID": "24908400",
+  "points": 2,
+  "title": "Launch HN: Builder.io Theme Studio – no-code for your entire Shopify storefront",
+  "url": "https://www.builder.io/m/theme-studio"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=24908400"
+}

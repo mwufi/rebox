@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:ef297858b66f47f553d8610926b7bd315279e59764a6fcfadd31df8992ae4c6b",
+ "external_id": "story:44395931",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_anaempromptu",
+   "story_44395931",
+   "ask_hn"
+  ],
+  "author": "anaempromptu",
+  "created_at": "2025-06-27T11:31:28Z",
+  "created_at_i": 1751023888,
+  "num_comments": 0,
+  "objectID": "44395931",
+  "points": 2,
+  "story_text": "Hey HN! We&#x27;re Empromptu.ai, an AI app builder that builds AI apps (RAG, models, evals all built in every app)<p>Demo: <a href=\"https:&#x2F;&#x2F;www.youtube.com&#x2F;watch?v=w25XhUaPfls\" rel=\"nofollow\">https:&#x2F;&#x2F;www.youtube.com&#x2F;watch?v=w25XhUaPfls</a><p>We started Empromptu after burning through thousands of credits on AI builders and hitting the same problem: cool looking prototypes or demos that break with real users.<p>The issue wasn&#x27;t the building process, it was accuracy. Most AI applications plateau at 60%~ reliability, which is fine for prototypes but it&#x27;s unusable in production. We realized these tools aren&#x27;t really &quot;AI app builders&quot;, they&#x27;re website builders that happen to use AI.<p>We wanted to solve the hardest problem first: making AI applications actually work reliably.<p>Our approach centers on what we call dynamic optimization. Instead of cramming every possible scenario into one massive prompt (which confuses LLMs), our system adapts contextually. A travel chatbot automatically knows to mention LAX for Los Angeles vs. Pearson for Toronto. This consistently delivers 90%~ accuracy versus the industry standard 60%~.<p>But accuracy alone wasn&#x27;t enough because we also needed to solve the builder gap:<p>- Simple builders (Lovable, Bolt): Create static websites, not AI applications<p>- Complex ML tools: Require dedicated teams most startups don&#x27;t have (Arize, Voxel51) - we&#x27;ve also heard from both technical and non-technical founders that they found these tools very complex<p>- What&#x27;s missing: Tools that build applications where AI is embedded functionality<p>So we built AI agents with optimization built-in. Users just type what they want to build and our agents handle the full development pipeline: creating applications with embedded models, RAG and intelligent processing. You can deploy to your own infrastructure via Netlify, GitHub or download it directly since you can run it locally.<p>The result: Startups, solo hackers and enterprises can build production-ready AI apps without hiring a dedicated ML team.<p>Waitlist: <a href=\"https:&#x2F;&#x2F;empromptu.ai\" rel=\"nofollow\">https:&#x2F;&#x2F;empromptu.ai</a><p>We&#x27;d love feedback from the HN community — esp. if you&#x27;ve hit similar accuracy problems or thoughts on the technical approach.",
+  "title": "Launch  HN: Empromptu.ai – Agentic AI Building AI Apps"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=44395931"
+}

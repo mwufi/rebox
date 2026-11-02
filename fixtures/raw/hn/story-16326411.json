@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:894f3c261a58f571c3a59ca2f4fbe89420fb0085383e4805af88919ead3b74c0",
+ "external_id": "story:16326411",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_cjbest",
+   "story_16326411",
+   "launch_hn"
+  ],
+  "author": "cjbest",
+  "created_at": "2018-02-07T17:48:20Z",
+  "created_at_i": 1518025700,
+  "num_comments": 88,
+  "objectID": "16326411",
+  "points": 124,
+  "story_text": "Hi HN, we’re Chris Best and Hamish McKenzie, the founders of Substack (<a href=\"https:&#x2F;&#x2F;www.substack.com\" rel=\"nofollow\">https:&#x2F;&#x2F;www.substack.com</a>). We’ve built a tool that makes it simple for a writer to start a paid email newsletter. Sign up, connect to Stripe, and go. Our first publisher, Bill Bishop, writes a newsletter about China (<a href=\"https:&#x2F;&#x2F;nb.sinocism.com\" rel=\"nofollow\">https:&#x2F;&#x2F;nb.sinocism.com</a>) and got to six figures of annual revenue on his first day on Substack. Bill had been publishing Sinocism as a free newsletter for five years and had 30k subscribers. Now he can make a living from it.<p>Hamish is a journalist who has done everything from writing about indie music in Hong Kong to being lead writer for Tesla. We bonded over our shared love of reading when he worked at Kik, where Chris was the technical co-founder. Last summer, Chris was taking time off and asked Hamish to read an essay he was trying to write about the incentive structures of social media for writers, and how growing outrage and polarization was making it hard to have reasonable conversations. At the same time, we both loved Ben Thompson’s newsletter, Stratechery, which was doing really well off paid subscriptions. We wondered: what if it were easier for writers to start something like that? That felt more like a company than an essay, and so one thing led to another...<p>An example of a Substack newsletter you might enjoy is Versioning (<a href=\"https:&#x2F;&#x2F;versioning.substack.com\" rel=\"nofollow\">https:&#x2F;&#x2F;versioning.substack.com</a>), a daily reading list for web developers and designers. We also recommend Mallory Ortberg’s The Shatner Chatner (<a href=\"https:&#x2F;&#x2F;www.shatnerchatner.com\" rel=\"nofollow\">https:&#x2F;&#x2F;www.shatnerchatner.com</a>) and Helena Fitzgerald’s Griefbacon (<a href=\"https:&#x2F;&#x2F;griefbacon.substack.com\" rel=\"nofollow\">https:&#x2F;&#x2F;griefbacon.substack.com</a>).<p>The product is still in a pretty early phase but we’ve just launched our self-serve beta, where anyone can create a newsletter, free or paid: <a href=\"https:&#x2F;&#x2F;www.substack.com&#x2F;beta-signup\" rel=\"nofollow\">https:&#x2F;&#x2F;www.substack.com&#x2F;beta-signup</a>. At this stage, it’s completely free until you start charging, in which case we take a fee: 10% for people who start during the beta.<p>We know a lot of folks on HN care about this stuff too, so we’re keen to hear your feedback. Also: if you know any writers you’d be happy to pay to read (or if that’s you), we’d love to hear about that too.",
+  "title": "Launch HN: Substack (YC W18): Paid email newsletters made simple"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=16326411"
+}

@@ -1,0 +1,19 @@
+{
+ "_fixture": "Synthetic fixture: fake GitHub data (no real person or organization).",
+ "login": "Example-Octo-2",
+ "id": 900002,
+ "type": "User",
+ "name": "  Example   Octo Two ",
+ "company": "@Example-Org-1",
+ "blog": "https://example-octo-2.example/",
+ "location": "San Francisco",
+ "bio": null,
+ "twitter_username": null,
+ "followers": 230,
+ "public_repos": 12,
+ "created_at": "2015-01-01T00:00:00Z",
+ "updated_at": "2026-10-01T00:00:00Z",
+ "email": null,
+ "hireable": null,
+ "node_id": "SYNTHETIC"
+}

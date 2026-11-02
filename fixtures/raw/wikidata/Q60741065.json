@@ -1,0 +1,47 @@
+{
+ "content_hash": "sha256:e00058dea800d674a156dc238798514b5f05e28d4624dd339fa37cfa9a63e4c1",
+ "external_id": "Q60741065",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "finance and technology company"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Brex"
+   },
+   {
+    "prop": "P2002",
+    "value": "brexhq"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q1416636"
+   },
+   {
+    "prop": "P571",
+    "value": "2017-01-03T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "http://brex.com/"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q60741065"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q60741065"
+}

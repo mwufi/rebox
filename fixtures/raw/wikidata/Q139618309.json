@@ -1,0 +1,72 @@
+{
+ "content_hash": "sha256:c874e05d3b9b59672d5e52ddb3c7605255866f8fcbad04a05a907fc716606ee9",
+ "external_id": "Q139618309",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "generative ambient music platform for spas and other commercial wellness environments"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Cleome"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q139618225"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q322948"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q7397"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-01-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://www.cleome.io/"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {
+   "Q139618225": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American composer of contemporary classical music"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Aidan Vass"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://aidanvass.com/"
+    }
+   ]
+  },
+  "qid": "Q139618309"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q139618309"
+}

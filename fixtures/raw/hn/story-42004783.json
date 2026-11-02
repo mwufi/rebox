@@ -1,0 +1,22 @@
+{
+ "content_hash": "sha256:aa2dd9baed7d30d724e55fae6f6dca4ea20ea05c3fb8552cb5e77cc317d65e65",
+ "external_id": "story:42004783",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_hemmert",
+   "story_42004783"
+  ],
+  "author": "hemmert",
+  "created_at": "2024-10-31T09:06:55Z",
+  "created_at_i": 1730365615,
+  "num_comments": 6,
+  "objectID": "42004783",
+  "points": 3,
+  "title": "(Pre)Launch HN: Unthinkable – A visual travel guide to the edge of human thought",
+  "url": "https://www.unthinkable.net"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=42004783"
+}

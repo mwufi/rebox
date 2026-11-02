@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:aac775ae062545d69878162559055edea41fd081cf543ab8cbc6c0bab6ca67ab",
+ "external_id": "story:22667091",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_jtolds",
+   "story_22667091",
+   "launch_hn"
+  ],
+  "author": "jtolds",
+  "created_at": "2020-03-23T18:30:39Z",
+  "created_at_i": 1584988239,
+  "num_comments": 4,
+  "objectID": "22667091",
+  "points": 10,
+  "story_text": "Hi HN! I&#x27;m JT Olio. You might know me from previous posts such as &quot;Go channels are bad and you should feel bad&quot; (bad example), &quot;Whiteboard problems in pure lambda Calculus&quot; (good example), or being one of the first to write about switching my company from Python to Go back in 2014.<p>I&#x27;ve been working with the team here at Storj Labs to build a decentralized Amazon S3-compatible cloud storage service that is affordable, private, and secure. We just launched our new service called Tardigrade (https:&#x2F;&#x2F;tardigrade.io&#x2F;) and I&#x27;d love to get input from more developers. It&#x27;s open source (check out the GitHub repo at https:&#x2F;&#x2F;github.com&#x2F;storj&#x2F;storj) and we&#x27;re primarily using Go (naturally).<p>If you haven&#x27;t heard of Storj, the simplified explanation is that we are the Airbnb of hard drives. We take extra HDD space, aggregate it, incorporate Reed Solomon and other techniques to create resiliency, and sell it as a service to people who need object storage. The end result is a service that is encrypted by default, as fast as the big 3 cloud providers, and half the cost.<p>We&#x27;ve gone through a bit of a rebirth in the last few years. After hiring Ben Golub (Docker, Gluster, Verisign) as our new CEO, in 2018 we launched a 90 page, very detailed, technical whitepaper (https:&#x2F;&#x2F;storj.io&#x2F;storjv3.pdf) for our new storage system, in 2019 we launched our alphas and betas, and now we&#x27;re launching open access to our service! If you&#x27;d like to give it a try and share feedback, I can give you some credit to play around with. I&#x27;m also happy to answer any questions or share some more details around testing we&#x27;ve completed. Let me know what you think!",
+  "title": "Launch HN: Tardigrade–Decentralized Cloud Storage with Client-Side Encryption"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=22667091"
+}

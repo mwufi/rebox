@@ -1,0 +1,47 @@
+{
+ "content_hash": "sha256:aadccec5e3c71c4579f3ce1feebe37ca9b58dc46a6fb7cbebeb83451f3100ad9",
+ "external_id": "Q139915940",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "American appliance repair company"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "EasyBear Appliance Repair"
+   },
+   {
+    "prop": "P2002",
+    "value": "EasyBearRepair"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-02-03T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://easybear-appliancerepair.com"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q139915940"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q139915940"
+}

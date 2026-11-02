@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:032f039ebfe09a4ea57ac39fd7769d0440ccdfb9514ee5cbcfc917763f347b13",
+ "external_id": "story:33468611",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_christalwang",
+   "story_33468611",
+   "launch_hn"
+  ],
+  "author": "christalwang",
+  "created_at": "2022-11-04T15:46:38Z",
+  "created_at_i": 1667576798,
+  "num_comments": 254,
+  "objectID": "33468611",
+  "points": 127,
+  "story_text": "Hi, I’m Chris, one of the co-founders of Shimmer (<a href=\"https:&#x2F;&#x2F;shimmer.care\" rel=\"nofollow\">https:&#x2F;&#x2F;shimmer.care</a>). We offer one-to-one ADHD Coaching for adults. It was born out of my own roller coaster of a journey navigating my ADHD diagnosis.<p>Getting diagnosed with ADHD as an adult is complicated—equally heartbreaking and liberating. You literally need to rewrite your whole life narrative in light of this new realization. The process currently is super confusing and expensive (medications, therapy, coaching, tools, apps, etc.) and I just wished someone would guide me through it. Someone to personalize things for me, ask me good questions, and encourage me when I was feeling down.<p>My experience was the basis for what Shimmer is today. We’re creating an ADHD coaching service that is actually affordable (5-10X cheaper than traditional ADHD coaching, in fact!), personalized to your life (because what works for me may not work for you), and focused on action instead of theory (because we’re not short of knowledge—we just aren’t <i>doing</i> it!).<p>Our service is fit for ADHD brains. We merge the best worlds of telehealth (e.g. therapy&#x2F;coaching sessions) and asynchronous apps (e.g. Headspace, Noom) to create a solid combo of human accountability and app-based support. You get matched with an ADHD-specialized coach, meet weekly in focused video&#x2F;audio sessions where you set weekly goals, and over time, bit-by-bit start building a new day-to-day that supports your goals: new routines, systems, and skills.<p>Our program is rooted in science-backed methodologies including Health &amp; Wellness Coaching, Cognitive Behavioral Coaching (CBC&#x2F;CBT), Acceptance Commitment Training (ACT), positive psychology, and solution-focused coaching. The way we deliver it, however, is less rigid and more experimental. In each 15-min session and in the asynchronous portions, you’ll draw on collective ADHD community knowledge to work with one thing a week in your life that you’d like to improve on. Your coach will support you via text access (in-app) and by seeing and reacting to your weekly “Actions”.<p>In terms of the app itself, there are 3 main components: (1) a daily&#x2F;weekly simple check-list where you track your coaching tasks, checking them off (automatically pings your coach) and reflecting on your progress in-app, (2) a resource hub where you’ll find short, bite-sized content in service of your coaching journey, not standalone education to just “read up on”, and (3) your personalized chat with your coach where they’ll guide you through the journey—checking in on your completed&#x2F;in-completed tasks, giving you feedback, and sending you resources.<p>On the back end, our coaches have web and mobile apps that are designed to save them time and cognitive effort, so that they can focus on coaching. Simple things like “scheduled sends” and a prioritized message list are included to help them manage a large case load with less effort.<p>It’s $99&#x2F;mo. for 15-min weekly “bite-sized” sessions, or $349&#x2F;mo. for 45-min “similar-to-traditional” coaching sessions. Traditional coaching can run $400-700+&#x2F;mo. (up to the thousands depending on the coach). We also reserve a portion of our memberships for those with financial need, on a case by case basis.<p>If you have ADHD (or think you do), we’d love for you to check out our platform and give us critical feedback (or positive reinforcement!). It’s a super streamlined and ADHD-friendly signup process and in honor of our launch and celebration of October being ADHD Awareness Month, the first month is 40% off (offer until Nov 12).<p>I invite the greater Hacker News community to share any experiences you have with ADHD &amp; navigating care, and am always open to scheduling a 1:1 call to learn more!",
+  "title": "Launch HN: Shimmer (YC S21) – ADHD coaching for adults"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=33468611"
+}

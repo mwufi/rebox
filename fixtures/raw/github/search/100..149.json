@@ -1,0 +1,25 @@
+{
+ "_fixture": "Synthetic fixture: fake GitHub data (no real person or organization).",
+ "total_count": 2,
+ "incomplete_results": false,
+ "items": [
+  {
+   "login": "example-octo-4",
+   "id": 0,
+   "type": "User",
+   "score": 1.0
+  },
+  {
+   "login": "example-octo-5",
+   "id": 0,
+   "type": "User",
+   "score": 1.0
+  },
+  {
+   "login": "example-octo-1",
+   "id": 0,
+   "type": "User",
+   "score": 1.0
+  }
+ ]
+}

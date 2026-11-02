@@ -1,0 +1,24 @@
+{
+ "content_hash": "sha256:8597acc60b010c844494f5553195c267bcdd895b72a6afdad6ce1335a6800bc0",
+ "external_id": "story:43173378",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_MagMueller",
+   "story_43173378",
+   "launch_hn"
+  ],
+  "author": "MagMueller",
+  "created_at": "2025-02-25T15:45:17Z",
+  "created_at_i": 1740498317,
+  "num_comments": 100,
+  "objectID": "43173378",
+  "points": 259,
+  "story_text": "Hey HN, we’re Gregor and Magnus, the founders of browser-use (<a href=\"https:&#x2F;&#x2F;browser-use.com&#x2F;\">https:&#x2F;&#x2F;browser-use.com&#x2F;</a>), an easy way to connect AI agents with the browser.  Our agent library is open-source (<a href=\"https:&#x2F;&#x2F;github.com&#x2F;browser-use&#x2F;browser-use\">https:&#x2F;&#x2F;github.com&#x2F;browser-use&#x2F;browser-use</a>) and we have what is the biggest open-source community for browser agents. And now we have a cloud offering—hence our Launch HN today!<p>Check out this video to see it in action: <a href=\"https:&#x2F;&#x2F;preview.screen.studio&#x2F;share&#x2F;r1h4DuAk\" rel=\"nofollow\">https:&#x2F;&#x2F;preview.screen.studio&#x2F;share&#x2F;r1h4DuAk</a>. There are lots more demos at <a href=\"https:&#x2F;&#x2F;github.com&#x2F;browser-use&#x2F;browser-use\">https:&#x2F;&#x2F;github.com&#x2F;browser-use&#x2F;browser-use</a> on how we control the web with prompts.<p>We started coding a decade ago with Selenium bots and macros to automate tasks. Then we both moved into ML. Last November, we asked ourselves, “How hard could it be to build the interface between LLMs and the web?”<p>We launched on Show HN (<a href=\"https:&#x2F;&#x2F;news.ycombinator.com&#x2F;item?id=42052432\">https:&#x2F;&#x2F;news.ycombinator.com&#x2F;item?id=42052432</a>) and have since been addressing various challenges of browser automation, such as: - Automation scripts break when the website changes - Automation scripts are annoying to build - Captchas and rate limits - parsing errors and API key management - and perhaps worst of all, login screens.<p>People use us to fill out their forms, extract data behind login walls, or automate their CRM. Others use the xPaths browser-use clicked on and build their scripts faster, or directly rerun the actions of browser-use deterministically. We’re currently working on robust task reruns, agent memory for long tasks, parallelization for repetitive tasks, and many other sweet improvements.<p>One interesting aspect is that some companies now want to change their UI to be more agent-friendly. Some developers even replace ugly UIs with nice ones and use browser-use to copy data over.<p>Besides the open-source we have an API. We host the browser and LLMs for you and help you with handling proxy rotation, persistent sessions and allowing you to run multiple instances in parallel. We price at $30&#x2F;month—significantly lower than OpenAI’s Operator.<p>On the open-source side, browser use remains free. You can use any LLM, from Gemini to Sonnet, Qwen, or even DeepSeek-R1. It’s licensed under MIT, giving you full freedom to customize it.<p>We’d love to hear from you—what automation challenges are you facing? Any thoughts, questions, experiences are welcome!",
+  "title": "Launch HN: Browser Use (YC W25) – open-source web agents",
+  "url": "https://github.com/browser-use/browser-use"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=43173378"
+}

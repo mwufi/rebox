@@ -1,0 +1,43 @@
+{
+ "content_hash": "sha256:1580b44b9238f5da5b84c242567f3052ac5d1fb17c2a507f0f5d3eb472d3059a",
+ "external_id": "Q140739195",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "American consumer protection research institute analyzing government records across regulated industries"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "zReports Research Institute"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q31855"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-01-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://zreports.org/research"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q140739195"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q140739195"
+}

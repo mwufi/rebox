@@ -1,0 +1,47 @@
+{
+ "content_hash": "sha256:51da47d166852e5fc5ac079c90dd415bc6cea8705705f4fbdc8b6e1bf05b4d16",
+ "external_id": "Q136218995",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "software company based in the United States"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Termius Corporation"
+   },
+   {
+    "prop": "P2002",
+    "value": "TermiusHQ"
+   },
+   {
+    "prop": "P2037",
+    "value": "termius"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q1058914"
+   },
+   {
+    "prop": "P856",
+    "value": "https://termius.com/"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q136218995"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q136218995"
+}

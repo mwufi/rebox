@@ -1,0 +1,92 @@
+{
+ "_fixture": "Synthetic fixture: fake X profiles (no real accounts).",
+ "data": [
+  {
+   "id": "1000000001",
+   "username": "Example_Octo_1",
+   "name": "Example Octo One",
+   "description": "Synthetic person.  Builds examples.",
+   "location": "San Francisco, CA",
+   "url": "https://t.co/AAAAAAAAAA",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "start": 0,
+       "end": 23,
+       "url": "https://t.co/AAAAAAAAAA",
+       "expanded_url": "https://example-octo-1.example",
+       "display_url": "example-octo-1.example"
+      }
+     ]
+    }
+   },
+   "public_metrics": {
+    "followers_count": 1234,
+    "following_count": 10,
+    "tweet_count": 99,
+    "listed_count": 3
+   }
+  },
+  {
+   "id": "1000000002",
+   "username": "example_org_1",
+   "name": "Example Org One",
+   "description": "Synthetic company account.",
+   "location": "San Francisco",
+   "url": "https://t.co/BBBBBBBBBB",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "start": 0,
+       "end": 23,
+       "url": "https://t.co/BBBBBBBBBB",
+       "expanded_url": "https://www.example-org-1.example/",
+       "display_url": "example-org-1.example"
+      }
+     ]
+    }
+   },
+   "public_metrics": {
+    "followers_count": 56789,
+    "following_count": 1,
+    "tweet_count": 5,
+    "listed_count": 0
+   }
+  },
+  {
+   "id": "1000000003",
+   "username": "example_x_only",
+   "name": "Example X Only",
+   "description": "",
+   "location": "",
+   "url": "https://t.co/CCCCCCCCCC",
+   "public_metrics": {
+    "followers_count": 0,
+    "following_count": 0,
+    "tweet_count": 0,
+    "listed_count": 0
+   }
+  },
+  {
+   "id": "1000000004",
+   "username": "example_not_in_graph",
+   "name": "Not In Graph",
+   "public_metrics": {
+    "followers_count": 5
+   }
+  }
+ ],
+ "errors": [
+  {
+   "value": "example_missing",
+   "detail": "Could not find user with usernames: [example_missing].",
+   "title": "Not Found Error",
+   "resource_type": "user",
+   "parameter": "usernames",
+   "resource_id": "example_missing",
+   "type": "https://api.twitter.com/2/problems/resource-not-found"
+  }
+ ]
+}

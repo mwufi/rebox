@@ -1,0 +1,138 @@
+{
+ "content_hash": "sha256:493c670781d7b259749fd76e4eec1ab72b8f53ca663f969b31ff1c84b2a6fb5e",
+ "external_id": "Q9661",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "end": "2008-01-08T00:00:00Z",
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2005-08-03T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q445250"
+   },
+   {
+    "end": "2010-05-01T00:00:00Z",
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2008-01-08T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q454092"
+   },
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "open source software developer of Firefox and others"
+   },
+   {
+    "lang": "mul",
+    "prop": "label",
+    "value": "Mozilla"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q210057"
+   },
+   {
+    "prop": "P2002",
+    "value": "mozilla"
+   },
+   {
+    "prop": "P2037",
+    "value": "mozilla"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q1360517"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q163740"
+   },
+   {
+    "prop": "P571",
+    "value": "1998-02-28T00:00:00Z"
+   },
+   {
+    "prop": "P571",
+    "value": "2005-08-03T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://www.mozilla.org/en-US/"
+   }
+  ],
+  "domain_shared_with": [
+   "Q169925"
+  ],
+  "handles_shared": [
+   "x_handle:mozilla"
+  ],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {
+   "Q210057": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American computer services company"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Netscape"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q167270"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q6881511"
+    }
+   ],
+   "Q445250": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "Chairwoman; former CEO (born 1957)"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Mitchell Baker"
+    },
+    {
+     "prop": "P2002",
+     "value": "mitchellbaker"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ],
+   "Q454092": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American venture capitalist"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "John Lilly"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ]
+  },
+  "qid": "Q9661"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q9661"
+}

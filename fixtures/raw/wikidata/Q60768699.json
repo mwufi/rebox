@@ -1,0 +1,106 @@
+{
+ "content_hash": "sha256:839098fab1cb8066a6439813e4f44ceb95c3f9555c603db7d85d8050b7f465b2",
+ "external_id": "Q60768699",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "Online IDE"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Replit"
+   },
+   {
+    "lang": "mul",
+    "prop": "label",
+    "value": "Replit"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q113856785"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q140928994"
+   },
+   {
+    "prop": "P2002",
+    "value": "replit"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q63563749"
+   },
+   {
+    "prop": "P856",
+    "value": "https://replit.com/"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {
+   "Q113856785": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "CEO of Replit"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Amjad Masad"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Amjad Masad"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://amasad.me/"
+    }
+   ],
+   "Q140928994": [
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "designer"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Haya Odeh"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://www.hayaodeh.com/"
+    }
+   ]
+  },
+  "qid": "Q60768699"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q60768699"
+}

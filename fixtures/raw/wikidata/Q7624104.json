@@ -1,0 +1,144 @@
+{
+ "content_hash": "sha256:35edfd228c862f462e96132d4fd41e49a694d4d20a2471df718976f7e27ffe43",
+ "external_id": "Q7624104",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "Irish-American payment technology company"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Stripe"
+   },
+   {
+    "lang": "mul",
+    "prop": "label",
+    "value": "Stripe, LLC"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q16233063"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q7146257"
+   },
+   {
+    "prop": "P1128",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "time": "2020-01-01T00:00:00Z",
+    "value": "2500"
+   },
+   {
+    "prop": "P1128",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "time": "2022-01-01T00:00:00Z",
+    "value": "8000"
+   },
+   {
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "value": "http://www.wikidata.org/entity/Q7146257"
+   },
+   {
+    "prop": "P2002",
+    "value": "stripe"
+   },
+   {
+    "prop": "P2037",
+    "value": "stripe"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q12738586"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P571",
+    "value": "2010-01-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://stripe.com/"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {
+   "Q16233063": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "Irish businessman"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "John Collison"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "John Collison"
+    },
+    {
+     "prop": "P2002",
+     "value": "collision"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "http://www.johncollison.ie/"
+    }
+   ],
+   "Q7146257": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "Irish entrepreneur"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Patrick Collison"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Patrick Collison"
+    },
+    {
+     "prop": "P2002",
+     "value": "patrickc"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://patrickcollison.com/"
+    }
+   ]
+  },
+  "qid": "Q7624104"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q7624104"
+}

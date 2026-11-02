@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:38e3d152b07bd9904a1f87c7e4f25cb720bc638198d245faf00e9078aed5163f",
+ "external_id": "story:18980861",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_rpavuluri",
+   "story_18980861",
+   "launch_hn"
+  ],
+  "author": "rpavuluri",
+  "created_at": "2019-01-23T18:15:34Z",
+  "created_at_i": 1548267334,
+  "num_comments": 38,
+  "objectID": "18980861",
+  "points": 149,
+  "story_text": "Hi HN! I’m Rohan Pavuluri, co-founder of Upsolve (<a href=\"https:&#x2F;&#x2F;upsolve.org&#x2F;\" rel=\"nofollow\">https:&#x2F;&#x2F;upsolve.org&#x2F;</a>), a nonprofit in YC’s W19 batch. We provide software for low-income people in America that makes filing for bankruptcy less painful and expensive, just like what TurboTax did for filing taxes. Bankruptcy is a lifeline for low-income people in the United States who fall into debt from job loss, medical emergencies, and payday lenders. It allows them to get a fresh start. Unfortunately, it’s impossible for most people to file for bankruptcy because they cannot afford $2,000 for a bankruptcy lawyer. Our average user erases ~$40,000 in debt.<p>I started Upsolve when I was a law school research assistant in college. We were testing out the effectiveness of legal self-help packets for people who could not afford attorneys. I set out to turn these paper packets into a digital product. My co-founder Jonathan Petts spent ten years doing pro bono bankruptcies in his spare time as a corporate attorney. This is where he saw people turned down by brick and mortar legal nonprofits because demand for attorneys far exceeded supply. A judge introduced us in 2016 when she saw we were working on the same idea.<p>Here’s how it works. A user comes to our website and takes a screener to see if they’re a good fit for our service. If they are, they answer a series of questions about their personal finances, upload their tax returns&#x2F;pay stubs, and take a pre-bankruptcy education course. Our software then generates their forms, and one of our in-house attorneys reviews their forms for accuracy and completeness. If there are any issues, we follow up. When the forms are ready to file, we send them to the user. We track the user’s court notices so that we can fix any issues that may arise after filing. In 2018, we erased over $16,000,000 in debt for 400+ users.<p>We believe that 20M Americans would benefit from filing for bankruptcy. We currently allow our users to donate what they think is fair to us after they complete the process. While we’re mostly funded by foundations and the federal government now, we hope to be sustainable through donations that we receive from our users in the future. Regulations around bankruptcy only permit attorneys providing full-representation to charge clients.<p>We’re looking for any feedback you have on our product or how to reach new users.<p>User stories: <a href=\"https:&#x2F;&#x2F;upsolve.org&#x2F;fresh-starts&#x2F;\" rel=\"nofollow\">https:&#x2F;&#x2F;upsolve.org&#x2F;fresh-starts&#x2F;</a><p>TC: <a href=\"https:&#x2F;&#x2F;techcrunch.com&#x2F;2019&#x2F;01&#x2F;16&#x2F;upsolve-bankruptcy&#x2F;\" rel=\"nofollow\">https:&#x2F;&#x2F;techcrunch.com&#x2F;2019&#x2F;01&#x2F;16&#x2F;upsolve-bankruptcy&#x2F;</a><p>If interested in donating: <a href=\"https:&#x2F;&#x2F;upsolve.org&#x2F;donate&#x2F;\" rel=\"nofollow\">https:&#x2F;&#x2F;upsolve.org&#x2F;donate&#x2F;</a> or email [email redacted].",
+  "title": "Launch HN: Upsolve (YC Nonprofit W19) – TurboTax for Bankruptcy"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=18980861"
+}

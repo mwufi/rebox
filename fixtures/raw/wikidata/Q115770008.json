@@ -1,0 +1,39 @@
+{
+ "content_hash": "sha256:0b1b1477338831889e513aed3de4aa830786056757341ca6c352f44c300faada",
+ "external_id": "Q115770008",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "American audio AI company"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Deepgram"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P856",
+    "value": "https://deepgram.com/"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q115770008"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q115770008"
+}

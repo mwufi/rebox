@@ -1,0 +1,22 @@
+{
+ "content_hash": "sha256:bbbe7725a57ffe77385df6f15a4c67a806f146e267059344b81c6e2402f355a4",
+ "external_id": "story:24937661",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_cheeseblubber",
+   "story_24937661"
+  ],
+  "author": "cheeseblubber",
+  "created_at": "2020-10-30T00:11:26Z",
+  "created_at_i": 1604016686,
+  "num_comments": 0,
+  "objectID": "24937661",
+  "points": 2,
+  "title": "Lessons learned from launch HN as an open source project",
+  "url": "https://www.papercups.io/blog/launch"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=24937661"
+}

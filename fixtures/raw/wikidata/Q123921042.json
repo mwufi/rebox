@@ -1,0 +1,43 @@
+{
+ "content_hash": "sha256:78e1b4cec8cf48551eebbdc94aa77f071b0bd59a7cb2a67cb8a46ac529972a01",
+ "external_id": "Q123921042",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "American software company"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Resend"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q783794"
+   },
+   {
+    "prop": "P571",
+    "value": "2023-01-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://resend.com"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q123921042"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q123921042"
+}

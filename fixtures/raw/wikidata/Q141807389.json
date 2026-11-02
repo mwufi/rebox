@@ -1,0 +1,43 @@
+{
+ "content_hash": "sha256:c1d8c1db481bb4981874d6914fa769837af73a0bfbe329c40a615f216ac1b1ba",
+ "external_id": "Q141807389",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "clinic software company"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Salisan"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-06-24T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://salisan.com/"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q141807389"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q141807389"
+}

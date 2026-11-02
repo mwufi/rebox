@@ -1,0 +1,282 @@
+{
+ "content_hash": "sha256:586c3e65abc40cf9c9a904c81699e50e5bfbf4ce33381f727dd84e1e64e3d4b5",
+ "external_id": "Q364",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "end": "2018-10-29T00:00:00Z",
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2007-10-19T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q27940879"
+   },
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "hosting service for software projects using Git"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "GitHub"
+   },
+   {
+    "lang": "mul",
+    "prop": "label",
+    "value": "GitHub"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q16602077"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q27940879"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q55760767"
+   },
+   {
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#PreferredRank",
+    "start": "2018-10-29T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q92955"
+   },
+   {
+    "prop": "P2002",
+    "value": "GitHub"
+   },
+   {
+    "prop": "P2037",
+    "value": "github"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q114955954"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q115203600"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q115217949"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q1480561"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q1668024"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q16920237"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q16947796"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q18388277"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q189210"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q3077240"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q3220391"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q35127"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q5227240"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q5988403"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q6576792"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q6686945"
+   },
+   {
+    "prop": "P571",
+    "value": "2007-10-19T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://github.com"
+   }
+  ],
+  "domain_shared_with": [
+   "Q28771536"
+  ],
+  "handles_shared": [
+   "x_handle:github"
+  ],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {
+   "Q16602077": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American businessman"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Tom Preston-Werner"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Tom Preston-Werner"
+    },
+    {
+     "prop": "P2002",
+     "value": "mojombo"
+    },
+    {
+     "prop": "P2037",
+     "value": "mojombo"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://tom.preston-werner.com"
+    }
+   ],
+   "Q27940879": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American technology entrepreneur and programmer"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Chris Wanstrath"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Chris Wanstrath"
+    },
+    {
+     "prop": "P2002",
+     "value": "defunkt"
+    },
+    {
+     "prop": "P2037",
+     "value": "defunkt"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "http://chriswanstrath.com/"
+    },
+    {
+     "prop": "P856",
+     "value": "https://null.com/"
+    }
+   ],
+   "Q55760767": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American software developer and co-founder of GitHub"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "P. J. Hyett"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "P. J. Hyett"
+    },
+    {
+     "prop": "P2002",
+     "value": "pjhyett"
+    },
+    {
+     "prop": "P2037",
+     "value": "pjhyett"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://hyett.com/"
+    }
+   ],
+   "Q92955": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American computer programmer"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Nat Friedman"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Nat Friedman"
+    },
+    {
+     "prop": "P2002",
+     "value": "natfriedman"
+    },
+    {
+     "prop": "P2037",
+     "value": "nat"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://nat.org/"
+    }
+   ]
+  },
+  "qid": "Q364"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q364"
+}

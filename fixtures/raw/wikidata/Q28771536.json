@@ -1,0 +1,204 @@
+{
+ "content_hash": "sha256:270bd5974127aa2ce95ba464dec7641fb11df7139022364edf275e230ea23f15",
+ "external_id": "Q28771536",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "end": "2021-11-15T00:00:00Z",
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2018-10-29T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q92955"
+   },
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "American software corporation"
+   },
+   {
+    "lang": "mul",
+    "prop": "label",
+    "value": "GitHub Inc."
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q16602077"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q27940879"
+   },
+   {
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#PreferredRank",
+    "start": "2021-11-15T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q109414016"
+   },
+   {
+    "prop": "P2002",
+    "value": "github"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q6881511"
+   },
+   {
+    "prop": "P571",
+    "value": "2008-02-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://github.com"
+   }
+  ],
+  "domain_shared_with": [
+   "Q364"
+  ],
+  "handles_shared": [
+   "x_handle:github"
+  ],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {
+   "Q109414016": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "German developer and CEO of GitHub"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Thomas Dohmke"
+    },
+    {
+     "prop": "P2002",
+     "value": "ashtom"
+    },
+    {
+     "prop": "P2037",
+     "value": "ashtom"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ],
+   "Q16602077": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American businessman"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Tom Preston-Werner"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Tom Preston-Werner"
+    },
+    {
+     "prop": "P2002",
+     "value": "mojombo"
+    },
+    {
+     "prop": "P2037",
+     "value": "mojombo"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://tom.preston-werner.com"
+    }
+   ],
+   "Q27940879": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American technology entrepreneur and programmer"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Chris Wanstrath"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Chris Wanstrath"
+    },
+    {
+     "prop": "P2002",
+     "value": "defunkt"
+    },
+    {
+     "prop": "P2037",
+     "value": "defunkt"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "http://chriswanstrath.com/"
+    },
+    {
+     "prop": "P856",
+     "value": "https://null.com/"
+    }
+   ],
+   "Q92955": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American computer programmer"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Nat Friedman"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Nat Friedman"
+    },
+    {
+     "prop": "P2002",
+     "value": "natfriedman"
+    },
+    {
+     "prop": "P2037",
+     "value": "nat"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://nat.org/"
+    }
+   ]
+  },
+  "qid": "Q28771536"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q28771536"
+}

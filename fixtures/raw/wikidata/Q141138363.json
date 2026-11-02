@@ -1,0 +1,47 @@
+{
+ "content_hash": "sha256:b5368ae337ef870ed639a31ec26db66f42bf24d64101aa36354d3c75e9b69463",
+ "external_id": "Q141138363",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "software company for AI search visibility"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Sqrly"
+   },
+   {
+    "prop": "P2037",
+    "value": "Sqrly-AI-Technologies"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-01-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://sqrly.ai"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q141138363"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q141138363"
+}
