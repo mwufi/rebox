@@ -100,7 +100,7 @@ describe('wiki generation', () => {
     const a = make();
     const before = await a.call('GET', path(co));
     expect(before.status).toBe(404);
-    expect(before.body.error).toBe('not_found');
+    expect(before.body).toMatchObject({ error: 'not_found', can_generate: true, public: false });
     expect((await a.call('GET', path('rbx:company:s10wk-nope'))).status).toBe(404);
 
     const gen = await a.call('POST', path(co), admin);

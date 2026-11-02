@@ -10,7 +10,7 @@ import { ApiError, notFound } from '../errors.js';
 import { createLimiter, createWikiService, RateLimited, type Wiki } from '../wiki/service.js';
 
 /** Response body: §14 fields first; `sources` lists the cited footnotes. */
-const body = (w: Wiki) => ({
+const body = (w: Wiki, gen: { can_generate: boolean; public: boolean }) => ({
   content_md: w.content_md,
   model: w.model,
   generated_at: w.generated_at,
@@ -18,6 +18,7 @@ const body = (w: Wiki) => ({
   stale: w.stale,
   entity_id: w.entity_id,
   sources: w.sources,
+  ...gen,
 });
 
 export function wikiRoutes(deps: Deps) {
@@ -43,12 +44,15 @@ export function wikiRoutes(deps: Deps) {
       limiter: { acquire: () => {} },
     });
 
+  // Lets the explorer decide whether to offer Generate / Regenerate (and whether it needs a token).
+  const gen = { can_generate: service !== null, public: settings.public };
+
   app.get('/v0/entities/:id/wiki', async (c) => {
     const id = c.req.param('id');
     const w = await reader.get(id);
     if (w === 'missing') throw notFound(`entity ${id} not found`);
-    if (!w) return c.json({ error: 'not_found', message: 'no wiki for this entity yet', can_generate: service !== null }, 404);
-    return c.json(body(w));
+    if (!w) return c.json({ error: 'not_found', message: 'no wiki for this entity yet', ...gen }, 404);
+    return c.json(body(w, gen));
   });
 
   app.post('/v0/entities/:id/wiki', async (c) => {
@@ -61,7 +65,7 @@ export function wikiRoutes(deps: Deps) {
     try {
       const w = await service.generate(id, { force, by: p.role === 'admin' ? 'api:admin' : 'api:public' });
       if (w === 'missing') throw notFound(`entity ${id} not found`);
-      return c.json(body(w));
+      return c.json(body(w, gen));
     } catch (err) {
       if (err instanceof RateLimited) {
         c.header('Retry-After', String(err.retryAfterS));
