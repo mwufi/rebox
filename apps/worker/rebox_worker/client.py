@@ -2,6 +2,16 @@
 
 ``POST /internal/claims`` (every batch names its ``worker`` and ``run_id``), ``POST /internal/workers``
 (idempotent registration), ``POST /internal/runs`` and ``PATCH /internal/runs/:id``.
+
+Rejections
+    The writer is all-or-nothing per batch: a ``400`` lists the bad claims by index and writes
+    nothing. With ``write(..., drop_rejected=True)`` (what the pipeline uses) the client drops
+    exactly those claims, plus any claim that refers by ``{"id"}`` to an entity only a dropped
+    claim would have minted, logs each with its reason, and re-sends the rest, so one bad record
+    never stops an indexer. They come back in ``WriteResult.rejected``. A ``400`` that is not
+    about specific claims (index ``-1``: worker not active, layer not allowed, ...) still raises
+    ``ValidationRejected``, as do auth errors (``WriterError``) and transport/5xx/429 errors once
+    the retries are used up.
 """
 
 from __future__ import annotations
@@ -10,12 +20,12 @@ import logging
 import random
 import time
 from collections.abc import Callable, Iterator, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
 
-from .models import ClaimWrite
+from .models import ClaimWrite, IdRef, MintRef
 
 log = logging.getLogger(__name__)
 
@@ -34,15 +44,43 @@ class ValidationRejected(WriterError):
         self.details = details
 
 
+@dataclass(frozen=True)
+class RejectedWrite:
+    """A claim the writer refused (or that depended on one), with the writer's reason."""
+
+    claim: ClaimWrite
+    reason: str
+
+
 @dataclass
 class WriteResult:
     written: int = 0
     minted: int = 0
+    rejected: list[RejectedWrite] = field(default_factory=list)
 
     def __iadd__(self, other: WriteResult) -> WriteResult:
         self.written += other.written
         self.minted += other.minted
+        self.rejected.extend(other.rejected)
         return self
+
+
+def minted_ids(c: ClaimWrite) -> set[str]:
+    """Ids this claim mints (its ``{"mint"}`` refs)."""
+    return {ref.mint.id for ref in (c.subject, c.object) if ref is not None and isinstance(ref, MintRef)}
+
+
+def _id_refs(c: ClaimWrite) -> set[str]:
+    """Ids this claim needs to exist already (its ``{"id"}`` refs)."""
+    return {ref.id for ref in (c.subject, c.object) if ref is not None and isinstance(ref, IdRef)}
+
+
+@dataclass
+class _MintLedger:
+    """Across one ``write`` call: ids minted by written claims, and ids in refused claims' mints."""
+
+    written: set[str] = field(default_factory=set)
+    refused: set[str] = field(default_factory=set)
 
 
 def chunks(items: Sequence[ClaimWrite], size: int = BATCH_SIZE) -> Iterator[Sequence[ClaimWrite]]:
@@ -83,13 +121,82 @@ class ClaimsClient:
         worker: str,
         run_id: int | None = None,
         batch_size: int = BATCH_SIZE,
+        drop_rejected: bool = False,
     ) -> WriteResult:
         """Write ``claims`` as ``worker`` (in ``run_id``) in batches of at most ``batch_size``;
-        each batch is one transaction."""
+        each batch is one transaction. With ``drop_rejected``, claims the writer refuses are
+        dropped (see the module docstring) instead of raising ``ValidationRejected``."""
         total = WriteResult()
+        ledger = _MintLedger()
         for batch in chunks(claims, batch_size):
-            total += self.write_batch(layer, batch, worker=worker, run_id=run_id)
+            if drop_rejected:
+                total += self._write_dropping(layer, list(batch), worker, run_id, ledger)
+            else:
+                total += self.write_batch(layer, batch, worker=worker, run_id=run_id)
         return total
+
+    def _write_dropping(
+        self, layer: str, pending: list[ClaimWrite], worker: str, run_id: int | None, ledger: _MintLedger
+    ) -> WriteResult:
+        """One batch: send, drop what the writer refuses (and its dependents), re-send the rest.
+
+        Every round removes at least one claim, so this ends after at most ``len(pending)``
+        rejections."""
+        out = WriteResult()
+        while True:
+            pending = self._drop_dependents(pending, ledger, out)
+            if not pending:
+                return out
+            try:
+                res = self.write_batch(layer, pending, worker=worker, run_id=run_id)
+            except ValidationRejected as e:
+                reasons = _per_claim(e, len(pending))
+                if reasons is None:
+                    raise  # not about specific claims: the run cannot go on
+                for i in sorted(reasons):
+                    self._reject(out, pending[i], "; ".join(reasons[i]))
+                    ledger.refused |= minted_ids(pending[i])
+                pending = [c for i, c in enumerate(pending) if i not in reasons]
+                continue
+            out.written += res.written
+            out.minted += res.minted
+            for c in pending:
+                ledger.written |= minted_ids(c)
+            return out
+
+    def _drop_dependents(
+        self, pending: list[ClaimWrite], ledger: _MintLedger, out: WriteResult
+    ) -> list[ClaimWrite]:
+        """Drop claims whose ``{"id"}`` refs name an entity that only refused claims would have
+        minted (not written earlier in this call, not minted by a claim still pending); repeated
+        until nothing changes, since a dropped claim may have been another's minter."""
+        while True:
+            minted_here = set().union(*(minted_ids(c) for c in pending)) if pending else set()
+            lost = ledger.refused - ledger.written - minted_here
+            keep: list[ClaimWrite] = []
+            for c in pending:
+                missing = sorted(_id_refs(c) & lost)
+                if missing:
+                    self._reject(out, c, f"depends on rejected mint {', '.join(missing)}")
+                    ledger.refused |= minted_ids(c)
+                else:
+                    keep.append(c)
+            if len(keep) == len(pending):
+                return keep
+            pending = keep
+
+    @staticmethod
+    def _reject(out: WriteResult, claim: ClaimWrite, reason: str) -> None:
+        out.rejected.append(RejectedWrite(claim, reason))
+        value = repr(claim.value)
+        log.warning(
+            "writer rejected claim %s (%s %s = %s): %s",
+            claim.source_ref,
+            claim.subject_id,
+            claim.predicate,
+            value if len(value) <= 200 else value[:200] + "...",
+            reason,
+        )
 
     def write_batch(
         self, layer: str, claims: Sequence[ClaimWrite], *, worker: str, run_id: int | None = None
@@ -184,6 +291,18 @@ class ClaimsClient:
 
     def close(self) -> None:
         self.http.close()
+
+
+def _per_claim(e: ValidationRejected, n: int) -> dict[int, list[str]] | None:
+    """The writer's reasons by claim index, or None when the 400 is not (only) about specific
+    claims of this batch (no details, index -1, or an index out of range)."""
+    reasons: dict[int, list[str]] = {}
+    for d in e.details:
+        i = d.get("index") if isinstance(d, dict) else None
+        if not isinstance(i, int) or isinstance(i, bool) or not 0 <= i < n:
+            return None
+        reasons.setdefault(i, []).append(str(d.get("message") or "rejected"))
+    return reasons or None
 
 
 def _json(resp: httpx.Response) -> dict[str, Any]:

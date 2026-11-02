@@ -351,7 +351,8 @@ def test_two_workers_corroborate_against_real_api(api_deps, real_api, owner):
     assert listed["alpha"]["runs_ok"] == 1 and listed["alpha"]["claims_total"] == s1.written
     assert listed["beta"]["last_run"]["status"] == "ok" and listed["beta"]["trust"] == pytest.approx(0.6)
 
-    # The parser writing without evidence is refused by the real writer, and its run is closed as failed.
+    # The parser writing without evidence is refused claim by claim by the real writer; since S12
+    # the run drops those claims, counts them as rejected, and still closes ok.
     class NoEvidence:
         name, layer, interval_s, worker_kind = "beta", "public/beta", 60, "parser"
 
@@ -368,10 +369,35 @@ def test_two_workers_corroborate_against_real_api(api_deps, real_api, owner):
                 )
             ]
 
-    with pytest.raises(Exception, match="evidence is required"):
-        run_sync(NoEvidence(), api_deps)
-    last = owner.execute("select status, error from run order by id desc limit 1").fetchone()
-    assert last["status"] == "failed" and "evidence is required" in last["error"]
+    stats = run_sync(NoEvidence(), api_deps)
+    assert (stats.written, stats.rejected) == (0, 2)  # the github claim and the generated name
+    last = owner.execute("select status, error, stats from run order by id desc limit 1").fetchone()
+    assert last["status"] == "ok" and last["error"] is None and last["stats"]["rejected"] == 2
+
+
+def test_real_api_partial_rejection_of_500(api_deps, owner):
+    """S12 against the real writer: one non-normalized identity value among 500 claims."""
+    from rebox_worker.models import ClaimWrite
+
+    c = api_deps.client
+    wid = c.register_worker(name="s12", kind="connector", source="s12", layers=["public/s12"])
+    claims = [
+        ClaimWrite(
+            subject={"mint": {"id": f"rbx:company:s12-{i}", "kind": "company"}},
+            predicate="website",
+            value="http://WWW.com/"
+            if i == 250
+            else ("http://www.com" if i == 0 else f"https://c{i}.example"),
+            source_ref=f"s12:{i}",
+        )
+        for i in range(500)
+    ]
+    res = c.write("public/s12", claims, worker=wid, drop_rejected=True)
+    assert (res.written, res.minted) == (499, 499)
+    assert [(r.claim.source_ref, r.reason) for r in res.rejected] == [
+        ("s12:250", 'identity value "http://WWW.com/" is not normalized (url): expected "http://www.com"')
+    ]
+    assert owner.execute("select count(*) n from claim where layer_id = 'public/s12'").fetchone()["n"] == 499
 
 
 # ── S8 hooks: per-seed workers (workers / worker_for) and connector run_stats ──

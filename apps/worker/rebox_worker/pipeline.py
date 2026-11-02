@@ -6,8 +6,15 @@
 ``run_replay`` re-extract every stored raw record of a source (no fetch, cursor untouched).
 
 A flush is all-or-nothing from the pipeline's point of view: the raw index and the cursor
-only move after the writer accepted every claim, and minted ids are deterministic, so a
+only move after the flush's writes went through, and minted ids are deterministic, so a
 crash or retry repeats work but never loses or duplicates it.
+
+Rejected claims never stop a run: the resolver drops claims that break the writer's rules
+before sending, and the client drops claims the writer still refuses (by index in a 400) and
+their dependents, then writes the rest (``drop_rejected``). Both count as ``rejected`` in the
+run stats and are logged with their reasons. Their records are indexed like the others (a
+``replay`` after a fix re-extracts them). Only transport/5xx errors (after retries), auth
+errors and 400s that are not about specific claims fail the run.
 
 Provenance (CONTRACTS §12): each sync/replay resolves the connector's worker identity, opens a
 run, sends ``worker`` + ``run_id`` with every batch, reports progress after each flush and
@@ -26,7 +33,7 @@ from typing import Any
 import psycopg
 from psycopg.types.json import Jsonb
 
-from .client import ClaimsClient
+from .client import ClaimsClient, minted_ids
 from .connectors.base import Connector, Ctx
 from .db import Db
 from .identity import Active, RunTracker, connector_run_stats
@@ -188,15 +195,22 @@ def _write_records(
     for active, items in groups.values():
         batch = Stats()
         res = resolver.resolve(items)
-        result = deps.client.write(connector.layer, res.claims, worker=active.worker_id, run_id=active.run_id)
+        result = deps.client.write(
+            connector.layer, res.claims, worker=active.worker_id, run_id=active.run_id, drop_rejected=True
+        )
         resolver.commit(res)  # resolution_log + review items, after the writer accepted the claims
         batch.batches = 1
         batch.claims = len(res.claims)
         batch.written = result.written
         batch.minted = res.count("minted")
+        if result.rejected:  # an entity whose every claim was refused was not minted after all
+            refused = {id(r.claim) for r in result.rejected}
+            kept = set().union(*(minted_ids(c) for c in res.claims if id(c) not in refused))
+            batch.minted = sum(1 for r in res.logs if r.decision == "minted" and r.entity_id in kept)
         batch.matched = res.count("matched")
         batch.review = res.count("review")
-        batch.rejected = len(res.rejected)
+        # Refused before sending (resolver) + refused by the writer (and their dependents).
+        batch.rejected = len(res.rejected) + len(result.rejected)
         stats.add(batch)
         active.stats.add(batch)
         log.info(

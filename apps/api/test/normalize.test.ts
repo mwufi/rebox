@@ -3,6 +3,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { checkNormalized, normalizers, type NormalizerName } from '../src/normalize.js';
+import { mint, setupApp, uid } from './helpers.js';
+
+const t = setupApp();
 
 /** CONTRACTS §4: the cases both services run (apps/worker/tests/test_normalize_ids.py loads the same file). */
 interface Case {
@@ -58,5 +61,28 @@ describe('normalizers', () => {
 
   it('checkNormalized requires a string', () => {
     expect(checkNormalized('exact', 41234567)).toBe('must be a string (normalizer exact)');
+  });
+});
+
+describe('writer and the X spider incident (S12)', () => {
+  it('accepts http://www.com and refuses a non-normalized value by index', async () => {
+    const layer = `public/n${Date.now().toString(36)}`;
+    const a = uid('company', 'www');
+    const b = uid('company', 'www2');
+    const ok = await t.write(layer, [
+      { subject: mint(a), predicate: 'website', value: 'http://www.com', source_ref: `t:${a}:website` },
+      { subject: mint(a), predicate: 'domain', value: 'www.com', source_ref: `t:${a}:domain` },
+    ]);
+    expect(ok.status).toBe(200);
+    expect(ok.body).toEqual({ written: 2, minted: 1 });
+
+    const bad = await t.write(layer, [
+      { subject: mint(b), predicate: 'website', value: 'https://acme.example', source_ref: `t:${b}:website` },
+      { subject: mint(b), predicate: 'website', value: 'http://WWW.com/', source_ref: `t:${b}:website2` },
+    ]);
+    expect(bad.status).toBe(400);
+    expect(bad.body.details).toEqual([
+      { index: 1, message: 'identity value "http://WWW.com/" is not normalized (url): expected "http://www.com"' },
+    ]);
   });
 });
