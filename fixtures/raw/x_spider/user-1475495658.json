@@ -1,0 +1,38 @@
+{
+ "content_hash": "sha256:f98b0482966b3723ef42999adc903950343d9bc9c581e762d43b89c0ce9fb554",
+ "external_id": "user:1475495658",
+ "fetched_at": "2026-11-02T10:48:34Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2013-06-01T19:36:52.000Z",
+   "description": "General Partner @a16z. Positive-sum. Striving for a thousand year heart. Worldbuilding @mtslive @theacademysf @cosign",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "display_url": "cosign.co/erik",
+       "end": 23,
+       "expanded_url": "https://cosign.co/erik",
+       "start": 0,
+       "url": "https://t.co/tjByKGJ08F"
+      }
+     ]
+    }
+   },
+   "id": "1475495658",
+   "location": "SF",
+   "name": "Erik Torenberg",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/1449117890955788292/x3DIqECG_normal.jpg",
+   "public_metrics": {
+    "followers_count": 168570,
+    "following_count": 4406
+   },
+   "url": "https://t.co/tjByKGJ08F",
+   "username": "eriktorenberg",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/eriktorenberg"
+}

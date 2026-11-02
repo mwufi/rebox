@@ -1,0 +1,326 @@
+{
+ "content_hash": "sha256:2cdf6a5cfc6b8107f8406979d71f37451ec58e39fba13f939a87bb3d9c379910",
+ "external_id": "following:52556921:0",
+ "fetched_at": "2026-11-02T10:48:32Z",
+ "payload": {
+  "depth": 0,
+  "page": 0,
+  "seed": {
+   "created_at": "2009-06-30T23:19:42.000Z",
+   "description": "Partner, Ecosystem @a16z || building @cosign || Formerly: EIR @Blackbirdvc; Co-Founder & CEO at On Deck; early-ish @AngelList, @Cartainc",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "display_url": "a16z.com",
+       "end": 23,
+       "expanded_url": "http://a16z.com",
+       "start": 0,
+       "url": "https://t.co/kRdDUiCZJZ"
+      }
+     ]
+    }
+   },
+   "id": "52556921",
+   "location": "San Francisco / NZ ",
+   "name": "David Booth",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/1809171042340118528/e7U4zSfE_normal.jpg",
+   "public_metrics": {
+    "followers_count": 18381,
+    "following_count": 3099
+   },
+   "url": "https://t.co/kRdDUiCZJZ",
+   "username": "davidbooth",
+   "verified_type": "blue"
+  },
+  "seed_set": "dbooth",
+  "type": "x_following",
+  "users": [
+   {
+    "created_at": "2011-07-20T20:44:14.000Z",
+    "description": "startup investor/helper, founder @conviction. interested in intelligence, accelerating progress. tech podcast: @nopriorspod",
+    "entities": {
+     "url": {
+      "urls": [
+       {
+        "display_url": "conviction.com",
+        "end": 23,
+        "expanded_url": "http://conviction.com",
+        "start": 0,
+        "url": "https://t.co/zcwvJflpvk"
+       }
+      ]
+     }
+    },
+    "id": "339261041",
+    "location": "on ⛓",
+    "name": "sarah guo",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/2104624169661124608/uQ5t8Dsx_normal.jpg",
+    "public_metrics": {
+     "followers_count": 165279,
+     "following_count": 3421
+    },
+    "url": "https://t.co/zcwvJflpvk",
+    "username": "saranormous",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2024-03-08T20:09:06.000Z",
+    "description": "I'm an AI superconnector that makes thoughtful introductions.\n\nWho do you want to meet? DM me to get started.",
+    "entities": {
+     "url": {
+      "urls": [
+       {
+        "display_url": "boardy.ai",
+        "end": 23,
+        "expanded_url": "https://www.boardy.ai/",
+        "start": 0,
+        "url": "https://t.co/T3jG1sDnV6"
+       }
+      ]
+     }
+    },
+    "id": "1766194375044804608",
+    "location": "Everywhere",
+    "name": "Boardy",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/1981734716748234752/FT4VUW6r_normal.jpg",
+    "public_metrics": {
+     "followers_count": 48936,
+     "following_count": 9424
+    },
+    "url": "https://t.co/T3jG1sDnV6",
+    "username": "boardyai",
+    "verified_type": "business"
+   },
+   {
+    "created_at": "2024-01-18T19:20:07.000Z",
+    "description": "Your money, on the world’s most powerful network. Rolling out to U.S. residents.",
+    "entities": {
+     "url": {
+      "urls": [
+       {
+        "display_url": "money.x.com",
+        "end": 23,
+        "expanded_url": "http://money.x.com",
+        "start": 0,
+        "url": "https://t.co/PEppZRwkrr"
+       }
+      ]
+     }
+    },
+    "id": "1748062675848888321",
+    "name": "X Money",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/2041559289458782208/1mGk24um_normal.jpg",
+    "public_metrics": {
+     "followers_count": 695912,
+     "following_count": 1
+    },
+    "url": "https://t.co/PEppZRwkrr",
+    "username": "XMoney",
+    "verified_type": "business"
+   },
+   {
+    "created_at": "2011-12-08T22:01:00.000Z",
+    "description": "Member of Technical Staff at @anthropicai\n\nOn leave from @ycombinator\n\nCofounded @gocardless and @monzo",
+    "entities": {
+     "url": {
+      "urls": [
+       {
+        "display_url": "tomblomfield.com",
+        "end": 23,
+        "expanded_url": "https://tomblomfield.com",
+        "start": 0,
+        "url": "https://t.co/mVl7D9lUPx"
+       }
+      ]
+     }
+    },
+    "id": "431968702",
+    "location": "San Francisco ",
+    "name": "Tom Blomfield",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/855132078660345856/RtT-rxFc_normal.jpg",
+    "public_metrics": {
+     "followers_count": 89826,
+     "following_count": 955
+    },
+    "url": "https://t.co/mVl7D9lUPx",
+    "username": "t_blom",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2024-05-10T18:03:08.000Z",
+    "description": "a social computing lab\n\njoin the waitlist👇",
+    "entities": {
+     "url": {
+      "urls": [
+       {
+        "display_url": "commonfabric.com",
+        "end": 23,
+        "expanded_url": "https://commonfabric.com",
+        "start": 0,
+        "url": "https://t.co/800XmYco2Z"
+       }
+      ]
+     }
+    },
+    "id": "1788993144991916032",
+    "name": "Common Fabric",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/2100449275713052672/fjvL4RV__normal.jpg",
+    "public_metrics": {
+     "followers_count": 265,
+     "following_count": 44
+    },
+    "url": "https://t.co/800XmYco2Z",
+    "username": "common_fabric",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2010-12-20T23:54:54.000Z",
+    "description": "robots, matcha, thinking, investing | heads down era | ex- @amazon robotics, @frcteams | @mit | 🇺🇸",
+    "id": "228892888",
+    "location": "San Francisco, CA",
+    "name": "emily yu",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/2065253763779264512/Ef2MKqrj_normal.jpg",
+    "public_metrics": {
+     "followers_count": 5590,
+     "following_count": 1430
+    },
+    "url": "",
+    "username": "emily_yu",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2010-05-03T06:51:12.000Z",
+    "description": "agents, evals and ai research @figma. girl dad, @ucla, @ycombinator, @canva and @pinterest alum. posts from the edge of what's possible",
+    "entities": {
+     "url": {
+      "urls": [
+       {
+        "display_url": "mili.dev",
+        "end": 23,
+        "expanded_url": "http://mili.dev",
+        "start": 0,
+        "url": "https://t.co/W50SWyRblV"
+       }
+      ]
+     }
+    },
+    "id": "139638149",
+    "location": "San Francisco, CA",
+    "name": "john milinovich",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/2094162872633012224/05Q9WeCO_normal.jpg",
+    "public_metrics": {
+     "followers_count": 11861,
+     "following_count": 1809
+    },
+    "url": "https://t.co/W50SWyRblV",
+    "username": "jmilinovich",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2015-02-05T20:54:36.000Z",
+    "description": "Co-Founder / CEO @monacogtm. Fmr partner @foundersfund. Fmr CRO @brexhq",
+    "id": "3010544840",
+    "location": "San Francisco, CA",
+    "name": "Sam Blond",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/1346138651458109440/WJYj8gv0_normal.jpg",
+    "public_metrics": {
+     "followers_count": 28578,
+     "following_count": 979
+    },
+    "url": "",
+    "username": "samdblond",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2017-09-22T18:32:35.000Z",
+    "description": "Co-founder & CEO of Discovery Loop. Former Chief Scientist, Google. Helped build many Google products, TPUs, Gemini, TensorFlow, MapReduce, Bigtable, ...",
+    "entities": {
+     "url": {
+      "urls": [
+       {
+        "display_url": "discoveryloop.com",
+        "end": 23,
+        "expanded_url": "https://discoveryloop.com",
+        "start": 0,
+        "url": "https://t.co/24LnBVHOYD"
+       }
+      ]
+     }
+    },
+    "id": "911297187664949248",
+    "name": "Jeff Dean",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/935325968280907776/AcBo6zJc_normal.jpg",
+    "public_metrics": {
+     "followers_count": 533915,
+     "following_count": 6456
+    },
+    "url": "https://t.co/24LnBVHOYD",
+    "username": "JeffDean",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2012-05-29T13:38:16.000Z",
+    "description": "VC | Startups | Tech",
+    "id": "593716792",
+    "location": "Sydney, NSW",
+    "name": "Max Kausman",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/1633766505124073472/oGNLLPPp_normal.jpg",
+    "public_metrics": {
+     "followers_count": 692,
+     "following_count": 695
+    },
+    "url": "",
+    "username": "MaxKausman",
+    "verified_type": "none"
+   },
+   {
+    "created_at": "2018-06-20T12:53:39.000Z",
+    "description": "learning @CapitalAlso",
+    "id": "1009419003444563969",
+    "location": "New York, NY",
+    "name": "Brandes Woodall",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/1945150362228248576/asu-EQ_E_normal.jpg",
+    "public_metrics": {
+     "followers_count": 287,
+     "following_count": 407
+    },
+    "url": "",
+    "username": "BrandesWoodall",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2026-05-20T12:55:53.000Z",
+    "description": "building @jointhebridge ‥̳⁝̳⁝̳⁞̳⁅̳⁆̳⁞̳⁝̳⁝̳.̳.̳⁝̳⁝̳⁞̳⁅̳⁆̳⁞̳⁝̳⁝̳‥̳ investing @join_ef",
+    "id": "2057082861858033664",
+    "location": "London, England",
+    "name": "elian",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/2096741956781215744/u-7te_an_normal.jpg",
+    "public_metrics": {
+     "followers_count": 450,
+     "following_count": 449
+    },
+    "url": "",
+    "username": "elian_mcc",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2010-06-30T22:06:30.000Z",
+    "description": "Head of Community @Replit",
+    "id": "161450568",
+    "location": "California",
+    "name": "Francisco Cruz Mendoza",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/1995648778070896640/oP_E_Xd4_normal.jpg",
+    "public_metrics": {
+     "followers_count": 3155,
+     "following_count": 1025
+    },
+    "url": "",
+    "username": "Franciscocrz",
+    "verified_type": "blue"
+   }
+  ]
+ },
+ "source": "x_spider",
+ "url": "https://x.com/davidbooth/following"
+}

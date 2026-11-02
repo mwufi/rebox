@@ -1,0 +1,37 @@
+{
+ "content_hash": "sha256:42942f320e67a2e028bff7749abf033b2605a1b00af9d4ac00d0b69f0e5f88e8",
+ "external_id": "user:1879981006729670657",
+ "fetched_at": "2026-11-02T10:48:34Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2025-01-16T19:56:36.000Z",
+   "description": "AI agents for data engineering. Impact analysis, root cause debugging, model refactoring. All powered by full data stack context.",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "display_url": "typedef.ai/?utm_source=x&…",
+       "end": 23,
+       "expanded_url": "https://www.typedef.ai/?utm_source=x&utm_medium=social&utm_campaign=x_profile",
+       "start": 0,
+       "url": "https://t.co/5VH3HWdun2"
+      }
+     ]
+    }
+   },
+   "id": "1879981006729670657",
+   "name": "typedef",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/1879981230432862208/vMjDAZa3_normal.jpg",
+   "public_metrics": {
+    "followers_count": 253,
+    "following_count": 9
+   },
+   "url": "https://t.co/5VH3HWdun2",
+   "username": "typedef_ai",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/typedef_ai"
+}

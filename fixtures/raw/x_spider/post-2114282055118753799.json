@@ -1,0 +1,20 @@
+{
+ "content_hash": "sha256:e6891ae770da6a13af6c2afd2b70ef0cb803dc8a5fe5cc4230fa83b196f2160d",
+ "external_id": "post:2114282055118753799",
+ "fetched_at": "2026-11-02T10:48:49Z",
+ "payload": {
+  "author": {
+   "id": "18576537",
+   "username": "IDF"
+  },
+  "post": {
+   "created_at": "2026-10-25T09:04:58.000Z",
+   "id": "2114282055118753799",
+   "lang": "en",
+   "text": "🔴ELIMINATED: Alaa Ibrahim Nimer Arshi, a Hamas cell commander &amp; Karam Riyad Hassan Abu Butaihan, an Islamic Jihad terrorist.\n\nThroughout the war, both terrorists were involved in facilitating the transfer of millions of shekels from the Iranian regime and Turkey to Hamas'"
+  },
+  "type": "x_post"
+ },
+ "source": "x_spider",
+ "url": "https://x.com/IDF/status/2114282055118753799"
+}

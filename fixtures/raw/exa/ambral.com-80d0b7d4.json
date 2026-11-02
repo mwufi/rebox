@@ -1,0 +1,26 @@
+{
+ "content_hash": "sha256:14988918672be1a9320395aff5f76beb96d6f7336e5656fc1f65c50166fa4b00",
+ "external_id": "url:https://ambral.com",
+ "fetched_at": "2026-11-02T10:50:00Z",
+ "payload": {
+  "author": null,
+  "category": "company",
+  "domain": "ambral.com",
+  "favicon": null,
+  "highlights": [
+   "# Ambral\n\nAmbral is a Technology, Information and Internet company. Ambral is a global fulfillment platform that protects and grows revenue across their merchant base. They use AI to protect and grow revenue across their merchant base. Ambral employs 4 people, founded in 2025. Headquartered in San Francisco, California, United States.\n\n## About\n\nAmbral is building the AI stack for turning enterprise history into evals, environments, and company-specific intelligence.\n\nOur systems are already deployed at multi-billion dollar enterprises across customer intelligence, account management, and other complex customer-facing workflows.\n\nUnder the hood, we reconstruct historical company state and turn real work into replayable environments and automatically generated evals grounded in real workflows and outcomes. We use those evals to measure, compare, and improve company-specific models through post-training, context engineering, and agent engineering, building AI that gets better at the work unique to each company.\n\nWe're backed by YCombinator and other top investors and hiring exceptional builders and researchers.\n\n## Company Details\n- Industry: Technology, Information and Internet\n- Type: Privately held\n- Headquarters: San Francisco, United States\n- Founded Year: 2025\n- Homepage: ambral.com\n- Aliases: ambral\n- LinkedIn: linkedin.com/company/ambral\n- Linkedin Followers: 1,110\n- Emails: [email redacted]\n\n...\n\n- [2025-12-01 · 22 reactions, 2 comments] 🚀 Ambral (YC S25) launched! Enterprise-grade AI Account Managers \"Your AI Account Management Army\" 🌐 https://fondo.ai/4izvcTI Congrats Sam Brickman & Jack Stettner!!"
+  ],
+  "homepage": true,
+  "image": "https://media.licdn.com/dms/image/v2/D560BAQHAkVQFvxtJHA/company-logo_200_200/B56ZiXDAnrHQAI-/0/1754880805644/ambral_logo?e=2147483647&v=beta&t=8DfwWzhyLD9JpGr23b1GVnTYnfo2G0rWrfJHwfnBrzg",
+  "published_date": null,
+  "query": "new AI startup homepage, based in San Francisco",
+  "summary": "Ambral is a San Francisco-based AI-focused startup (founded 2025) building an enterprise AI stack that turns company history into evals, environments, and intelligence for customer workflows. It operates as a global fulfillment platform that uses AI to protect and grow revenue across merchant bases, with deployments in multi-billion dollar enterprises for customer intelligence and account management. Backed by Y Combinator and top investors, Ambral emphasizes post-training, context engineering, and agent engineering to improve company-specific models. Website: ambral.com.",
+  "text": "# Ambral\n\nAmbral is a Technology, Information and Internet company. Ambral is a global fulfillment platform that protects and grows revenue across their merchant base. They use AI to protect and grow revenue across their merchant base. Ambral employs 4 people, founded in 2025. Headquartered in San Francisco, California, United States.\n\n## About\n\nAmbral is building the AI stack for turning enterprise history into evals, environments, and company-specific intelligence.\n\nOur systems are already deployed at multi-billion dollar enterprises across customer intelligence, account management, and othe",
+  "title": "Ambral",
+  "type": "exa_result",
+  "url": "https://ambral.com/",
+  "url_key": "https://ambral.com"
+ },
+ "source": "exa",
+ "url": "https://ambral.com/"
+}
