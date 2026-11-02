@@ -10,6 +10,14 @@ and written after every call). The spider stops cleanly when the next page would
 
 fetch, in priority order (each phase only when the previous one is complete):
 
+0. **Lookup** (phase ``lookup``, first). Frontier rows queued by handle (key ``@<handle>``,
+   status ``new``, e.g. from ``rebox-worker coverage --enqueue``) are resolved in batches of up
+   to 100 (``GET /2/users/by``, same user fields as following pages; highest score first). Each
+   account found becomes an ``x_user`` RawRecord and a frontier row keyed by its user id (depth
+   0, ``discovered_by`` carried over); the ``@`` row is marked ``fetched`` (its payload gains
+   ``x_id``), or ``failed`` with ``payload.lookup_error`` when X does not know the handle, the
+   account is suspended or the handle is not a valid username. Charged like every user read;
+   stops cleanly at the budget (the rest stay ``new`` for the next run).
 1. **Seeds.** Usernames -> user objects (``GET /2/users/by``), ids cached in the cursor.
 2. **Direct following of every seed** (``GET /2/users/:id/following``, ``max_results`` =
    ``X_SPIDER_PAGE_SIZE`` (default 1000) shrunk to the remaining budget), one page per seed in
@@ -50,6 +58,7 @@ import copy
 import re
 import time
 import unicodedata
+from collections import defaultdict
 from collections.abc import Callable, Iterator, Mapping
 from typing import Any
 
@@ -61,6 +70,7 @@ from ..models import ClaimInput, CursorUpdate, EntityRef, RawRecord
 from ..xapi import (
     MIN_INTERVAL_S,
     TOKEN_ENV,
+    USER_FIELDS,
     BudgetExhausted,
     Spend,
     XAccountError,
@@ -73,7 +83,10 @@ from .base import Ctx
 from .hn import _HOST_PREFIXES, _NAME_SUFFIXES, _key, name_matches_host, site_domain
 
 SOURCE = "x_spider"
-PHASES = ("following", "posts", "expansion")
+PHASES = ("lookup", "following", "posts", "expansion")
+CRAWL_PHASES = frozenset(PHASES[1:])  # the phases that need the seed accounts
+LOOKUP_BATCH = 100  # GET /2/users/by takes at most 100 usernames
+HANDLE_RE = re.compile(r"^[A-Za-z0-9_]{1,15}$")
 PAGE_SIZE = 1000
 POSTS_PER_ACCOUNT = 20
 EXPANSION_CANDIDATES = 200
@@ -222,19 +235,10 @@ class XSpider:
             api = XApi(client, budget, sleep=self.sleep, min_interval_s=self.min_interval_s, log=ctx.log)
             run = _Run(self, ctx, api, state, sets, page_size, post_kinds)
             try:
-                yield from run.seeds()  # cheap (one user object per seed) and needed by every phase
-                if "following" in phases:
-                    yield from run.following()
-                # Coverage of the seeds' direct following comes first: posts and expansion only
-                # spend budget once every seed is complete -- or when the operator explicitly runs
-                # them without the following phase (X_SPIDER_PHASES=posts).
-                if state.seeds_complete(sets) or "following" not in phases:
-                    if "posts" in phases:
-                        yield from run.posts()
-                    if "expansion" in phases:
-                        yield from run.expansion()
-                else:
-                    state.note("waiting", "posts and expansion wait until every seed's following is complete")
+                if "lookup" in phases:
+                    yield from run.lookup()
+                if phases & CRAWL_PHASES:
+                    yield from run.crawl(phases)
             except XStop as e:
                 ctx.log.warning("x_spider: X said stop: %s", e.reason)
                 state.note("x_stop", e.reason)
@@ -277,6 +281,7 @@ class _State:
         self.crawl: dict[str, dict[str, Any]] = {k: dict(v) for k, v in (cur.get("crawl") or {}).items()}
         self.posts_done: list[str] = list(cur.get("posts_done") or [])
         self.notes: dict[str, Any] = {}
+        self.lookup: dict[str, int] = defaultdict(int)  # handle lookups this run: found, missing, ...
         self.records = 0
         self.saved = copy.deepcopy(self._progress())  # progress as of the last CursorUpdate
 
@@ -313,6 +318,7 @@ class _State:
             "post_reads": r.post_reads,
             "x_total_spent_usd": round(t.usd, 4),
             "x_total_budget_usd": self.budget.total_usd,
+            **({"lookup": dict(self.lookup)} if self.lookup else {}),
             **self.notes,
         }
 
@@ -339,11 +345,137 @@ class _Run:
         self.spider, self.ctx, self.api, self.state = spider, ctx, api, state
         self.sets, self.page_size, self.post_kinds = sets, page_size, post_kinds
 
+    def crawl(self, phases: set[str]) -> Iterator[RawRecord | CursorUpdate]:
+        yield from self.seeds()  # cheap (one user object per seed) and needed by every crawl phase
+        if "following" in phases:
+            yield from self.following()
+        # Coverage of the seeds' direct following comes first: posts and expansion only
+        # spend budget once every seed is complete -- or when the operator explicitly runs
+        # them without the following phase (X_SPIDER_PHASES=posts).
+        if self.state.seeds_complete(self.sets) or "following" not in phases:
+            if "posts" in phases:
+                yield from self.posts()
+            if "expansion" in phases:
+                yield from self.expansion()
+        else:
+            self.state.note("waiting", "posts and expansion wait until every seed's following is complete")
+
     def _record(self, rec: RawRecord) -> RawRecord:
         if self.ctx.limit is not None and self.state.records >= self.ctx.limit:
             raise _LimitReached
         self.state.records += 1
         return rec
+
+    # 0. accounts queued by handle (``@<handle>`` frontier rows)
+    def lookup(self) -> Iterator[RawRecord | CursorUpdate]:
+        if self.ctx.db is None:
+            return
+        counts = self.state.lookup
+        seen: set[str] = set()  # keys handled in this run (never looked up twice)
+        while True:
+            with self.ctx.db.view() as conn:
+                rows = conn.execute(
+                    """select key, kind, discovered_by from frontier
+                        where source = %s and status = 'new' and key like '@%%' and key <> all(%s::text[])
+                        order by score desc, key limit %s""",
+                    (SOURCE, sorted(seen), LOOKUP_BATCH),
+                ).fetchall()
+            if not rows:
+                return
+            seen.update(r["key"] for r in rows)
+            invalid = [r for r in rows if not HANDLE_RE.fullmatch(r["key"][1:])]
+            if invalid:
+                counts["invalid"] += len(invalid)
+                self._fail({r["key"]: "invalid: not an X username" for r in invalid})
+            valid = [r for r in rows if HANDLE_RE.fullmatch(r["key"][1:])]
+            if not valid:
+                continue
+            n = self.api.budget.users_allowed(len(valid))
+            if n < 1:
+                raise BudgetExhausted(
+                    f"no user reads left for handle lookups (run {self.api.budget.run.user_reads}/"
+                    f"{self.api.budget.run_user_cap}, total ${self.api.budget.total.usd:.2f}/"
+                    f"${self.api.budget.total_usd:.2f})"
+                )
+            batch = valid[:n]
+            seen.difference_update(r["key"] for r in valid[n:])  # not looked up: still eligible
+            yield from self._lookup_batch(batch)
+            if n < len(valid):
+                raise BudgetExhausted(f"budget left for {n} of {len(valid)} handle lookups")
+
+    def _lookup_batch(self, rows: list[dict[str, Any]]) -> Iterator[RawRecord | CursorUpdate]:
+        counts = self.state.lookup
+        handles = [r["key"][1:].lower() for r in rows]
+        try:
+            data = self.api._get("/users/by", {"usernames": ",".join(handles), "user.fields": USER_FIELDS})
+        except XAccountError as e:  # the whole request was refused (4xx): no use retrying it
+            counts["failed"] += len(rows)
+            self._fail({r["key"]: f"lookup refused: {e}"[:300] for r in rows})
+            yield self.state.checkpoint()
+            return
+        users = [u for u in data.get("data") or [] if isinstance(u, dict) and u.get("id")]
+        self.api.budget.charge(users=len(users))
+        found = {str(u.get("username") or "").lower(): u for u in users}
+        errors = lookup_errors(data)
+        items, failed = [], {}
+        for r in rows:
+            h = r["key"][1:].lower()
+            u = found.get(h)
+            if u is None:
+                reason = errors.get(h) or "not found: X returned no account for this username"
+                counts["suspended" if reason.startswith("suspended") else "missing"] += 1
+                failed[r["key"]] = reason
+                continue
+            counts["found"] += 1
+            items.append(
+                frontier.Item(
+                    key=str(u["id"]),
+                    kind=classify(u),
+                    label=str(u.get("username") or h),
+                    discovered_by=list(r["discovered_by"] or []),
+                    depth=0,
+                    payload=u,
+                )
+            )
+        self._upsert(items)  # the account rows exist before their records are written
+        self._fail(failed)
+        done: dict[str, str] = {}
+        try:
+            for r in rows:
+                u = found.get(r["key"][1:].lower())
+                if u is not None:
+                    yield self._record(user_record(u))
+                    done[r["key"]] = str(u["id"])
+        finally:
+            # Only rows whose record was handed over (a --limit stop leaves the rest 'new').
+            self._fetched(done)
+        yield self.state.checkpoint()
+
+    def _fail(self, reasons: Mapping[str, str]) -> None:
+        if self.ctx.db is None or not reasons:
+            return
+        with self.ctx.db.view() as conn:
+            for key, reason in reasons.items():
+                conn.execute(
+                    """update frontier set status = 'failed', last_seen_at = now(),
+                              payload = coalesce(payload, '{}'::jsonb)
+                                        || jsonb_build_object('lookup_error', %s::text)
+                        where source = %s and key = %s""",
+                    (reason, SOURCE, key),
+                )
+
+    def _fetched(self, ids: Mapping[str, str]) -> None:
+        if self.ctx.db is None or not ids:
+            return
+        with self.ctx.db.view() as conn:
+            for key, uid in ids.items():
+                conn.execute(
+                    """update frontier set status = 'fetched', fetched_at = now(), last_seen_at = now(),
+                              payload = coalesce(payload, '{}'::jsonb)
+                                        || jsonb_build_object('x_id', %s::text)
+                        where source = %s and key = %s""",
+                    (uid, SOURCE, key),
+                )
 
     # 1. seeds
     def seeds(self) -> Iterator[RawRecord | CursorUpdate]:
@@ -589,6 +721,22 @@ def _persist_spend(ctx: Ctx, total: Spend) -> None:
                   set cursor = jsonb_set(coalesce(connector_state.cursor, '{}'::jsonb), '{spend}', %s)""",
             (SOURCE, XSpider.interval_s, Jsonb({"spend": total.as_dict()}), Jsonb(total.as_dict())),
         )
+
+
+def lookup_errors(data: Mapping[str, Any]) -> dict[str, str]:
+    """``GET /2/users/by`` per-username errors: lowercased username -> ``suspended: ...`` or
+    ``not found: ...``."""
+    out: dict[str, str] = {}
+    for e in data.get("errors") or []:
+        if not isinstance(e, dict):
+            continue
+        who = str(e.get("value") or e.get("resource_id") or "").lower()
+        if not who:
+            continue
+        detail = str(e.get("detail") or e.get("title") or "error")
+        kind = "suspended" if "suspended" in detail.lower() else "not found"
+        out[who] = f"{kind}: {detail}"[:300]
+    return out
 
 
 def user_record(u: dict[str, Any]) -> RawRecord:
