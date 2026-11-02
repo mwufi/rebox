@@ -1,7 +1,7 @@
 /** Response shapes from CONTRACTS §6 (EntityRef, Fact, entity view). */
 import type { Tx } from './db.js';
 import { canonicalIds, entityRefs, getEntity, mergedFrom, type EntityRef } from './entities.js';
-import { foldFacts, type FoldedRow } from './fold.js';
+import { foldEdgeGroups, foldFacts, preferGenericPlans, type FoldedRow } from './fold.js';
 
 export interface Fact {
   predicate: string;
@@ -33,12 +33,23 @@ export interface EntityView {
   kind: string;
   name: string | null;
   merged_from: string[];
+  /** Attributes, plus at most VIEW_EDGES_PER_PREDICATE edges per outgoing edge predicate. */
   facts: Fact[];
+  /** At most VIEW_EDGES_PER_PREDICATE edges per incoming predicate. */
   incoming: Fact[];
+  /** S13: total folded outgoing edges per edge predicate (`facts` holds the first ones). */
+  facts_counts: Record<string, number>;
+  /** S13: total folded incoming edges per predicate (`incoming` holds the first ones). */
+  incoming_counts: Record<string, number>;
 }
 
-/** Incoming edges on the entity view are capped; the edges endpoint pages through all of them. */
-export const INCOMING_CAP = 500;
+/**
+ * S13: the entity view carries the first edges of each edge predicate, in both directions, plus
+ * per-predicate totals; `GET /v0/entities/:id/edges?predicate=&dir=` pages through the rest in the
+ * same (predicate, other) order. Hubs (San Francisco, a spider seed following 2,000 accounts)
+ * therefore fold a few dozen keys instead of every claim.
+ */
+export const VIEW_EDGES_PER_PREDICATE = 12;
 
 const iso = (d: Date | null): string | null => (d ? d.toISOString() : null);
 
@@ -108,13 +119,22 @@ export async function claimFacts(tx: Tx, claimIds: readonly string[]): Promise<F
 export async function entityView(tx: Tx, id: string): Promise<EntityView | null> {
   const entity = await getEntity(tx, id);
   if (!entity) return null;
-  const [out, inc, from] = await Promise.all([
-    foldFacts(tx, { roots: [id], dir: 'out' }),
-    foldFacts(tx, { roots: [id], dir: 'in', page: { after: null, limit: INCOMING_CAP } }),
+  const perPredicate = VIEW_EDGES_PER_PREDICATE;
+  const [attrs, outEdges, inEdges, from] = await Promise.all([
+    foldFacts(tx, { roots: [id], dir: 'out', attributesOnly: true }),
+    foldEdgeGroups(tx, { root: id, dir: 'out', perPredicate }),
+    foldEdgeGroups(tx, { root: id, dir: 'in', perPredicate }),
     mergedFrom(tx, id),
   ]);
-  const [facts, incoming] = await Promise.all([toFacts(tx, out, 'out'), toFacts(tx, inc, 'in')]);
-  const nameFact = out.find((f) => f.predicate === 'name' && typeof f.value === 'string');
+  // Same order as the full fold: by predicate (a predicate is either an attribute or an edge, and
+  // each list is already ordered within a predicate; Array.sort is stable). Predicate ids are
+  // ASCII, so code-unit order equals the database's C collation.
+  const out = [...attrs, ...outEdges.rows].sort((a, b) => (a.predicate < b.predicate ? -1 : a.predicate > b.predicate ? 1 : 0));
+  // One toFacts for both directions: a single entityRefs lookup for every ref on the page.
+  const all = await toFacts(tx, [...out, ...inEdges.rows], 'out');
+  const facts = all.slice(0, out.length);
+  const incoming = all.slice(out.length).map((f) => ({ ...f, subject: f.object!, object: f.subject }));
+  const nameFact = attrs.find((f) => f.predicate === 'name' && typeof f.value === 'string');
   return {
     id: entity.id,
     kind: entity.kind,
@@ -122,6 +142,8 @@ export async function entityView(tx: Tx, id: string): Promise<EntityView | null>
     merged_from: from,
     facts,
     incoming,
+    facts_counts: outEdges.counts,
+    incoming_counts: inEdges.counts,
   };
 }
 
@@ -132,6 +154,7 @@ export type EntityLookup =
 
 /** Resolves an id, following merged_into to the target's view. */
 export async function lookupEntity(tx: Tx, id: string): Promise<EntityLookup> {
+  await preferGenericPlans(tx);
   const canon = (await canonicalIds(tx, [id])).get(id);
   if (!canon) return { status: 'missing' };
   const view = await entityView(tx, canon);

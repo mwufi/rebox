@@ -104,8 +104,11 @@ Entity view:
 ```json
 { "id": "rbx:person:abc", "kind": "person", "name": "Maya Chen", "merged_from": ["rbx:person:old"],
   "facts":    [Fact],   // outgoing: this entity is the subject (after the fold)
-  "incoming": [Fact] }  // edges where this entity is the object
+  "incoming": [Fact],   // edges where this entity is the object
+  "facts_counts":    {"worked_at": 3},      // total folded edges per edge predicate (outgoing)
+  "incoming_counts": {"based_in": 2277} }   // same, incoming
 ```
+`facts`/`incoming` hold every attribute plus at most 12 edges per edge predicate, ordered by (predicate, other id); `GET /v0/entities/:id/edges` uses the same order, so a client continues where the view stops.
 Fact:
 ```json
 { "predicate": "worked_at", "value": {"title": "CTO"}, "object": EntityRef | null,

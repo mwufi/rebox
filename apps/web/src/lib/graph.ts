@@ -1,5 +1,6 @@
 /** Neighborhood graph model: nodes and links from entity views, with hub capping. Pure. */
 import type { EntityRef, EntityView } from '../api';
+import { edgeCounts } from './facts';
 
 export interface GNode {
   id: string;
@@ -48,9 +49,25 @@ export function edgesOf(view: Pick<EntityView, 'facts' | 'incoming'>): Edge[] {
   return [...out, ...inc];
 }
 
-/** Unique neighbor count. */
-export function degreeOf(view: Pick<EntityView, 'facts' | 'incoming'>): number {
-  return new Set(edgesOf(view).map((e) => e.other.id)).size;
+type CountedView = Pick<EntityView, 'facts' | 'incoming' | 'facts_counts' | 'incoming_counts'>;
+
+/**
+ * Unique neighbor count. The view carries only the first edges of each predicate (S13); edges it
+ * did not carry are added from its counts, so a hub is never mistaken for a small neighborhood.
+ */
+export function degreeOf(view: CountedView): number {
+  const edges = edgesOf(view);
+  const counts = edgeCounts(view);
+  const loaded = new Map<string, Set<string>>();
+  for (const e of edges) {
+    const k = `${e.dir}:${e.predicate}`;
+    loaded.set(k, (loaded.get(k) ?? new Set()).add(e.other.id));
+  }
+  let missing = 0;
+  for (const [dir, byPred] of [['out', counts.out], ['in', counts.in]] as const) {
+    for (const [p, n] of Object.entries(byPred)) missing += Math.max(0, n - (loaded.get(`${dir}:${p}`)?.size ?? 0));
+  }
+  return new Set(edges.map((e) => e.other.id)).size + missing;
 }
 
 function addCapped(
@@ -59,6 +76,8 @@ function addCapped(
   edges: Edge[],
   hop: 1 | 2,
   cap: number,
+  /** Totals per `${dir}:${predicate}` when the view carried only some edges (S13 counts). */
+  totals?: Map<string, number>,
 ) {
   const groups = new Map<string, Edge[]>();
   for (const e of edges) {
@@ -78,7 +97,7 @@ function addCapped(
         g.links.push({ source: s, target: t, predicate: e.predicate, hop });
       }
     }
-    const rest = list.length - shown.length;
+    const rest = Math.max(list.length, totals?.get(k) ?? 0) - shown.length;
     if (rest > 0) {
       const id = `more:${owner}:${k}`;
       const [dir, predicate] = k.split(':') as ['out' | 'in', string];
@@ -103,7 +122,12 @@ export function buildGraph(center: EntityView, second: EntityView[] = [], caps =
     seen.add(k);
     return true;
   });
-  addCapped(g, center.id, first, 1, caps.perGroup);
+  const counts = edgeCounts(center);
+  const totals = new Map<string, number>([
+    ...Object.entries(counts.out).map(([p, n]) => [`out:${p}`, n] as [string, number]),
+    ...Object.entries(counts.in).map(([p, n]) => [`in:${p}`, n] as [string, number]),
+  ]);
+  addCapped(g, center.id, first, 1, caps.perGroup, totals);
 
   for (const v of second) {
     if (!g.nodes.has(v.id)) continue;

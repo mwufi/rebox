@@ -4,7 +4,7 @@ import { ApiError, isRedirect, type EntityView, type Fact } from '../api';
 import { Avatar, CopyButton, EntityLink, FactProvenance, HandleHint, Icon, KindTag, Skel, SkelRows, SourceBadge, graphPath } from '../components/bits';
 import { TimelineView } from '../components/Timeline';
 import { WikiSection } from '../components/Wiki';
-import { groupFacts, sourcesOf, type FactGroup, type PredicateIndex } from '../lib/facts';
+import { compareEdges, edgeTotal, groupFacts, sourcesOf, type FactGroup, type PredicateIndex } from '../lib/facts';
 import { avatarOf, displayName, edgeProps, factWhen, handleOf, hrefFor, plural, sourceCode, sourceHue, valueText } from '../lib/format';
 import { primeCache, useApi, useAsync, usePredicates, useTitle } from '../lib/hooks';
 import { NotFound } from './NotFound';
@@ -24,18 +24,62 @@ function Value({ fact }: { fact: Fact }) {
   return <span title={text}>{text}</span>;
 }
 
-export function EdgeGroup({ group, side }: { group: FactGroup; side: 'object' | 'subject' }) {
+/** Edges fetched per click when a group has more than the view carried (S13). */
+const EDGE_PAGE = 100;
+
+export function EdgeGroup({ group, side, entityId }: { group: FactGroup; side: 'object' | 'subject'; entityId: string }) {
+  const client = useApi();
   const [all, setAll] = useState(false);
-  const facts = all ? group.facts : group.facts.slice(0, EDGE_PREVIEW);
+  // Edges beyond the ones the view carried, loaded from /v0/entities/:id/edges in its order.
+  const [more, setMore] = useState<{ facts: Fact[]; next: string | null; started: boolean }>({ facts: [], next: null, started: false });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    setAll(false);
+    setMore({ facts: [], next: null, started: false });
+    setError(null);
+  }, [entityId, group.predicate]);
+
+  const otherOf = (f: Fact) => (side === 'object' ? f.object! : f.subject);
+  const keyOf = (f: Fact) => `${f.predicate}|${otherOf(f).id}`;
+  const loaded = (() => {
+    const seen = new Set(group.facts.map(keyOf));
+    const extra = more.facts.filter((f) => !seen.has(keyOf(f)) && (seen.add(keyOf(f)), true));
+    return extra.length ? [...group.facts, ...extra].sort((a, b) => compareEdges(a, b, side)) : group.facts;
+  })();
+  const total = Math.max(group.total, loaded.length);
+  const remaining = total - loaded.length;
+  const facts = all ? loaded : loaded.slice(0, EDGE_PREVIEW);
+
+  const loadMore = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // The first page starts from the beginning (the view carried its first edges; they dedupe).
+      const page = await client.edges(entityId, {
+        predicate: group.predicate,
+        dir: side === 'object' ? 'out' : 'in',
+        limit: more.started ? EDGE_PAGE : group.facts.length + EDGE_PAGE,
+        cursor: more.started ? more.next : null,
+      });
+      setMore((m) => ({ facts: [...m.facts, ...page.edges], next: page.next, started: true }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+  const canFetch = remaining > 0 && (!more.started || more.next !== null);
+
   return (
     <section className="edge-group" aria-label={group.label} data-predicate={group.predicate}>
       <div className="section-head">
         <h3>{group.label}</h3>
-        <span className="count">{group.facts.length}</span>
+        <span className="count">{total.toLocaleString('en-US')}</span>
       </div>
       <ul className="facts">
         {facts.map((f) => {
-          const other = side === 'object' ? f.object! : f.subject;
+          const other = otherOf(f);
           const props = edgeProps(f.value);
           const when = factWhen(f);
           return (
@@ -51,9 +95,27 @@ export function EdgeGroup({ group, side }: { group: FactGroup; side: 'object' | 
           );
         })}
       </ul>
-      {group.facts.length > EDGE_PREVIEW && (
-        <button type="button" className="btn ghost sm more-btn" onClick={() => setAll((a) => !a)}>
-          {all ? 'Show fewer' : `Show all ${group.facts.length}`}
+      {error && <p className="empty">Could not load more: {error}</p>}
+      {!all && total > EDGE_PREVIEW && (
+        <button
+          type="button"
+          className="btn ghost sm more-btn"
+          onClick={() => {
+            setAll(true);
+            if (canFetch) void loadMore();
+          }}
+        >
+          {remaining > 0 ? `+${(total - EDGE_PREVIEW).toLocaleString('en-US')} more` : `Show all ${total}`}
+        </button>
+      )}
+      {all && canFetch && (
+        <button type="button" className="btn ghost sm more-btn" disabled={loading} onClick={loadMore}>
+          {loading ? 'Loading…' : `+${remaining.toLocaleString('en-US')} more`}
+        </button>
+      )}
+      {all && !canFetch && total > EDGE_PREVIEW && (
+        <button type="button" className="btn ghost sm more-btn" onClick={() => setAll(false)}>
+          Show fewer
         </button>
       )}
     </section>
@@ -132,7 +194,7 @@ export function EntityBody({ view, preds }: { view: EntityView; preds: Predicate
   const g = groupFacts(view, preds);
   const desc = g.key.find((x) => x.predicate === 'description') ?? g.key.find((x) => x.predicate === 'headline');
   const descFact = desc?.facts[0];
-  const degree = view.facts.filter((f) => f.object).length + view.incoming.length;
+  const degree = edgeTotal(view);
   const handle = handleOf(view);
   const hasAvatar = avatarOf(view) !== null;
 
@@ -176,10 +238,10 @@ export function EntityBody({ view, preds }: { view: EntityView; preds: Predicate
           <TimelineSection id={view.id} />
           {g.outgoing.length === 0 && g.incoming.length === 0 && <p className="empty">No connections recorded yet.</p>}
           {g.outgoing.map((grp) => (
-            <EdgeGroup key={`out:${grp.predicate}`} group={grp} side="object" />
+            <EdgeGroup key={`out:${grp.predicate}`} group={grp} side="object" entityId={view.id} />
           ))}
           {g.incoming.map((grp) => (
-            <EdgeGroup key={`in:${grp.predicate}`} group={grp} side="subject" />
+            <EdgeGroup key={`in:${grp.predicate}`} group={grp} side="subject" entityId={view.id} />
           ))}
         </div>
         <aside>

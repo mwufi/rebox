@@ -1,5 +1,5 @@
 /**
- * Read-latency benchmark (S10): runs the API in-process against DATABASE_URL (role rebox_app, RLS
+ * Read-latency benchmark (S10, S13 hub cases): runs the API in-process against DATABASE_URL (role rebox_app, RLS
  * applies) and prints p50/p95 per endpoint. Usage:
  *   DATABASE_URL=postgres://rebox_app:...@host/db pnpm --filter @rebox/api bench [-- --n 60]
  */
@@ -42,6 +42,9 @@ async function cases(): Promise<Case[]> {
   const brex = await idOf('Brex', 'company');
   const patrick = await idOf('Patrick Collison', 'person');
   const sf = await idOf('San Francisco', 'place');
+  // S13: davidbooth is an outgoing hub (X follows); a person with a handful of facts is the control.
+  const booth = await idOf('David Booth', 'person');
+  const person = await idOf(process.env.BENCH_PERSON ?? 'Jessica Lessin', 'person');
   const enc = encodeURIComponent;
   return [
     { name: 'search "stripe"', method: 'GET', path: '/v0/search?q=stripe' },
@@ -50,6 +53,10 @@ async function cases(): Promise<Case[]> {
     { name: 'entity Patrick Collison', method: 'GET', path: `/v0/entities/${enc(patrick)}` },
     { name: 'entity San Francisco (hub)', method: 'GET', path: `/v0/entities/${enc(sf)}` },
     { name: 'edges SF in (50)', method: 'GET', path: `/v0/entities/${enc(sf)}/edges?dir=in&limit=50` },
+    { name: 'edges SF in based_in (50)', method: 'GET', path: `/v0/entities/${enc(sf)}/edges?dir=in&predicate=based_in&limit=50` },
+    { name: 'entity davidbooth (out hub)', method: 'GET', path: `/v0/entities/${enc(booth)}` },
+    { name: 'edges davidbooth follows (50)', method: 'GET', path: `/v0/entities/${enc(booth)}/edges?dir=out&predicate=follows&limit=50` },
+    { name: 'entity random person', method: 'GET', path: `/v0/entities/${enc(person)}` },
     { name: 'timeline Brex', method: 'GET', path: `/v0/entities/${enc(brex)}/timeline` },
     { name: 'timeline Patrick Collison', method: 'GET', path: `/v0/entities/${enc(patrick)}/timeline` },
     { name: 'q: founded a company', method: 'POST', path: '/v0/query', body: q('person', [{ edge: { predicate: 'founded', dir: 'out' } }]) },
