@@ -30,6 +30,7 @@ from .client import ClaimsClient
 from .config import ConfigError, Settings
 from .connectors import REGISTRY, Ctx, UnknownConnector, get_connector
 from .db import Db
+from .dedupe import add_parser as add_dedupe_parser
 from .pipeline import Deps, SourceBusy, Stats, run_replay, run_sync
 from .rawstore import RawStore
 
@@ -340,6 +341,7 @@ def build_parser() -> argparse.ArgumentParser:
     ws.set_defaults(func=cmd_workers_show)
 
     coverage.add_parser(sub)  # rebox-worker coverage FILE.csv (S14)
+    add_dedupe_parser(sub)  # rebox-worker dedupe [--dry-run] (S15)
     return p
 
 
