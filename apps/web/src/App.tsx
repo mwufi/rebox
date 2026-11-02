@@ -10,6 +10,7 @@ import { QueryPage } from './pages/Query';
 import { ReviewPage } from './pages/Review';
 import { ApiPage } from './pages/ApiDocs';
 import { NotFound } from './pages/NotFound';
+import { WorkerPage, WorkersPage } from './pages/Workers';
 
 // d3-force is only needed on the graph page.
 const GraphPage = lazy(() => import('./pages/Graph'));
@@ -116,6 +117,9 @@ export function Layout() {
             <NavLink to="/review" className="hide-sm">
               Review
             </NavLink>
+            <NavLink to="/workers" className="hide-sm">
+              Workers
+            </NavLink>
             <NavLink to="/api">API</NavLink>
             <button type="button" className="icon-btn" onClick={toggle} aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'} title="Theme">
               <Icon name={dark ? 'sun' : 'moon'} />
@@ -166,6 +170,8 @@ export function AppRoutes() {
         />
         <Route path="query" element={<QueryPage />} />
         <Route path="review" element={<ReviewPage />} />
+        <Route path="workers" element={<WorkersPage />} />
+        <Route path="workers/:id" element={<WorkerPage />} />
         <Route path="api" element={<ApiPage />} />
         <Route path="*" element={<NotFound />} />
       </Route>

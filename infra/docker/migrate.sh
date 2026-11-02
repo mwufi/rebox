@@ -2,6 +2,7 @@
 # One-shot migration job, run from the api image (compose `migrate` service, ECS `migrate` task).
 #   1. db/migrate.sh as the database owner (MIGRATE_DATABASE_URL)
 #   2. let role rebox_app log in with APP_DB_PASSWORD
+#   3. if METRICS_DB_PASSWORD is set, let the read-only Grafana role rebox_metrics log in with it
 # The password is passed as a psql variable (:'pw' quotes it safely); psql only expands
 # variables in script input, so the statement is fed on stdin, not with -c.
 # Libpq env vars (PGPASSWORD, PGSSLMODE, ...) apply, so the owner password may come from PGPASSWORD.
@@ -15,3 +16,11 @@ DATABASE_URL="$MIGRATE_DATABASE_URL" "$here/db/migrate.sh" "$@"
 echo "alter role rebox_app login password :'pw';" \
   | psql "$MIGRATE_DATABASE_URL" -v ON_ERROR_STOP=1 -q -X -v pw="$APP_DB_PASSWORD"
 echo "migrate: rebox_app login enabled"
+
+if [ -n "${METRICS_DB_PASSWORD:-}" ]; then
+  echo "alter role rebox_metrics login password :'pw';" \
+    | psql "$MIGRATE_DATABASE_URL" -v ON_ERROR_STOP=1 -q -X -v pw="$METRICS_DB_PASSWORD"
+  echo "migrate: rebox_metrics login enabled"
+else
+  echo "migrate: METRICS_DB_PASSWORD not set; rebox_metrics stays nologin"
+fi

@@ -16,6 +16,11 @@ A connector is one file in this package with one class:
 Register it with one line in ``connectors/__init__.py``. Optional: ``enabled(ctx) -> bool``
 (e.g. False without an API token; the scheduler then skips it), and ``scheduled = False`` to
 keep a connector out of the automatic schedule (it then runs only on ``sync``/``enqueue``).
+
+Provenance (CONTRACTS §12, see ``identity.py``): a connector writes as worker
+``<name>-connector-<6 digits>`` unless it sets ``worker_name`` / ``worker_kind`` or defines
+``worker_spec(ctx)`` / ``worker_for(rec)``. Paid APIs report usage for the run's stats with
+``ctx.add_usage(api_calls=1, cost_usd=0.01)``.
 """
 
 from __future__ import annotations
@@ -25,7 +30,7 @@ import os
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 import httpx
 
@@ -90,6 +95,14 @@ class Ctx:
     db: Db | None = None
     fixtures: Path = field(default_factory=fixtures_root)
     log: logging.Logger = field(default_factory=lambda: logging.getLogger("rebox_worker.connector"))
+    # Per-run usage counters (api_calls, cost_usd, tokens, ...); the pipeline gives every run a
+    # fresh dict and copies it into the run's stats.
+    usage: dict[str, Any] = field(default_factory=dict)
+
+    def add_usage(self, **amounts: float) -> None:
+        """Add to this run's usage counters, e.g. ``ctx.add_usage(api_calls=1, cost_usd=0.01)``."""
+        for k, v in amounts.items():
+            self.usage[k] = round(self.usage.get(k, 0) + v, 6)
 
     def http(self, **kwargs: object) -> httpx.Client:
         """An httpx client with the bot User-Agent (system proxy/CA settings are honoured)."""

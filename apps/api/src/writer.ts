@@ -1,10 +1,12 @@
 /**
- * Claims writer (CONTRACTS §5): the only write path. Validates the whole batch first, then mints
- * entities and upserts claims in a single transaction scoped to the request layer.
+ * Claims writer (CONTRACTS §5, §12): the only write path. Validates the whole batch first, then
+ * mints entities and upserts claims in a single transaction scoped to the request layer. Every
+ * write names the worker that made it (and optionally its run); claims may carry evidence.
  */
 import { z } from 'zod';
 import type { Db, Tx } from './db.js';
 import { isIsoDate, isoToMs } from './dates.js';
+import { forbidden } from './auth.js';
 import { ApiError, validation, type ErrorDetail } from './errors.js';
 import { checkNormalized, isNormalizerName } from './normalize.js';
 import { isEdge, type Predicate, type Vocab, type VocabCache } from './vocab.js';
@@ -21,6 +23,35 @@ const refSchema = z.union([
 ]);
 const isoDate = z.string().refine(isIsoDate, 'must be a valid ISO date or timestamp');
 
+/** CONTRACTS §12: `<name>-<kind>-<6 digits>` (the DB check is looser; this is the contract). */
+export const WORKER_KINDS = ['connector', 'spider', 'parser', 'enricher', 'external'] as const;
+export type WorkerKind = (typeof WORKER_KINDS)[number];
+export const WORKER_ID_RE = /^[a-z0-9][a-z0-9-]{0,40}-(connector|spider|parser|enricher|external)-\d{6}$/;
+/** Worker kinds whose claims must each carry evidence. */
+const EVIDENCE_REQUIRED: ReadonlySet<string> = new Set(['parser', 'enricher', 'external']);
+export const MAX_EVIDENCE = 20;
+
+const httpUrl = z
+  .string()
+  .max(2000)
+  .refine((u) => {
+    try {
+      const p = new URL(u).protocol;
+      return p === 'http:' || p === 'https:';
+    } catch {
+      return false;
+    }
+  }, 'must be an http(s) URL');
+export const evidenceSchema = z
+  .object({
+    url: httpUrl,
+    author: z.string().max(300).nullish(),
+    quote: z.string().max(2000).nullish(),
+    observed_at: isoDate.nullish(),
+  })
+  .strict();
+export type Evidence = z.infer<typeof evidenceSchema>;
+
 const claimSchema = z
   .object({
     subject: refSchema,
@@ -31,15 +62,21 @@ const claimSchema = z
     valid_to: isoDate.nullish(),
     retract: z.boolean().optional(),
     source_ref: z.string().min(1).max(1000),
+    evidence: z.array(evidenceSchema).max(MAX_EVIDENCE).nullish(),
   })
   .strict();
 
 const bodySchema = z
   .object({
     layer: z.string().regex(LAYER_RE, 'must be public|firm/<source> or team|user/<owner>/<source>'),
+    worker: z.string().regex(WORKER_ID_RE, 'must be a worker id <name>-<kind>-<6 digits>'),
+    run_id: z.union([z.number().int().positive(), z.string().regex(/^\d{1,18}$/)]).nullish(),
     claims: z.array(z.unknown()).min(1).max(MAX_BATCH),
   })
   .strict();
+
+/** Who is writing: the ingest token (any internal worker) or an external worker's own token. */
+export type Actor = { kind: 'ingest' } | { kind: 'worker'; workerId: string };
 
 type Ref = z.infer<typeof refSchema>;
 type ClaimIn = z.infer<typeof claimSchema>;
@@ -79,8 +116,13 @@ function isScalar(v: unknown): boolean {
   return v === null || ['string', 'number', 'boolean'].includes(typeof v);
 }
 
+const isPlainObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
 function checkValueType(p: Predicate, value: unknown): string | null {
   if (value === null || value === undefined) return 'attribute claims need a non-null value';
+  // value_type json (e.g. milestone {title, kind, url}): the value is a JSON object, nothing else.
+  if (p.meta.value_type === 'json') return isPlainObject(value) ? null : 'value must be a JSON object';
   if (Array.isArray(value)) {
     return value.every(isScalar) ? null : 'attribute value must be a JSON scalar or an array of scalars';
   }
@@ -123,7 +165,10 @@ function validateClaim(c: ClaimIn, vocab: Vocab, layer: ParsedLayer): string[] {
     if (!c.object) errors.push(`${p.id} is an edge: object is required`);
     else {
       const objectKind = kindFromId(refId(c.object));
-      if (objectKind !== p.object_kind) errors.push(`object kind ${objectKind} must be ${p.object_kind} for ${p.id}`);
+      // object_kind '*' (e.g. follows) accepts any entity kind.
+      if (p.object_kind !== '*' && objectKind !== p.object_kind) {
+        errors.push(`object kind ${objectKind} must be ${p.object_kind} for ${p.id}`);
+      }
     }
     const v = c.value;
     if (v !== undefined && v !== null && (typeof v !== 'object' || Array.isArray(v))) {
@@ -153,10 +198,18 @@ function validateClaim(c: ClaimIn, vocab: Vocab, layer: ParsedLayer): string[] {
   return errors;
 }
 
-function parseBody(body: unknown): { layer: ParsedLayer; claims: ClaimIn[] } {
+interface ParsedBody {
+  layer: ParsedLayer;
+  worker: string;
+  runId: string | null;
+  claims: ClaimIn[];
+}
+
+function parseBody(body: unknown): ParsedBody {
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) throw validation([{ index: -1, message: zodMessage(parsed.error) }]);
   const layer = parseLayer(parsed.data.layer)!;
+  const runId = parsed.data.run_id == null ? null : String(parsed.data.run_id);
   const details: ErrorDetail[] = [];
   const claims: ClaimIn[] = [];
   parsed.data.claims.forEach((raw, index) => {
@@ -165,7 +218,45 @@ function parseBody(body: unknown): { layer: ParsedLayer; claims: ClaimIn[] } {
     else claims.push(r.data);
   });
   if (details.length) throw validation(details);
-  return { layer, claims };
+  return { layer, worker: parsed.data.worker, runId, claims };
+}
+
+interface WorkerRow {
+  id: string;
+  kind: string;
+  owner: string;
+  layers: string[];
+  status: string;
+}
+
+/**
+ * CONTRACTS §12 checks that need the database: the worker exists, is active, may act for this
+ * caller and write this layer; the run (if any) belongs to it; evidence where its kind needs it.
+ */
+async function checkProvenance(tx: Tx, actor: Actor, body: ParsedBody): Promise<void> {
+  const [w] = await tx<WorkerRow[]>`
+    select id, kind, owner, layers, status from worker where id = ${body.worker}`;
+  if (!w) throw validation([{ index: -1, message: `worker ${body.worker} does not exist` }]);
+  if (actor.kind === 'ingest' && w.owner !== 'rebox') {
+    throw forbidden(`the ingest token may only act as internal workers; ${w.id} is owned by ${w.owner}`);
+  }
+  if (actor.kind === 'worker' && actor.workerId !== w.id) throw forbidden(`this token may only act as worker ${actor.workerId}`);
+  const details: ErrorDetail[] = [];
+  if (w.status !== 'active') details.push({ index: -1, message: `worker ${w.id} is ${w.status}, not active` });
+  if (!w.layers.includes(body.layer.id)) {
+    details.push({ index: -1, message: `worker ${w.id} may not write layer ${body.layer.id} (allowed: ${w.layers.join(', ')})` });
+  }
+  if (body.runId !== null) {
+    const [run] = await tx<{ worker_id: string }[]>`select worker_id from run where id = ${body.runId}::bigint`;
+    if (!run) details.push({ index: -1, message: `run ${body.runId} does not exist` });
+    else if (run.worker_id !== w.id) details.push({ index: -1, message: `run ${body.runId} belongs to worker ${run.worker_id}` });
+  }
+  if (EVIDENCE_REQUIRED.has(w.kind)) {
+    body.claims.forEach((c, index) => {
+      if (!c.evidence || c.evidence.length === 0) details.push({ index, message: `evidence is required for ${w.kind} workers` });
+    });
+  }
+  if (details.length) throw validation(details);
 }
 
 interface MintRequest {
@@ -246,9 +337,13 @@ async function checkReferences(tx: Tx, claims: ClaimIn[]): Promise<void> {
  * Upserts claims on the claim_identity_uq key. Duplicate keys within one batch keep the last
  * occurrence (latest write wins) since ON CONFLICT cannot touch a row twice in one statement.
  * Re-sending an unchanged claim is a no-op: no updated_at bump (which would reorder the fold's
- * "newest wins" tie-break) and no `change` row. Returns the number of rows inserted or changed.
+ * "newest wins" tie-break) and no `change` row. A changed claim takes the writing worker and run.
+ * An unchanged re-send by another worker of the same layer keeps the original attribution (so
+ * two spiders sharing a layer do not churn), except that rows written before migration 0005
+ * (worker_id null) are attributed to the first worker that re-sends them. Returns the number of
+ * rows inserted or changed.
  */
-async function upsertClaims(tx: Tx, layer: string, claims: ClaimIn[]): Promise<number> {
+async function upsertClaims(tx: Tx, layer: string, worker: string, runId: string | null, claims: ClaimIn[]): Promise<number> {
   const byKey = new Map<string, Record<string, unknown>>();
   for (const c of claims) {
     const subject = refId(c.subject);
@@ -264,32 +359,46 @@ async function upsertClaims(tx: Tx, layer: string, claims: ClaimIn[]): Promise<n
       valid_to: c.valid_to ?? null,
       retract: c.retract ?? false,
       source_ref: c.source_ref,
+      evidence: c.evidence && c.evidence.length ? c.evidence.map(compactEvidence) : null,
     });
   }
   const rows = [...byKey.values()];
   const result = await tx`
-    insert into claim (layer_id, subject, predicate, object_id, value, valid_from, valid_to, retract, source_ref)
+    insert into claim (layer_id, subject, predicate, object_id, value, valid_from, valid_to, retract, source_ref,
+                       worker_id, run_id, evidence)
     select ${layer}, x.subject, x.predicate, x.object_id, x.value, x.valid_from, x.valid_to,
-           coalesce(x.retract, false), x.source_ref
+           coalesce(x.retract, false), x.source_ref, ${worker}, ${runId}::bigint, x.evidence
     from jsonb_to_recordset(${tx.json(rows as never)}::jsonb) as x(
       subject text, predicate text, object_id text, value jsonb,
-      valid_from timestamptz, valid_to timestamptz, retract boolean, source_ref text)
+      valid_from timestamptz, valid_to timestamptz, retract boolean, source_ref text, evidence jsonb)
     on conflict (layer_id, source_ref, subject, predicate, coalesce(object_id, ''))
     do update set value = excluded.value, valid_from = excluded.valid_from, valid_to = excluded.valid_to,
-                  retract = excluded.retract, updated_at = now()
-    where (claim.value, claim.valid_from, claim.valid_to, claim.retract)
-          is distinct from (excluded.value, excluded.valid_from, excluded.valid_to, excluded.retract)`;
+                  retract = excluded.retract, evidence = excluded.evidence, worker_id = excluded.worker_id,
+                  run_id = excluded.run_id, updated_at = now()
+    where (claim.value, claim.valid_from, claim.valid_to, claim.retract, claim.evidence)
+          is distinct from (excluded.value, excluded.valid_from, excluded.valid_to, excluded.retract, excluded.evidence)
+       or claim.worker_id is null`;
   return result.count;
 }
 
+/** Drops null/absent optional evidence fields so stored evidence compares equal on re-send. */
+function compactEvidence(e: Evidence): Evidence {
+  const out: Evidence = { url: e.url };
+  if (e.author != null) out.author = e.author;
+  if (e.quote != null) out.quote = e.quote;
+  if (e.observed_at != null) out.observed_at = e.observed_at;
+  return out;
+}
+
 export interface Writer {
-  write(body: unknown): Promise<WriteResult>;
+  write(body: unknown, actor?: Actor): Promise<WriteResult>;
 }
 
 export function createWriter(db: Db, vocabCache: VocabCache): Writer {
   return {
-    async write(body) {
-      const { layer, claims } = parseBody(body);
+    async write(body, actor = { kind: 'ingest' }) {
+      const parsed = parseBody(body);
+      const { layer, claims } = parsed;
       const vocab = await vocabCache.get();
 
       const details: ErrorDetail[] = [];
@@ -305,10 +414,12 @@ export function createWriter(db: Db, vocabCache: VocabCache): Writer {
       const view = { visible: [layer.id], writable: [layer.id], allPublic: true };
       try {
         const result = await db.withView(view, async (tx) => {
+          await checkProvenance(tx, actor, parsed);
           const created = await ensureLayer(tx, layer);
           const minted = await mintEntities(tx, layer.id, mints);
           await checkReferences(tx, claims);
-          const written = await upsertClaims(tx, layer.id, claims);
+          const written = await upsertClaims(tx, layer.id, parsed.worker, parsed.runId, claims);
+          await tx`update worker set last_seen_at = now() where id = ${parsed.worker}`;
           return { written, minted, created };
         });
         if (result.created) db.invalidatePublicLayers();

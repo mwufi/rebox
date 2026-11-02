@@ -277,8 +277,10 @@ def test_matches_existing_entity_by_x_handle(deps, owner, writer):
     import json
     import urllib.request
 
+    wid = deps.client.register_worker(name="x", kind="connector", source="x", layers=["public/x"])
     body = {
         "layer": "public/x",
+        "worker": wid,  # CONTRACTS §12: every write names its worker
         "claims": [
             {"subject": {"mint": {"id": "rbx:person:existingjane", "kind": "person"}}, "predicate": "name",
              "value": "Jane D.", "source_ref": "t:1"},

@@ -4,6 +4,7 @@ import type { EntityRef, Fact } from '../api';
 import { displayName, kindLabel, scopeOf, sourceCode, sourceHue } from '../lib/format';
 
 export const entityPath = (id: string) => `/e/${encodeURIComponent(id)}`;
+export const workerPath = (id: string) => `/workers/${encodeURIComponent(id)}`;
 export const graphPath = (id: string) => `/e/${encodeURIComponent(id)}/graph`;
 
 export function KindGlyph({ kind }: { kind: string }) {
@@ -49,6 +50,54 @@ export function SourceBadge({ fact }: { fact: Pick<Fact, 'source' | 'layer' | 's
         {'\n'}
         <span style={{ opacity: 0.65 }}>updated {fact.updated_at.slice(0, 10)}</span>
       </span>
+    </span>
+  );
+}
+
+/** Host of an evidence URL, for the "Source ↗" link title. */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * CONTRACTS §12 provenance for one fact: "2 sources" when corroborated, the writing worker, and
+ * each evidence link as "Source ↗" with its author. Renders nothing for a plain, single-source,
+ * unattributed fact.
+ */
+export function FactProvenance({ fact }: { fact: Pick<Fact, 'worker' | 'evidence' | 'support'> }) {
+  const support = fact.support ?? 1;
+  const evidence = fact.evidence ?? [];
+  if (support < 2 && !fact.worker && evidence.length === 0) return null;
+  return (
+    <span className="fact-prov">
+      {support > 1 && (
+        <span className="support" title={`${support} independent source records back this fact`}>
+          {support} sources
+        </span>
+      )}
+      {evidence.map((e, i) => (
+        <a
+          key={`${e.url}|${i}`}
+          className="evidence"
+          href={e.url}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          title={[e.quote ? `“${e.quote}”` : null, hostOf(e.url), e.observed_at ? `observed ${e.observed_at.slice(0, 10)}` : null]
+            .filter(Boolean)
+            .join('\n')}
+        >
+          Source ↗{e.author && <span className="by"> · {e.author}</span>}
+        </a>
+      ))}
+      {fact.worker && (
+        <Link to={workerPath(fact.worker)} className="worker-link" title={`written by worker ${fact.worker}`}>
+          {fact.worker}
+        </Link>
+      )}
     </span>
   );
 }
