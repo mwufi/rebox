@@ -128,6 +128,63 @@ describe('POST /internal/claims', () => {
       });
     }
 
+    describe('database-level rejections name the failing claim (S16)', () => {
+      async function counts() {
+        const [r] = await t.owner<{ c: number; e: number; ch: number }[]>`
+          select (select count(*)::int from claim) as c, (select count(*)::int from entity) as e,
+                 (select count(*)::int from change) as ch`;
+        return r;
+      }
+      // Incompressible text: too large for the claim_value_text_idx btree (54000), which no
+      // request validation checks.
+      const huge = () => Array.from({ length: 12_000 }, () => Math.random().toString(36).slice(2, 3)).join('');
+      const batch = (bad: Record<number, (id: string) => Record<string, unknown>>) =>
+        Array.from({ length: 50 }, (_, i) => {
+          const id = uid('company', `db${i}`);
+          return bad[i] ? bad[i]!(id) : nameClaim(id, `Fine ${i}`);
+        });
+
+      it('a value too large for the index -> 400 with that index, nothing written', async () => {
+        const before = await counts();
+        const claims = batch({ 37: (id) => ({ subject: mint(id), predicate: 'name', value: huge(), source_ref: `t:${id}` }) });
+        const res = await t.write(layer, claims);
+        expect(res.status).toBe(400);
+        expect(res.body.details).toHaveLength(1);
+        expect(res.body.details[0].index).toBe(37);
+        expect(res.body.details[0].message).toMatch(/^rejected by database: .*index row/);
+        expect(await counts()).toEqual(before);
+        // Without it the batch goes through (what the worker client does with the index).
+        const ok = await t.write(layer, claims.filter((_, i) => i !== 37));
+        expect(ok.status).toBe(200);
+        expect(ok.body).toEqual({ written: 49, minted: 49 });
+      });
+
+      it('several bad claims (NUL in text, oversized value) -> each index', async () => {
+        const before = await counts();
+        const claims = batch({
+          3: (id) => ({ subject: mint(id), predicate: 'name', value: 'Bad\u0000Name', source_ref: `t:${id}` }),
+          41: (id) => ({ subject: mint(id), predicate: 'name', value: huge(), source_ref: `t:${id}` }),
+        });
+        const res = await t.write(layer, claims);
+        expect(res.status).toBe(400);
+        expect(res.body.details.map((d: { index: number }) => d.index)).toEqual([3, 41]);
+        expect(res.body.details[0].message).toMatch(/^rejected by database: .*Unicode/);
+        expect(await counts()).toEqual(before);
+      });
+
+      it('a duplicate key reports the occurrence that would have been written', async () => {
+        const id = uid('company', 'dup');
+        const claims = [
+          { subject: mint(id), predicate: 'name', value: 'First', source_ref: 'dup' },
+          ...batch({}).slice(0, 5),
+          { subject: mint(id), predicate: 'name', value: huge(), source_ref: 'dup' },
+        ];
+        const res = await t.write(layer, claims);
+        expect(res.status).toBe(400);
+        expect(res.body.details.map((d: { index: number }) => d.index)).toEqual([6]);
+      });
+    });
+
     it('rejects batches over 1000 and malformed bodies', async () => {
       const claims = Array.from({ length: 1001 }, (_, i) => nameClaim(`rbx:company:big-${i}`, `B${i}`));
       expect((await t.write(layer, claims)).status).toBe(400);
