@@ -1,0 +1,38 @@
+{
+ "content_hash": "sha256:ea5eca3153d6a9f8b3a9c002bc0c6114b39d6c822de69924c50974059cf52a35",
+ "external_id": "user:139638149",
+ "fetched_at": "2026-11-02T10:48:32Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2010-05-03T06:51:12.000Z",
+   "description": "agents, evals and ai research @figma. girl dad, @ucla, @ycombinator, @canva and @pinterest alum. posts from the edge of what's possible",
+   "entities": {
+    "url": {
+     "urls": [
+      {
+       "display_url": "mili.dev",
+       "end": 23,
+       "expanded_url": "http://mili.dev",
+       "start": 0,
+       "url": "https://t.co/W50SWyRblV"
+      }
+     ]
+    }
+   },
+   "id": "139638149",
+   "location": "San Francisco, CA",
+   "name": "john milinovich",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/2094162872633012224/05Q9WeCO_normal.jpg",
+   "public_metrics": {
+    "followers_count": 11861,
+    "following_count": 1809
+   },
+   "url": "https://t.co/W50SWyRblV",
+   "username": "jmilinovich",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/jmilinovich"
+}

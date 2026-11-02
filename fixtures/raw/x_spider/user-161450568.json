@@ -1,0 +1,25 @@
+{
+ "content_hash": "sha256:ed9b812f76bb0e9c0becf0f6c650f93f664fad7c27a14bcde8043b3435d6174f",
+ "external_id": "user:161450568",
+ "fetched_at": "2026-11-02T10:48:32Z",
+ "payload": {
+  "type": "x_user",
+  "user": {
+   "created_at": "2010-06-30T22:06:30.000Z",
+   "description": "Head of Community @Replit",
+   "id": "161450568",
+   "location": "California",
+   "name": "Francisco Cruz Mendoza",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/1995648778070896640/oP_E_Xd4_normal.jpg",
+   "public_metrics": {
+    "followers_count": 3155,
+    "following_count": 1025
+   },
+   "url": "",
+   "username": "Franciscocrz",
+   "verified_type": "blue"
+  }
+ },
+ "source": "x_spider",
+ "url": "https://x.com/Franciscocrz"
+}

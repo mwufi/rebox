@@ -296,7 +296,7 @@ class Resolver:
         if pred.is_edge:
             if c.object is None:
                 raise RejectedClaim(f"edge {pred.id!r} needs an object")
-            if _kind_of(c.object) != pred.object_kind:
+            if pred.object_kind != "*" and _kind_of(c.object) != pred.object_kind:  # '*' = any kind
                 raise RejectedClaim(f"edge {pred.id!r} needs a {pred.object_kind} object")
             if c.value is not None and not isinstance(c.value, dict):
                 raise RejectedClaim(f"edge {pred.id!r} value must be an object of props or null")

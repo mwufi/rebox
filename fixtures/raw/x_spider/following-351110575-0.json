@@ -1,0 +1,402 @@
+{
+ "content_hash": "sha256:885918e51297de89132250e4631489c2e028a74b5287ddea27fef5885ca35be3",
+ "external_id": "following:351110575:0",
+ "fetched_at": "2026-11-02T10:48:34Z",
+ "payload": {
+  "depth": 0,
+  "page": 0,
+  "seed": {
+   "created_at": "2011-08-08T20:13:46.000Z",
+   "description": "Co-Founder @typedef_ai, Ex Infra Eng Leader @TectonAI @Salesforce, Former Co-Founder @CoolanCo",
+   "id": "351110575",
+   "location": "San Francisco ",
+   "name": "Yoni Michael",
+   "profile_image_url": "https://pbs.twimg.com/profile_images/2116951848460681216/YjtCoNaI_normal.jpg",
+   "public_metrics": {
+    "followers_count": 266,
+    "following_count": 310
+   },
+   "url": "",
+   "username": "Yoni_Michael",
+   "verified_type": "blue"
+  },
+  "seed_set": "yoni",
+  "type": "x_following",
+  "users": [
+   {
+    "created_at": "2011-07-20T20:44:14.000Z",
+    "description": "startup investor/helper, founder @conviction. interested in intelligence, accelerating progress. tech podcast: @nopriorspod",
+    "entities": {
+     "url": {
+      "urls": [
+       {
+        "display_url": "conviction.com",
+        "end": 23,
+        "expanded_url": "http://conviction.com",
+        "start": 0,
+        "url": "https://t.co/zcwvJflpvk"
+       }
+      ]
+     }
+    },
+    "id": "339261041",
+    "location": "on ⛓",
+    "name": "sarah guo",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/2104624169661124608/uQ5t8Dsx_normal.jpg",
+    "public_metrics": {
+     "followers_count": 165279,
+     "following_count": 3421
+    },
+    "url": "https://t.co/zcwvJflpvk",
+    "username": "saranormous",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2023-04-07T00:29:56.000Z",
+    "description": "Toward self-improving software",
+    "entities": {
+     "url": {
+      "urls": [
+       {
+        "display_url": "factory.com",
+        "end": 23,
+        "expanded_url": "http://factory.com",
+        "start": 0,
+        "url": "https://t.co/vafK4qyMCx"
+       }
+      ]
+     }
+    },
+    "id": "1644135335734157313",
+    "name": "Factory",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/1768168785733980160/a4hWTSfN_normal.jpg",
+    "public_metrics": {
+     "followers_count": 59276,
+     "following_count": 50
+    },
+    "url": "https://t.co/vafK4qyMCx",
+    "username": "factory",
+    "verified_type": "business"
+   },
+   {
+    "created_at": "2009-01-03T08:53:43.000Z",
+    "description": "Official IDF X account. We post real-time information and updates from the field.",
+    "entities": {
+     "url": {
+      "urls": [
+       {
+        "display_url": "linktr.ee/israel_defense…",
+        "end": 23,
+        "expanded_url": "https://linktr.ee/israel_defense_forces",
+        "start": 0,
+        "url": "https://t.co/KFmUlz30dy"
+       }
+      ]
+     }
+    },
+    "id": "18576537",
+    "location": "Israel",
+    "name": "Israel Defense Forces",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/1460244034706935808/lBBT0_jC_normal.jpg",
+    "public_metrics": {
+     "followers_count": 3292942,
+     "following_count": 34
+    },
+    "url": "https://t.co/KFmUlz30dy",
+    "username": "IDF",
+    "verified_type": "government"
+   },
+   {
+    "created_at": "2016-10-11T01:33:54.000Z",
+    "description": "Explore starting a startup in SF: https://t.co/QTihjfPK72 | Co-founders matched @traba_work @tryfinch @primer @contra @levels + more | @solofounders @sologrants",
+    "entities": {
+     "description": {
+      "urls": [
+       {
+        "display_url": "joinodf.com",
+        "end": 57,
+        "expanded_url": "http://joinodf.com",
+        "start": 34,
+        "url": "https://t.co/QTihjfPK72"
+       }
+      ]
+     },
+     "url": {
+      "urls": [
+       {
+        "display_url": "joinodf.com",
+        "end": 23,
+        "expanded_url": "http://joinodf.com",
+        "start": 0,
+        "url": "https://t.co/QTihjfPK72"
+       }
+      ]
+     }
+    },
+    "id": "785654626255110145",
+    "location": "San Francisco, CA",
+    "name": "ODF",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/1978559415168200706/FOxeb-ni_normal.jpg",
+    "public_metrics": {
+     "followers_count": 63465,
+     "following_count": 46
+    },
+    "url": "https://t.co/QTihjfPK72",
+    "username": "joinodf",
+    "verified_type": "business"
+   },
+   {
+    "created_at": "2009-04-20T14:04:41.000Z",
+    "description": "achieve ambition with intentionality, intensity, integrity & insanity.\n\naffiliations:\n- @smol_ai\n- @cognition\n- @temporalio\n- @aidotengineer\n- @latentspacepod",
+    "entities": {
+     "url": {
+      "urls": [
+       {
+        "display_url": "swyx.io",
+        "end": 23,
+        "expanded_url": "https://swyx.io",
+        "start": 0,
+        "url": "https://t.co/Q5067iwtXU"
+       }
+      ]
+     }
+    },
+    "id": "33521530",
+    "location": "san francisco / singapore",
+    "name": "swyx",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/2073162797354217472/hNny55eF_normal.jpg",
+    "public_metrics": {
+     "followers_count": 209722,
+     "following_count": 3984
+    },
+    "url": "https://t.co/Q5067iwtXU",
+    "username": "swyx",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2019-12-25T22:14:46.000Z",
+    "description": "Host of @dwarkeshpodcast\n\nhttps://t.co/3SXlu7fy6N\nhttps://t.co/4DPAxODFYi\nhttps://t.co/hQfIWdM1Un",
+    "entities": {
+     "description": {
+      "urls": [
+       {
+        "display_url": "youtube.com/DwarkeshPatel",
+        "end": 49,
+        "expanded_url": "https://www.youtube.com/DwarkeshPatel",
+        "start": 26,
+        "url": "https://t.co/3SXlu7fy6N"
+       },
+       {
+        "display_url": "open.spotify.com/show/4JH4tybY1…",
+        "end": 73,
+        "expanded_url": "https://open.spotify.com/show/4JH4tybY1zX6e5hjCwU6gF",
+        "start": 50,
+        "url": "https://t.co/4DPAxODFYi"
+       },
+       {
+        "display_url": "apple.co/3ujLQkZ",
+        "end": 97,
+        "expanded_url": "https://apple.co/3ujLQkZ",
+        "start": 74,
+        "url": "https://t.co/hQfIWdM1Un"
+       }
+      ]
+     },
+     "url": {
+      "urls": [
+       {
+        "display_url": "dwarkesh.com",
+        "end": 23,
+        "expanded_url": "https://www.dwarkesh.com/",
+        "start": 0,
+        "url": "https://t.co/WeFXM1OkQQ"
+       }
+      ]
+     }
+    },
+    "id": "1209960539390201864",
+    "location": "San Francisco ",
+    "name": "Dwarkesh Patel",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/1925260306684813315/NjNQZmhZ_normal.jpg",
+    "public_metrics": {
+     "followers_count": 283418,
+     "following_count": 1097
+    },
+    "url": "https://t.co/WeFXM1OkQQ",
+    "username": "dwarkesh_sp",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2009-04-21T06:49:15.000Z",
+    "description": "",
+    "id": "33836629",
+    "location": "Earth",
+    "name": "Andrej Karpathy",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/1296667294148382721/9Pr6XrPB_normal.jpg",
+    "public_metrics": {
+     "followers_count": 4414341,
+     "following_count": 1144
+    },
+    "url": "",
+    "username": "karpathy",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2025-01-16T19:56:36.000Z",
+    "description": "AI agents for data engineering. Impact analysis, root cause debugging, model refactoring. All powered by full data stack context.",
+    "entities": {
+     "url": {
+      "urls": [
+       {
+        "display_url": "typedef.ai/?utm_source=x&…",
+        "end": 23,
+        "expanded_url": "https://www.typedef.ai/?utm_source=x&utm_medium=social&utm_campaign=x_profile",
+        "start": 0,
+        "url": "https://t.co/5VH3HWdun2"
+       }
+      ]
+     }
+    },
+    "id": "1879981006729670657",
+    "name": "typedef",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/1879981230432862208/vMjDAZa3_normal.jpg",
+    "public_metrics": {
+     "followers_count": 253,
+     "following_count": 9
+    },
+    "url": "https://t.co/5VH3HWdun2",
+    "username": "typedef_ai",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2019-03-25T16:06:40.000Z",
+    "description": "Build and deploy production-grade machine learning applications with the #FeaturePlatform for #MachineLearning, from the creators of Uber Michelangelo.",
+    "entities": {
+     "url": {
+      "urls": [
+       {
+        "display_url": "tecton.ai",
+        "end": 23,
+        "expanded_url": "https://www.tecton.ai/",
+        "start": 0,
+        "url": "https://t.co/AwP6S4T5Eg"
+       }
+      ]
+     }
+    },
+    "id": "1110211407130169344",
+    "location": "San Francisco",
+    "name": "Tecton",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/1946273783339167744/ROpsmGQT_normal.png",
+    "public_metrics": {
+     "followers_count": 1402,
+     "following_count": 112
+    },
+    "url": "https://t.co/AwP6S4T5Eg",
+    "username": "TectonAI",
+    "verified_type": "none"
+   },
+   {
+    "created_at": "2013-06-01T19:36:52.000Z",
+    "description": "General Partner @a16z. Positive-sum. Striving for a thousand year heart. Worldbuilding @mtslive @theacademysf @cosign",
+    "entities": {
+     "url": {
+      "urls": [
+       {
+        "display_url": "cosign.co/erik",
+        "end": 23,
+        "expanded_url": "https://cosign.co/erik",
+        "start": 0,
+        "url": "https://t.co/tjByKGJ08F"
+       }
+      ]
+     }
+    },
+    "id": "1475495658",
+    "location": "SF",
+    "name": "Erik Torenberg",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/1449117890955788292/x3DIqECG_normal.jpg",
+    "public_metrics": {
+     "followers_count": 168570,
+     "following_count": 4406
+    },
+    "url": "https://t.co/tjByKGJ08F",
+    "username": "eriktorenberg",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2009-03-30T01:01:19.000Z",
+    "description": "MTS at @FactoryAI; previously at: Meta, Airbnb, Brex & Opendoor",
+    "entities": {
+     "url": {
+      "urls": [
+       {
+        "display_url": "alvinsng.com",
+        "end": 23,
+        "expanded_url": "https://alvinsng.com",
+        "start": 0,
+        "url": "https://t.co/8bDnQ85wOb"
+       }
+      ]
+     }
+    },
+    "id": "27548043",
+    "location": "San Francisco, CA",
+    "name": "Alvin Sng",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/1633939103124451328/Z57AZpU7_normal.jpg",
+    "public_metrics": {
+     "followers_count": 6178,
+     "following_count": 634
+    },
+    "url": "https://t.co/8bDnQ85wOb",
+    "username": "alvinsng",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2008-06-10T18:21:34.000Z",
+    "description": "Partnering technical founders at first inflection | @factoryAI @elevenlabs @perplexity_AI @bluefish_AI @twelve_labs @entireHQ |  AI Apps, Platforms, Frontier AI",
+    "id": "15075881",
+    "location": "San Francisco, CA",
+    "name": "Ann Bordetsky",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/1901838430201647104/211acKZy_normal.jpg",
+    "public_metrics": {
+     "followers_count": 12444,
+     "following_count": 2668
+    },
+    "url": "",
+    "username": "annbordetsky",
+    "verified_type": "blue"
+   },
+   {
+    "created_at": "2014-04-20T01:44:10.000Z",
+    "description": "Chief Revenue Officer",
+    "entities": {
+     "url": {
+      "urls": [
+       {
+        "display_url": "factory.ai",
+        "end": 23,
+        "expanded_url": "http://factory.ai",
+        "start": 0,
+        "url": "https://t.co/Y30Bkkzce1"
+       }
+      ]
+     }
+    },
+    "id": "2453952895",
+    "location": "San Francisco, CA",
+    "name": "Marcello Gallo",
+    "profile_image_url": "https://pbs.twimg.com/profile_images/1803947200348868608/x46Kw4EI_normal.jpg",
+    "public_metrics": {
+     "followers_count": 371,
+     "following_count": 676
+    },
+    "url": "https://t.co/Y30Bkkzce1",
+    "username": "mgbosyyz",
+    "verified_type": "blue"
+   }
+  ]
+ },
+ "source": "x_spider",
+ "url": "https://x.com/yoni_michael/following"
+}
