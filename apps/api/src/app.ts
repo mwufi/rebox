@@ -11,6 +11,7 @@ import { authenticate, type Principal } from './auth.js';
 import type { Config } from './config.js';
 import type { Db } from './db.js';
 import { ApiError, notFound } from './errors.js';
+import { adminRoutes } from './routes/admin.js';
 import { internalRoutes } from './routes/internal.js';
 import { readRoutes } from './routes/read.js';
 import type { VocabCache } from './vocab.js';
@@ -73,6 +74,7 @@ export function createApp(deps: Deps) {
   });
   app.route('/', readRoutes(deps));
   app.route('/', internalRoutes(deps));
+  app.route('/', adminRoutes(deps));
 
   const dir = deps.publicDir;
   if (dir && existsSync(dir) && statSync(dir).isDirectory()) {

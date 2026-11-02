@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Rebox: an open graph of people, companies and launches in the San Francisco startup world. Every fact carries its source." />
+    <meta name="theme-color" content="#f4f1e8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#13120f" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Rebox — an open people graph</title>
+    <script>
+      // Apply a saved theme before first paint (no flash).
+      try {
+        var t = localStorage.getItem('rebox.theme');
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
