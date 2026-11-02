@@ -1,0 +1,8 @@
+# Shared state in S3. Create the bucket with infra/scripts/bootstrap-state.sh, copy this file to
+# backend.hcl (gitignored), uncomment `backend "s3" {}` in versions.tf, then:
+#   terraform init -backend-config=backend.hcl -migrate-state
+bucket       = "rebox-tfstate-<account-id>"
+key          = "prod/terraform.tfstate"
+region       = "us-west-2"
+encrypt      = true
+use_lockfile = true

@@ -1,0 +1,37 @@
+# Optional overlay for networks with a TLS-inspecting proxy (corporate proxy, sandbox).
+# EXTRA_CA_FILE must be a full PEM bundle (system roots + the proxy CA).
+#   EXTRA_CA_FILE=/path/ca-bundle.pem \
+#     docker compose -f docker-compose.yml -f infra/docker/compose.extra-ca.yml up --build
+# Build: the bundle is a BuildKit secret (used for pnpm/uv installs, never stored in a layer).
+# Run: the bundle is mounted read-only and pointed to by the standard CA env vars.
+x-ca-env: &ca-env
+  NODE_EXTRA_CA_CERTS: /etc/rebox/ca-bundle.pem
+  SSL_CERT_FILE: /etc/rebox/ca-bundle.pem
+  REQUESTS_CA_BUNDLE: /etc/rebox/ca-bundle.pem
+  AWS_CA_BUNDLE: /etc/rebox/ca-bundle.pem
+
+x-ca-mount: &ca-mount
+  type: bind
+  source: ${EXTRA_CA_FILE:?set EXTRA_CA_FILE to a PEM bundle}
+  target: /etc/rebox/ca-bundle.pem
+  read_only: true
+
+secrets:
+  extra_ca:
+    file: ${EXTRA_CA_FILE:?set EXTRA_CA_FILE to a PEM bundle}
+
+services:
+  migrate:
+    build: { secrets: [extra_ca] }
+  api:
+    build: { secrets: [extra_ca] }
+    environment: *ca-env
+    volumes: [*ca-mount]
+  worker:
+    build: { secrets: [extra_ca] }
+    environment: *ca-env
+    volumes: [*ca-mount]
+  scheduler:
+    build: { secrets: [extra_ca] }
+    environment: *ca-env
+    volumes: [*ca-mount]

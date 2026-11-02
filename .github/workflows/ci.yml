@@ -1,0 +1,128 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# App directories land in parallel slices; every app step is skipped until its manifest exists.
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["54329:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      PG_ADMIN_URL: postgres://postgres@localhost:54329/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for apps/api
+        id: has
+        run: |
+          if [ -f apps/api/package.json ]; then echo "api=true" >> "$GITHUB_OUTPUT"; else echo "apps/api not present; skipping"; fi
+      - uses: pnpm/action-setup@v4
+        if: steps.has.outputs.api == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.has.outputs.api == 'true'
+        with:
+          node-version: 22
+      - name: Install
+        if: steps.has.outputs.api == 'true'
+        run: |
+          if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install --no-frozen-lockfile; fi
+      - name: Typecheck
+        if: steps.has.outputs.api == 'true'
+        run: pnpm --filter @rebox/api typecheck
+      - name: Test
+        if: steps.has.outputs.api == 'true'
+        run: pnpm --filter @rebox/api test
+      - name: Web typecheck, test, build
+        if: steps.has.outputs.api == 'true' && hashFiles('apps/web/package.json') != ''
+        run: |
+          pnpm --filter @rebox/web run --if-present typecheck
+          pnpm --filter @rebox/web run --if-present test
+          pnpm --filter @rebox/web run --if-present build
+
+  worker:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["54329:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      PG_ADMIN_URL: postgres://postgres@localhost:54329/postgres
+    defaults:
+      run:
+        working-directory: apps/worker
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for apps/worker
+        id: has
+        working-directory: .
+        run: |
+          if [ -f apps/worker/pyproject.toml ]; then echo "worker=true" >> "$GITHUB_OUTPUT"; else echo "apps/worker not present; skipping"; fi
+      - uses: astral-sh/setup-uv@v6
+        if: steps.has.outputs.worker == 'true'
+      - name: Install
+        if: steps.has.outputs.worker == 'true'
+        run: |
+          uv python install 3.13
+          if [ -f uv.lock ]; then uv sync --locked; else uv sync; fi
+      - name: Ruff
+        if: steps.has.outputs.worker == 'true'
+        run: uv run ruff check
+      - name: Pytest
+        if: steps.has.outputs.worker == 'true'
+        run: uv run pytest -q
+
+  infra:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.7
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+      - name: terraform validate
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+      - name: shellcheck
+        working-directory: .
+        run: shellcheck db/migrate.sh scripts/*.sh infra/docker/*.sh
+      - name: compose config
+        working-directory: .
+        run: docker compose config -q
+
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build api image
+        if: hashFiles('apps/api/package.json') != ''
+        run: docker build -f infra/docker/api.Dockerfile -t rebox-api:ci .
+      - name: Build worker image
+        if: hashFiles('apps/worker/pyproject.toml') != ''
+        run: docker build -f infra/docker/worker.Dockerfile -t rebox-worker:ci .
