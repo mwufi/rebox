@@ -8,7 +8,8 @@ insert into layer (id, scope, owner, source) values
   ('public/manual',   'public', null, 'manual'),
   ('public/wikidata', 'public', null, 'wikidata'),
   ('public/hn',       'public', null, 'hn'),
-  ('public/github',   'public', null, 'github')
+  ('public/github',   'public', null, 'github'),
+  ('public/x',        'public', null, 'x')
 on conflict (id) do nothing;
 
 insert into predicate (id, subject_kinds, object_kind, cardinality, meta) values
@@ -23,6 +24,7 @@ insert into predicate (id, subject_kinds, object_kind, cardinality, meta) values
   ('headline',    '{person}',  null, 'one',  '{"label":"Headline","value_type":"text"}'),
   ('location',    '{person}',  null, 'one',  '{"label":"Location","value_type":"text","filterable":true}'),
   ('hn_user',     '{person}',  null, 'one',  '{"label":"Hacker News","value_type":"text","identity":true,"normalize":"exact"}'),
+  ('x_followers', '{person,company}', null, 'one', '{"label":"X followers","value_type":"int","filterable":true}'),
   ('email',       '{person}',  null, 'many', '{"label":"Email","value_type":"text","identity":true,"normalize":"email","private":true}'),
   -- companies
   ('domain',      '{company}', null, 'many', '{"label":"Domain","value_type":"text","identity":true,"normalize":"domain"}'),

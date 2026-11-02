@@ -1,0 +1,18 @@
+# Build context for infra/docker/*.Dockerfile (context = repo root).
+.git
+.github
+.env
+.env.*
+.data
+docs
+infra/.bin
+infra/terraform
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/coverage
+apps/api/public

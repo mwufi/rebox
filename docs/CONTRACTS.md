@@ -16,7 +16,7 @@ These are the interfaces between services. Every slice builds against this file.
 - Every entity has a `name` claim (predicate `name`, value a JSON string). Search uses it.
 - `cardinality = 'one'`: the fold keeps one winner per subject+predicate. `'many'`: keeps every distinct object/value.
 
-Schema: `db/migrations/0001_core.sql`. Operational tables (change feed, jobs, connector state, raw index, resolution log, review queue, merge log): `db/migrations/0002_ops.sql`. Vocabulary: `db/seed/0001_vocabulary.sql`.
+Schema: `db/migrations/0001_core.sql` (+ `0004_rls_indexes.sql`, see §2a). Operational tables (change feed, jobs, connector state, raw index, resolution log, review queue, merge log): `db/migrations/0002_ops.sql`. Vocabulary: `db/seed/0001_vocabulary.sql`.
 
 ## 2. Layers and access
 
@@ -30,6 +30,12 @@ Schema: `db/migrations/0001_core.sql`. Operational tables (change feed, jobs, co
   - admin token: visible = all `public/*`; writable = all `public/*` (merge/split only).
   - `REBOX_ENV=dev` only: header `X-Rebox-Viewer: <user id>` adds `user/<id>/*` and their teams' layers (for testing private layers).
 - Compute "all public layers" as `select id from layer where scope = 'public'`.
+
+### 2a. Querying under RLS (indexes)
+
+Under RLS, Postgres uses an index only when the operator is leakproof. `value #>> '{}'` and pg_trgm `%` are not. Therefore:
+- **Compare attribute values with `claim.value_text`** (a stored generated column = `value #>> '{}'`), never with `value #>> '{}'` or `value->>...`. Index: `(predicate, value_text) where object_id is null`. Use it for hard-key lookups and `attr eq` filters.
+- **Name search uses `search_name`** (entity_id, layer_id, name; trigram-indexed; no RLS because it only holds names from `public/*` layers, maintained by trigger). Search = trigram match on `search_name` for public names, unioned with an RLS-filtered scan of `claim where predicate = 'name' and layer_id not like 'public/%'` for the viewer's private names. Exclude merged entities via `entity.merged_into is null`.
 
 ## 3. Entity ids (deterministic minting)
 
@@ -174,7 +180,8 @@ Every decision writes `resolution_log`. Batch-local cache so one batch resolves 
 | Var | Used by | Example |
 | --- | --- | --- |
 | `DATABASE_URL` | api, worker | `postgres://rebox_app:rebox_app@localhost:54329/rebox` (app role) |
-| `MIGRATE_DATABASE_URL` | migrate | owner URL |
+| `MIGRATE_DATABASE_URL` | migrate | owner URL (password may come from `PGPASSWORD`) |
+| `APP_DB_PASSWORD` | migrate | password set on role `rebox_app` |
 | `PORT` | api | `3000` |
 | `INGEST_TOKEN` | api, worker | secret |
 | `ADMIN_TOKEN` | api | secret |
@@ -183,10 +190,18 @@ Every decision writes `resolution_log`. Batch-local cache so one batch resolves 
 | `REBOX_ENV` | api, worker | `dev` \| `prod` |
 | `USER_AGENT` | worker | `rebox-bot/0.1 (+https://rebox.example)` |
 | `GITHUB_TOKEN` | worker (optional) | enables live GitHub connector |
+| `X_BEARER_TOKEN` | worker (optional) | enables live X connector |
 | `AWS_REGION` | worker (s3 raw store) | `us-west-2` |
+| `SCHEDULE_INTERVAL_S` | compose scheduler | `900` |
 
 ## 10. Repository conventions
 
 - Monorepo: `apps/api` (TypeScript, Node 22, Hono, `postgres` driver, vitest), `apps/web` (React + Vite, built into `apps/api/public`), `apps/worker` (Python 3.13, uv, psycopg 3, httpx, pytest), `db/`, `infra/`, `fixtures/raw/`, `docs/`.
 - Tests use a real Postgres: `scripts/test-db.sh <dbname>` prints the owner URL then the app URL. Shared dev server: `postgres://postgres@localhost:54329/postgres`. Each slice uses its own database names prefixed with its slice id.
 - No service imports another service's code. They share only these contracts and the database schema.
+
+## 11. Packaging (from S3)
+
+- `apps/api`: `pnpm --filter @rebox/api build` must emit `dist/server.js`; the image runs `node dist/server.js` from `/app/apps/api` and serves static files from `apps/api/public` (resolve it relative to `dist/..`).
+- `apps/worker`: console script `rebox-worker` must support `--help`; the image runs from `/app` with fixtures at `/app/fixtures/raw/<source>` (resolve fixtures relative to the repo root, overridable by `FIXTURES_DIR`).
+- Commit `pnpm-lock.yaml` and `apps/worker/uv.lock`; images use frozen/locked installs when present.

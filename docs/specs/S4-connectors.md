@@ -1,11 +1,11 @@
-# S4 — Public connectors: Wikidata, Hacker News launches, GitHub
+# S4 — Public connectors: Wikidata, Hacker News launches, GitHub, X
 
 **Goal:** three real connectors that build the first public graph of the SF startup world, plugged into the worker's Connector protocol, tested offline against recorded fixtures, and smoke-tested live end to end through the real API.
 
 **Branch:** `s4-connectors`  **DB prefix:** `s4_`  **Depends on:** S1 (api) and S2 (worker core) merged to `main`.
 
 ## Owns
-`apps/worker/rebox_worker/connectors/{wikidata,hn,github}.py`, `apps/worker/tests/connectors/**`, `fixtures/raw/{wikidata,hn,github}/**`, `docs/SOURCES.md`. One line in the connector registry per connector.
+`apps/worker/rebox_worker/connectors/{wikidata,hn,github,x}.py`, `apps/worker/tests/connectors/**`, `fixtures/raw/{wikidata,hn,github,x}/**`, `docs/SOURCES.md`. One line in the connector registry per connector.
 
 ## Rules for every connector
 - `fetch` is the only code that touches the network. Respect rate limits (sleep between requests, exponential backoff on 429/5xx), send `USER_AGENT`, support `limit` (stop after N raw records) for dev runs.
@@ -33,6 +33,12 @@
 - Person: `name`, `github` (login), `x_handle`, `website`, `headline` (bio), `location`. Company (only from `@org`): `name`, `github`, `website` + `domain`, `x_handle`. Edge: person `worked_at` company (no dates).
 - **Fixtures must be synthetic** (clearly fake logins like `example-octo-1`), because no GitHub access exists in this environment and we don't want copies of real people's profiles in git.
 
+## X profiles (`public/x`)
+- Live mode requires `X_BEARER_TOKEN`; without it `enabled()` is false. Tests run on synthetic fixtures (fake handles only).
+- **Enrichment, not discovery:** read the `x_handle` values already in the graph (people and companies, from Wikidata, GitHub and others) through the worker's DB access, then look them up in batches of up to 100 with the X API v2 users-by-username endpoint (`user.fields=name,description,location,url,public_metrics`). Respect rate-limit headers; cursor = last handle processed so a run can resume.
+- Emits for the existing entity (EntityRef with identity `x_handle`): `name` only if the entity has none, `headline` (description, people) or `description` (companies), `location` (people), `website` (expanded URL, not t.co), `x_followers`.
+- Posts and engagement (for "who posted about AI") are out of scope for v0; they need an activity store and a paid API tier.
+
 ## docs/SOURCES.md
 For each source: what is fetched, license/terms, rate limits used, schedule, layer, and the predicates it emits.
 
@@ -41,3 +47,7 @@ For each source: what is fetched, license/terms, rate limits used, schedule, lay
 - Record fixtures: run each live fetch (Wikidata, HN) with a small limit and save ~20–40 raw records per source into `fixtures/raw/<source>/`.
 - **Live end-to-end smoke** against a fresh `s4_live` database with the real API running from your worktree: `rebox-worker sync hn --limit 300` and `rebox-worker sync wikidata --limit 200`, then report: entity counts by kind, claims per layer, how many companies were matched across the two sources by domain (dedupe evidence), review items opened, and 3 sample `/v0/entities/:id` responses (one company with facts from both layers).
 - `rebox-worker replay hn` on the same DB creates zero new entities.
+
+## Also in this slice (follow-ups from S2 review)
+- `apps/worker/rebox_worker/resolve.py` and its tests: switch value comparisons from `value #>> '{}'` to `claim.value_text` (CONTRACTS §2a, migration 0004) so hard-key and fuzzy lookups are true index lookups under RLS; keep the lateral-per-predicate shape only if it still helps. Add a test asserting the hard-key query plan, as `rebox_app` on ≥ 10k analyzed rows, uses `claim_value_text_idx`.
+- If the S1 API is not on `main` yet when you reach the live end-to-end smoke, run it through the worker's fake writer started as a standalone server (as S2 did), state that in the report, and the architect will rerun it against the real API.

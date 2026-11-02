@@ -1,3 +1,31 @@
+# Rebox local stack.
+#   cp .env.example .env && docker compose up --build     → http://localhost:3000
+#   docker compose up -d --wait db                         → just Postgres on :54329 (make up)
+# Values come from .env (compose reads it for ${...}); defaults match .env.example.
+# Containers reach Postgres at db:5432, so the localhost URLs in .env are not used here.
+
+x-api-image: &api-image
+  image: rebox-api:local
+  build:
+    context: .
+    dockerfile: infra/docker/api.Dockerfile
+
+x-worker-image: &worker-image
+  image: rebox-worker:local
+  build:
+    context: .
+    dockerfile: infra/docker/worker.Dockerfile
+
+x-worker-env: &worker-env
+  DATABASE_URL: postgres://rebox_app:${APP_DB_PASSWORD:-rebox_app}@db:5432/rebox
+  API_URL: http://api:3000
+  INGEST_TOKEN: ${INGEST_TOKEN:-dev-ingest-token}
+  RAW_STORE: file:///data/raw
+  REBOX_ENV: ${REBOX_ENV:-dev}
+  USER_AGENT: ${USER_AGENT:-rebox-bot/0.1 (+https://github.com/rebox)}
+  GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+  X_BEARER_TOKEN: ${X_BEARER_TOKEN:-}
+
 services:
   db:
     image: postgres:16
@@ -7,8 +35,61 @@ services:
     ports: ["54329:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres"]
+      # TCP check: the image's init phase runs a socket-only server, which must not count as ready.
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "127.0.0.1"]
       interval: 2s
       retries: 20
+
+  # One-shot: schema + seed as owner, then let rebox_app log in (infra/docker/migrate.sh).
+  migrate:
+    <<: *api-image
+    command: ["/app/infra/docker/migrate.sh"]
+    environment:
+      MIGRATE_DATABASE_URL: postgres://postgres:dev@db:5432/rebox
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-rebox_app}
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    <<: *api-image
+    environment:
+      DATABASE_URL: postgres://rebox_app:${APP_DB_PASSWORD:-rebox_app}@db:5432/rebox
+      PORT: "3000"
+      INGEST_TOKEN: ${INGEST_TOKEN:-dev-ingest-token}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-admin-token}
+      REBOX_ENV: ${REBOX_ENV:-dev}
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  worker:
+    <<: *worker-image
+    command: ["run"]
+    environment: *worker-env
+    volumes: [rawdata:/data/raw]
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+
+  # Enqueues due connector syncs every SCHEDULE_INTERVAL_S (default 900s); the worker runs them.
+  scheduler:
+    <<: *worker-image
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["while true; do rebox-worker schedule-due || echo 'scheduler: schedule-due failed'; sleep ${SCHEDULE_INTERVAL_S:-900}; done"]
+    environment: *worker-env
+    volumes: [rawdata:/data/raw]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
 volumes:
   pgdata: {}
+  rawdata: {}
