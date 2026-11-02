@@ -1,60 +1,54 @@
 import base64
 import hashlib
+import json
+from pathlib import Path
 
 import pytest
 
 from rebox_worker.ids import IDENTITY_KEY_ORDER, mint_id, strongest_key
 from rebox_worker.normalize import NORMALIZERS, get_normalizer, normalize_name
 
-# (normalizer, raw, expected) — the CONTRACTS §4 examples first, then edge cases.
-CASES = [
-    ("qid", "q42", "Q42"),
-    ("qid", " Q7624104 ", "Q7624104"),
-    ("qid", "https://www.wikidata.org/wiki/Q62", "Q62"),
-    ("qid", "http://www.wikidata.org/entity/q95", "Q95"),
-    ("handle", "https://x.com/Jack", "jack"),
-    ("handle", "@Jack", "jack"),
-    ("handle", "jack", "jack"),
-    ("handle", "https://twitter.com/@Jack?lang=en", "jack"),
-    ("handle", "github.com/OctoCat/", "octocat"),
-    ("handle", "https://github.com/octocat/hello-world", "octocat"),
-    ("domain", "https://www.Stripe.com/about", "stripe.com"),
-    ("domain", "Stripe.com", "stripe.com"),
-    ("domain", "www.acme.ai:8443/x?y=1", "acme.ai"),
-    ("domain", "http://user@Sub.Example.co.uk.", "sub.example.co.uk"),
-    ("url", "https://www.acme.ai/", "https://acme.ai"),
-    ("url", "HTTPS://WWW.Acme.AI/Launch/?ref=hn#top", "https://acme.ai/Launch"),
-    ("url", "acme.ai/blog/", "https://acme.ai/blog"),
-    ("url", "http://acme.ai:8080/", "http://acme.ai:8080"),
-    ("email", "  Ada@Example.COM ", "ada@example.com"),
-    ("exact", "  41234567 ", "41234567"),
-    ("exact", 41234567, "41234567"),
-]
+# CONTRACTS §4: the cases both services run (apps/api/test/normalize.test.ts loads the same file).
+SHARED = json.loads((Path(__file__).resolve().parents[3] / "contracts" / "normalize-cases.json").read_text())
+SHARED_CASES = SHARED["cases"]
 
 
-@pytest.mark.parametrize(("name", "raw", "expected"), CASES)
-def test_normalizers(name, raw, expected):
-    norm = NORMALIZERS[name]
-    assert norm(raw) == expected
-    assert norm(expected) == expected  # idempotent
+def _case_id(c):
+    return f"{c['normalizer']}:{c['input']!r}"
 
 
-@pytest.mark.parametrize(
-    ("name", "raw"),
-    [
-        ("qid", "P31"),
-        ("qid", "42"),
-        ("domain", "localhost"),
-        ("email", "nope"),
-        ("exact", "  "),
-        ("handle", "@"),
-        ("url", ""),
-        ("domain", None),
-    ],
-)
-def test_normalizers_reject(name, raw):
+def test_shared_cases_cover_every_normalizer():
+    assert len(SHARED_CASES) >= 60
+    assert {c["normalizer"] for c in SHARED_CASES} == set(NORMALIZERS)
+
+
+@pytest.mark.parametrize("case", [c for c in SHARED_CASES if not c.get("error")], ids=_case_id)
+def test_shared_normalizer_cases(case):
+    norm = NORMALIZERS[case["normalizer"]]
+    assert norm(case["input"]) == case["output"]
+    assert norm(case["output"]) == case["output"]  # a fixed point: what the writer checks
+
+
+@pytest.mark.parametrize("case", [c for c in SHARED_CASES if c.get("error")], ids=_case_id)
+def test_shared_normalizer_errors(case):
     with pytest.raises(ValueError):
-        NORMALIZERS[name](raw)
+        NORMALIZERS[case["normalizer"]](case["input"])
+
+
+def test_normalizers_are_idempotent_on_random_inputs():
+    """normalize(normalize(x)) == normalize(x), else the writer rejects what the worker sends."""
+    import random
+
+    rnd = random.Random(12)
+    alphabet = list("wW.:/@?#[]-_ aZ09") + ["www.", "http://", "https://", "x.com/", "\u00a0", "\u00dc", "%"]
+    for _ in range(20000):
+        raw = "".join(rnd.choice(alphabet) for _ in range(rnd.randint(1, 12)))
+        for name, norm in NORMALIZERS.items():
+            try:
+                once = norm(raw)
+            except ValueError:
+                continue
+            assert norm(once) == once, (name, raw, once)
 
 
 def test_unknown_normalizer():

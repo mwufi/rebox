@@ -143,10 +143,103 @@ def test_failed_write_does_not_advance_cursor_or_index(deps, owner, writer):
     assert stats.skipped_unchanged == 0 and counts(owner) == (EXPECTED_ENTITIES, EXPECTED_CLAIMS)
 
 
-def test_writer_validation_error_surfaces(deps, writer, monkeypatch):
+def test_writer_rejecting_every_claim_does_not_stop_the_run(deps, owner, writer, monkeypatch):
+    """Per-claim 400s drop those claims; a batch where everything is refused also continues."""
     monkeypatch.setattr(writer, "_validate", lambda *a: "nope")
-    with pytest.raises(ValidationRejected, match="nope"):
+    stats = run_sync(get_connector("example"), deps)
+    # (Nothing is written, so later records cannot match earlier ones: more claims than usual.)
+    assert stats.written == stats.minted == 0 and stats.rejected == stats.claims > 0 and stats.batches == 5
+    assert counts(owner) == ({}, 0)
+    run = owner.execute("select status, stats from run").fetchone()
+    assert run["status"] == "ok" and run["stats"]["rejected"] == stats.claims
+    state = owner.execute("select cursor, last_status from connector_state").fetchone()
+    assert state["last_status"] == "ok" and state["cursor"] is not None
+    # The records are indexed (a replay after a fix re-extracts them; a sync skips them).
+    assert owner.execute("select count(*) n from raw_record").fetchone()["n"] == 5
+    monkeypatch.undo()
+    stats = run_replay(get_connector("example"), deps)
+    assert stats.rejected == 0 and counts(owner) == (EXPECTED_ENTITIES, EXPECTED_CLAIMS)
+
+
+def test_batch_level_400_still_fails_the_run(deps, owner, writer):
+    """A 400 not about specific claims (worker not active, layer not allowed) cannot be skipped."""
+    run_sync(get_connector("example"), deps)  # registers the worker
+    owner.execute("update worker set status = 'paused'")
+    owner.execute("update connector_state set cursor = null")
+    owner.execute("truncate raw_record")
+    with pytest.raises(ValidationRejected, match="may not write"):
         run_sync(get_connector("example"), deps)
+    run = owner.execute("select status, error from run order by id desc limit 1").fetchone()
+    assert run["status"] == "failed" and "may not write" in run["error"]
+
+
+class _Incident:
+    """The X spider incident (S12): one page of 500 accounts, account #250's website is
+    ``http://www.com``, which the old API normalized differently from the worker."""
+
+    name, layer, interval_s = "incident", "public/incident", 60
+
+    def fetch(self, ctx, cursor):
+        from rebox_worker.models import CursorUpdate, RawRecord
+
+        yield RawRecord.new(self.name, "page-1", {"n": 500})
+        yield CursorUpdate(cursor={"page": 1})
+
+    def extract(self, rec):
+        from rebox_worker.models import ClaimInput, EntityRef
+
+        return [
+            ClaimInput(
+                subject=EntityRef(kind="company", identity={"x_handle": f"acct{i}"}),
+                predicate="website",
+                value="http://www.com" if i == 250 else f"https://c{i}.example",
+                source_ref=f"incident:{i}:website",
+            )
+            for i in range(rec.payload["n"])
+        ]
+
+
+def _old_api_url(value):
+    """The API's url rule before S12: drop a leading ``www.`` unconditionally."""
+    import re
+
+    m = re.match(r"^([a-z][a-z0-9+.-]*)://([^/?#]+)([^?#]*)", value.strip(), re.I)
+    host = m.group(2).lower()
+    host = host[4:] if host.startswith("www.") else host
+    return f"{m.group(1).lower()}://{host}{m.group(3).rstrip('/')}"
+
+
+def test_incident_one_non_normalized_identity_among_500(deps, owner, writer, monkeypatch, caplog):
+    import logging
+
+    import fake_writer
+
+    caplog.set_level(logging.WARNING, logger="rebox_worker.client")
+
+    real = fake_writer._norm
+    monkeypatch.setattr(
+        fake_writer, "_norm", lambda meta: _old_api_url if meta.get("normalize") == "url" else real(meta)
+    )
+    stats = run_sync(_Incident(), deps)
+
+    assert len(writer.requests) == 2 and len(writer.requests[0]["claims"]) == 500  # one batch, re-sent
+    assert (stats.claims, stats.written, stats.rejected, stats.minted) == (500, 499, 1, 499)
+    assert owner.execute("select count(*) n from claim").fetchone()["n"] == 499
+    assert owner.execute("select count(*) n from entity").fetchone()["n"] == 499
+    assert not owner.execute("select 1 from claim where value #>> '{}' = 'http://www.com'").fetchall()
+    run = owner.execute("select status, stats from run").fetchone()
+    assert run["status"] == "ok" and (run["stats"]["written"], run["stats"]["rejected"]) == (499, 1)
+    state = owner.execute("select cursor, last_status from connector_state").fetchone()
+    assert state == {"cursor": {"page": 1}, "last_status": "ok"}
+    logged = [r.message for r in caplog.records if "writer rejected claim" in r.message]
+    assert len(logged) == 1 and "incident:250:website" in logged[0] and "'http://www.com'" in logged[0]
+    assert "identity value for website not normalized" in logged[0]
+
+    # With the S12 normalizers both sides agree on http://www.com: a replay writes all 500.
+    monkeypatch.setattr(fake_writer, "_norm", real)
+    stats = run_replay(_Incident(), deps)
+    assert (stats.written, stats.rejected) == (500, 0)
+    assert owner.execute("select count(*) n from claim").fetchone()["n"] == 500
 
 
 def test_record_for_another_source_is_refused(deps, owner):

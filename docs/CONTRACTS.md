@@ -51,12 +51,12 @@ Under RLS, Postgres uses an index only when the operator is leakproof. `value #>
 | --- | --- | --- |
 | `qid` | uppercase, must match `Q\d+` | `q42` → `Q42` |
 | `handle` | lowercase, strip leading `@`, strip URL prefix | `https://x.com/Jack` → `jack` |
-| `domain` | lowercase host, strip scheme, port, path, and a leading `www.` only if the rest still contains a dot | `https://www.Stripe.com/about` → `stripe.com` |
-| `url` | lowercase scheme+host, drop a leading `www.` only if the rest still contains a dot, drop trailing `/`, drop query/fragment | `https://www.acme.ai/` → `https://acme.ai`; `http://www.com` → `http://www.com` |
+| `domain` | lowercase host, strip scheme, port, path, and leading `www.` labels while the rest still contains a dot (repeatedly, so the result is a fixed point) | `https://www.Stripe.com/about` → `stripe.com` |
+| `url` | lowercase scheme+host, drop leading `www.` labels the same way, drop trailing `/`, drop query/fragment | `https://www.acme.ai/` → `https://acme.ai`; `http://www.com` → `http://www.com` |
 | `email` | lowercase, trim | |
 | `exact` | trim only | |
 
-Both services must agree exactly: shared cases live in `contracts/normalize-cases.json`, and both test suites run them.
+Both services must agree exactly: shared cases live in `contracts/normalize-cases.json`, and both test suites run them. Edge cases the table leaves open (unicode hosts lowercased not punycoded, url ports kept without leading zeros, userinfo dropped, scheme-less urls get `https`, `domain` needs a dot) are pinned in that file.
 
 Name matching (resolver fuzzy pass): lowercase, strip punctuation and accents, collapse whitespace.
 
