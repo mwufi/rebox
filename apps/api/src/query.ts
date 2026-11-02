@@ -9,16 +9,17 @@
 import { z } from 'zod';
 import type { Frag, Tx } from './db.js';
 import { decodeCursor, encodeCursor, isIdCursor } from './cursor.js';
+import { isIsoDate, isoToMs } from './dates.js';
 import { entityRefs } from './entities.js';
 import { validation, type ErrorDetail } from './errors.js';
-import { canonCte, likeEscape } from './sqlfrag.js';
+import { canonCte, likeEscape, privateVisibleLayers } from './sqlfrag.js';
 import { isEdge, type Predicate, type Vocab } from './vocab.js';
 
 export const MAX_FILTERS = 10;
 export const MAX_LIMIT = 200;
 
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}(?:[T ][0-9:.+Z-]+)?$/;
 const scalar = z.union([z.string(), z.number(), z.boolean()]);
+const isoDate = z.string().refine(isIsoDate, 'must be an ISO date or timestamp');
 
 const nameFilter = z.object({ name: z.string().trim().min(1).max(200) }).strict();
 const edgeFilter = z
@@ -28,10 +29,7 @@ const edgeFilter = z
         predicate: z.string().min(1),
         dir: z.enum(['out', 'in']).default('out'),
         to: z.string().min(1).nullish(),
-        during: z
-          .object({ from: z.string().regex(ISO_DAY).nullish(), to: z.string().regex(ISO_DAY).nullish() })
-          .strict()
-          .nullish(),
+        during: z.object({ from: isoDate.nullish(), to: isoDate.nullish() }).strict().nullish(),
       })
       .strict(),
   })
@@ -119,6 +117,8 @@ export function planQuery(body: unknown, vocab: Vocab): QueryPlan {
       if (!isEdge(p)) return fail(`${p.id} is an attribute; use {attr}`);
       const kindOk = f.edge.dir === 'out' ? p.subject_kinds.includes(q.find) : p.object_kind === q.find;
       if (!kindOk) return fail(`${p.id} (dir ${f.edge.dir}) cannot apply to kind ${q.find}`);
+      const d = f.edge.during;
+      if (d?.from && d.to && isoToMs(d.from) > isoToMs(d.to)) return fail('during.from must not be after during.to');
       filters.push({ type: 'edge', p, f: f.edge });
     } else {
       if (isEdge(p)) return fail(`${p.id} is an edge; use {edge}`);
@@ -131,8 +131,9 @@ export function planQuery(body: unknown, vocab: Vocab): QueryPlan {
         if (a.contains !== undefined) return fail(`contains is only for text predicates`);
       } else if (p.meta.value_type === 'bool') {
         if (a.gte !== undefined || a.lte !== undefined || a.contains !== undefined) return fail(`${p.id} supports eq only`);
+        if (a.eq !== undefined && typeof a.eq !== 'boolean') return fail(`${p.id}.eq must be a boolean`);
       } else {
-        for (const op of ['gte', 'lte'] as const) {
+        for (const op of ['eq', 'gte', 'lte'] as const) {
           if (a[op] !== undefined && typeof a[op] !== 'string') return fail(`${p.id}.${op} must be a string`);
         }
       }
@@ -150,79 +151,155 @@ export function planQuery(body: unknown, vocab: Vocab): QueryPlan {
 const canonOf = (tx: Tx, expr: Frag) =>
   tx`coalesce((select cn.root from canon cn where cn.member = ${expr}), ${expr})`;
 
+/** The id plus every entity merged (transitively) into it, as a text[] expression. */
+const groupOf = (tx: Tx, canonExpr: Frag) =>
+  tx`array(select ${canonExpr} union all select cn.member from canon cn where cn.root = ${canonExpr})`;
+
+/** Date-only upper bounds cover the whole day. */
+function upperBound(to: string): { op: 'lt' | 'le'; at: string } {
+  if (to.length !== 10) return { op: 'le', at: to };
+  const d = new Date(`${to}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return { op: 'lt', at: d.toISOString() };
+}
+
 /**
- * `from claim c join layer l ... where <cond>` for one filter, anchored on outer `e.id`.
- * The anti-join on c2 is the fold expressed per row: c must be the winner for its key.
+ * `from ... where ...` for one filter, anchored on `anchorExpr` (an un-merged entity id).
+ * Reads from anchoredClaims, so claims on merged-away entities count for their target and the
+ * anchor test is a plain equality (index-friendly). The anti-join on c2 is the fold expressed
+ * per row: c must be the winner for its fold key, and not retracted.
  */
-function filterSource(tx: Tx, cf: CompiledFilter) {
+function filterSource(tx: Tx, cf: CompiledFilter, anchorExpr: Frag) {
   const dir = cf.type === 'edge' ? cf.f.dir : 'out';
-  const anchor = dir === 'out' ? tx`c.subject` : tx`c.object_id`;
-  const anchor2 = dir === 'out' ? tx`c2.subject` : tx`c2.object_id`;
-  const other = dir === 'out' ? tx`c.object_id` : tx`c.subject`;
-  const other2 = dir === 'out' ? tx`c2.object_id` : tx`c2.subject`;
   const predicate = cf.type === 'name' ? 'name' : cf.p.id;
-  const inGroup = (col: Frag) => tx`(${col} = e.id or ${col} in (select cn.member from canon cn where cn.root = e.id))`;
 
   let sameKey = tx``;
-  if (cf.type === 'edge') sameKey = tx`and ${canonOf(tx, other2)} = ${canonOf(tx, other)}`;
+  if (cf.type === 'edge') sameKey = tx`and ${canonOf(tx, tx`c2.other`)} = ${canonOf(tx, tx`c.other`)}`;
   else if (cf.type === 'attr' && cf.p.cardinality === 'many') sameKey = tx`and c2.value = c.value`;
 
   return tx`
-    from claim c join layer l on l.id = c.layer_id
-    where c.predicate = ${predicate} and ${inGroup(anchor)} and not c.retract
-      and ${matchCondition(tx, cf, other)}
+    from ${anchoredClaims(tx, dir)} c join layer l on l.id = c.layer_id
+    where c.anchor = ${anchorExpr} and c.predicate = ${predicate} and not c.retract
+      and ${matchCondition(tx, cf)}
       and not exists (
-        select 1 from claim c2 join layer l2 on l2.id = c2.layer_id
-        where c2.predicate = c.predicate and ${inGroup(anchor2)} ${sameKey}
-          and (l2.scope, c2.updated_at, c2.id) > (l.scope, c.updated_at, c.id)
+        select 1 from ${anchoredClaims(tx, dir)} c2 join layer l2 on l2.id = c2.layer_id
+        where c2.anchor = c.anchor and c2.predicate = c.predicate ${sameKey}
+          and (l2.scope, c2.updated_at, c2.direct, c2.id) > (l.scope, c.updated_at, c.direct, c.id)
       )`;
 }
 
-/** The filter's own predicate on the claim `c` (value / object / validity). */
-function matchCondition(tx: Tx, cf: CompiledFilter, other: Frag) {
+/**
+ * Visible claims with `anchor` = the entity the claim is about in direction `dir` (subject for
+ * out, object for in) and `other` = the raw other side. Claims on merged-away entities appear a
+ * second time anchored on their canonical target (`direct` = 0; the fold prefers direct claims on
+ * ties, matching fold.ts). Needs the `canon` CTE.
+ */
+export function anchoredClaims(tx: Tx, dir: 'out' | 'in') {
+  const cols = tx`c.id, c.layer_id, c.predicate, c.value, c.value_text, c.valid_from, c.valid_to, c.retract, c.updated_at`;
+  return dir === 'out'
+    ? tx`(select ${cols}, c.subject as anchor, c.object_id as other, 1 as direct from claim c
+          union all
+          select ${cols}, cn.root as anchor, c.object_id as other, 0 as direct
+          from canon cn join claim c on c.subject = cn.member)`
+    : tx`(select ${cols}, c.object_id as anchor, c.subject as other, 1 as direct from claim c
+          union all
+          select ${cols}, cn.root as anchor, c.subject as other, 0 as direct
+          from canon cn join claim c on c.object_id = cn.member)`;
+}
+
+/** The filter's own predicate on the claim `c` (value / other side / validity). */
+function matchCondition(tx: Tx, cf: CompiledFilter) {
   if (cf.type === 'name') {
-    return tx`(c.value #>> '{}') ilike ${'%' + likeEscape(cf.text) + '%'}`;
+    // CONTRACTS §2a: compare values through value_text, never value #>> '{}'.
+    return tx`c.value_text ilike ${likePattern(cf.text)}`;
   }
   if (cf.type === 'edge') {
     const { to, during } = cf.f;
     // The other side must be visible (RLS on entity), as in the fold.
-    const parts = [tx`exists (select 1 from entity oe where oe.id = ${canonOf(tx, other)})`];
-    if (to) parts.push(tx`${canonOf(tx, other)} = ${canonOf(tx, tx`${to}::text`)}`);
-    if (during?.to) parts.push(tx`(c.valid_from is null or c.valid_from <= ${during.to}::timestamptz)`);
+    const parts = [tx`c.other is not null`, tx`exists (select 1 from entity oe where oe.id = ${canonOf(tx, tx`c.other`)})`];
+    if (to) {
+      const toCanon = canonOf(tx, tx`${to}::text`);
+      // `c.other = any(group)` lets the planner use claim_object_idx / claim_subject_idx.
+      parts.push(tx`c.other = any(${groupOf(tx, toCanon)})`);
+    }
+    if (during?.to) {
+      const ub = upperBound(during.to);
+      parts.push(
+        ub.op === 'lt'
+          ? tx`(c.valid_from is null or c.valid_from < ${ub.at}::timestamptz)`
+          : tx`(c.valid_from is null or c.valid_from <= ${ub.at}::timestamptz)`,
+      );
+    }
     if (during?.from) parts.push(tx`(c.valid_to is null or c.valid_to >= ${during.from}::timestamptz)`);
     return parts.reduce((acc, part) => tx`${acc} and ${part}`);
   }
-  // attr: compare each scalar element (attribute values may be arrays).
-  const a = cf.f;
-  const numeric = isNumeric(cf.p);
-  const parts = [];
-  if (a.eq !== undefined) parts.push(tx`c.value @> ${tx.json(a.eq)}::jsonb`);
-  const el = (cmp: Frag) => tx`exists (
-      select 1 from jsonb_array_elements(case when jsonb_typeof(c.value) = 'array' then c.value
-                                              else jsonb_build_array(c.value) end) el(v)
-      where ${cmp})`;
+  return attrCondition(tx, cf.p, cf.f);
+}
+
+const likePattern = (text: string) => '%' + likeEscape(text) + '%';
+
+/**
+ * Text form of a scalar exactly as Postgres renders `value #>> '{}'` (= value_text) for values the
+ * writer stored: strings verbatim, numbers and booleans as JSON.
+ */
+const scalarText = (v: string | number | boolean): string => (typeof v === 'string' ? v : JSON.stringify(v));
+
+/**
+ * Attribute comparisons, all through `c.value_text` (CONTRACTS §2a). eq / gte / lte compare
+ * scalar values (texteq / text_ge / text_le are leakproof, so claim_value_text_idx serves them
+ * under RLS); numeric bounds compare numerically. Array values are matched by `contains` only
+ * (their value_text is JSON text), since element-wise matching cannot use an index under RLS.
+ */
+function attrCondition(tx: Tx, p: Predicate, a: AttrFilter) {
+  const numeric = isNumeric(p);
+  // Numeric text, or null for anything else, so a cast can never fail.
+  const num = tx`(case when c.value_text ~ '^-?[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?$' then c.value_text::numeric end)`;
+  const parts: Frag[] = [];
+  if (a.eq !== undefined) parts.push(tx`c.value_text = ${scalarText(a.eq)}`);
   for (const [op, bound] of [['>=', a.gte], ['<=', a.lte]] as const) {
     if (bound === undefined) continue;
     const opSql = op === '>=' ? tx`>=` : tx`<=`;
     parts.push(
       numeric
-        ? el(tx`jsonb_typeof(el.v) = 'number' and (el.v #>> '{}')::numeric ${opSql} ${bound}::numeric`)
-        : el(tx`jsonb_typeof(el.v) = 'string' and (el.v #>> '{}') collate "C" ${opSql} ${String(bound)}::text collate "C"`),
+        ? tx`${num} ${opSql} ${bound}::numeric`
+        : tx`(left(c.value_text, 1) <> '[' and c.value_text ${opSql} ${String(bound)}::text)`,
     );
   }
-  if (a.contains !== undefined) {
-    parts.push(el(tx`jsonb_typeof(el.v) = 'string' and (el.v #>> '{}') ilike ${'%' + likeEscape(a.contains) + '%'}`));
-  }
+  if (a.contains !== undefined) parts.push(tx`c.value_text ilike ${likePattern(a.contains)}`);
   return parts.reduce((acc, part) => tx`${acc} and ${part}`);
+}
+
+/**
+ * Canonical ids of entities with a visible `eq` claim: an index lookup on claim_value_text_idx
+ * that drives the query. The fold check in filterSource still decides whether it is effective.
+ */
+function attrEqCandidates(tx: Tx, p: Predicate, eq: string | number | boolean) {
+  return tx`(
+    select ${canonOf(tx, tx`c.subject`)} from claim c
+    where c.predicate = ${p.id} and c.object_id is null and c.value_text = ${scalarText(eq)})`;
+}
+
+/**
+ * Entities whose name (in any visible layer) contains `text`: public names from search_name
+ * (trigram index, no RLS), private names from claim (RLS-filtered). Ids are canonical. This only
+ * narrows candidates; the fold check in filterSource decides whether the *effective* name matches.
+ */
+function nameCandidates(tx: Tx, text: string) {
+  const pattern = likePattern(text);
+  return tx`(
+    select ${canonOf(tx, tx`s.entity_id`)} from search_name s
+    where s.name ilike ${pattern} and s.layer_id = any(rebox_visible())
+    union
+    select ${canonOf(tx, tx`c.subject`)} from claim c
+    where c.layer_id = any(${privateVisibleLayers(tx)}) and c.predicate = 'name' and c.value_text ilike ${pattern})`;
 }
 
 /** Select-list expression returning the matched fact for reasons (or null). */
 function reasonColumn(tx: Tx, cf: CompiledFilter) {
-  const other = cf.type === 'edge' && cf.f.dir === 'in' ? tx`c.subject` : tx`c.object_id`;
   return tx`(select jsonb_build_object(
-      'value', c.value, 'other', case when c.object_id is null then null else ${canonOf(tx, other)} end,
+      'value', c.value, 'other', case when c.other is null then null else ${canonOf(tx, tx`c.other`)} end,
       'from', c.valid_from, 'to', c.valid_to)
-    ${filterSource(tx, cf)}
+    ${filterSource(tx, cf, tx`e.id`)}
     order by c.valid_from desc nulls last, c.id desc limit 1)`;
 }
 
@@ -240,7 +317,24 @@ interface Row {
 }
 
 export async function runQuery(tx: Tx, plan: QueryPlan): Promise<QueryResult> {
-  const exists = plan.filters.map((cf) => tx`and exists (select 1 ${filterSource(tx, cf)})`);
+  // Selective filters (name, attr eq) also contribute an index-driven candidate set. Each set is a
+  // MATERIALIZED CTE so it is planned on its own (an index lookup on search_name_trgm_idx /
+  // claim_value_text_idx) instead of being folded into the outer plan, where the planner may
+  // prefer walking claim_layer_idx for the RLS condition.
+  const candidateCtes: Frag[] = [];
+  const conditions = plan.filters.map((cf, i) => {
+    const check = tx`and exists (select 1 ${filterSource(tx, cf, tx`e.id`)})`;
+    const cand =
+      cf.type === 'name'
+        ? nameCandidates(tx, cf.text)
+        : cf.type === 'attr' && cf.f.eq !== undefined
+          ? attrEqCandidates(tx, cf.p, cf.f.eq)
+          : null;
+    if (!cand) return check;
+    const cte = tx(`cand_${i}`);
+    candidateCtes.push(tx`, ${cte}(id) as materialized ${cand}`);
+    return tx`and e.id in (select id from ${cte}) ${check}`;
+  });
   const reasonCols = plan.filters.map((cf) => reasonColumn(tx, cf));
   const reasonsSql = reasonCols.length
     ? tx`jsonb_build_array(${reasonCols.reduce((acc, col) => tx`${acc}, ${col}`)})`
@@ -248,11 +342,11 @@ export async function runQuery(tx: Tx, plan: QueryPlan): Promise<QueryResult> {
   const after = plan.after ? tx`and e.id > ${plan.after}` : tx``;
 
   const rows = await tx<Row[]>`
-    with recursive ${canonCte(tx)}
+    with recursive ${canonCte(tx)} ${candidateCtes.reduce((acc, cte) => tx`${acc} ${cte}`, tx``)}
     select e.id, e.kind, ${reasonsSql} as reasons
     from (
       select e.id, e.kind from entity e
-      where e.kind = ${plan.find} and e.merged_into is null ${after} ${exists}
+      where e.kind = ${plan.find} and e.merged_into is null ${after} ${conditions.reduce((acc, c) => tx`${acc} ${c}`, tx``)}
       order by e.id
       limit ${plan.limit + 1}
     ) e

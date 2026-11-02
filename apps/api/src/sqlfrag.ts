@@ -32,3 +32,11 @@ export function canonCte(tx: Tx) {
       select m.member, m.root from merged m join entity r on r.id = m.root where r.merged_into is null
     )`;
 }
+
+/**
+ * The viewer's visible non-public layers as a text[] (empty for anonymous). Private name lookups
+ * use `c.layer_id = any(<this>)` so they hit claim_layer_idx and never scan public claims.
+ */
+export function privateVisibleLayers(tx: Tx) {
+  return tx`array(select id from layer where scope <> 'public' and id = any(rebox_visible()))`;
+}
