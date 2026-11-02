@@ -6,7 +6,7 @@ import { readView } from '../auth.js';
 import { decodeCursor, encodeCursor } from '../cursor.js';
 import { canonicalIds, entityRefs } from '../entities.js';
 import { badRequest, notFound } from '../errors.js';
-import { foldFacts, type EdgeKey } from '../fold.js';
+import { foldEdgePage, preferGenericPlans, type EdgeKey } from '../fold.js';
 import { planQuery, runQuery } from '../query.js';
 import { search } from '../search.js';
 import { lookupEntity, toFacts } from '../views.js';
@@ -117,14 +117,16 @@ export function readRoutes(deps: Deps) {
     }
     const v = await view(c.get('principal'));
     const body = await db.withView(v, async (tx) => {
+      await preferGenericPlans(tx);
       const canon = (await canonicalIds(tx, [id])).get(id);
       if (!canon) throw notFound(`entity ${id} not found`);
-      const rows = await foldFacts(tx, {
-        roots: [canon],
+      // S13: picks the page's keys before folding, so hubs cost O(limit) folds.
+      const rows = await foldEdgePage(tx, {
+        root: canon,
         dir,
-        edgesOnly: true,
         predicates: predicate ? [predicate] : undefined,
-        page: { after, limit: limit + 1 },
+        after,
+        limit: limit + 1,
       });
       const page = rows.slice(0, limit);
       const last = page[page.length - 1];
