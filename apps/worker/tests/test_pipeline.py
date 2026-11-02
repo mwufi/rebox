@@ -244,9 +244,12 @@ def test_job_without_source_fails_instead_of_sticking(deps, owner):
     assert row["status"] == "failed" and row["attempts"] == 1 and "unknown connector" in row["last_error"]
 
 
-def test_cli_schedule_due(env, owner, capsys):
+def test_cli_schedule_due(env, owner, capsys, monkeypatch):
+    # github and x are disabled without their tokens (S4); hn and wikidata need none.
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("X_BEARER_TOKEN", raising=False)
     assert cli.main(["schedule-due"]) == 0
-    assert capsys.readouterr().out.strip() == "schedule-due: enqueued example"
+    assert capsys.readouterr().out.strip() == "schedule-due: enqueued example, hn, wikidata"
     assert cli.main(["schedule-due"]) == 0
     assert capsys.readouterr().out.strip() == "schedule-due: enqueued nothing"
 
