@@ -41,7 +41,7 @@ Opinions, jokes, threads, hiring ads, giveaways, departures and teasers give not
 
 Entities:
 - **Account owner:** identity `x_id` + `x_handle` (X) or `github` (GitHub). Its kind (person/company) is the one the graph already has. An account the graph does not know uses the model's `account` guess (`other` → no facts), and gets its identity and `name` claims written with evidence.
-- **Organizations by `@handle`:** company with identity `x_handle` (X), or `github` (GitHub bios, where `@org` is a GitHub org).
+- **Organizations by `@handle`:** company with identity `x_handle` (X), or `github` (GitHub bios, where `@org` is a GitHub org). A company (or person, in posts) the graph did not know gets the handle as an identity claim (`x_handle` / `github`) in the parser's layer, with the referencing quote as evidence, so it is hard-keyed from then on (the resolver matches later mentions; dedupe phase 1 groups it with the `x_spider` / Wikidata company of the same handle). Never for the profile's own handle. `rebox-worker replay x_parse` adds the claims to what earlier runs minted.
 - **Organizations by name:** the graph's single company with that exact name if there is one. Otherwise a name-only company with the account as `context`, so the resolver's scoped fuzzy pass can match it. In articles, a company whose name matches the article's host gets `domain` identity.
 - **Places:** cities from `parsers/places.py` (60 cities with Wikidata ids). "SF", "San Fran", "Bay Area", "SF Bay Area" → San Francisco (`wikidata: Q62`), "NYC" → New York City, and so on. Other places are dropped. For a move ("NYC → SF") only the destination is kept.
 - Every new entity gets a `name` claim from `extract` (with evidence), so the resolver never adds an evidence-less name claim.
@@ -54,6 +54,11 @@ Entities:
   - `@handles` must be written in the text. An invented handle falls back to the written name, or the fact is dropped.
   - Titles not in the text are dropped; the role is kept.
   - "co-founder & CEO" becomes `founded` plus the title `CEO`.
+- **Relevance (articles, S18):** Exa returns listicles, weekly roundups and foreign aggregators that name a company once. An article milestone is kept only when the article is *about* its company (`parsers/relevance.py`):
+  - the company's name is in the article title, or in the first 400 characters of the text; and
+  - the milestone's quote names the company, or the title does.
+
+  Names match on word boundaries (only Latin letters and digits count as word characters, so "Dittoが" names Ditto and "Unknown" does not name Known). A lowercase occurrence of a capitalized name is not the name ("a different approach" is not "Different"). A trailing legal form or parenthetical is optional. Dropped milestones are counted as `irrelevant_dropped` in the run stats. One article also never gives the same milestone twice: identical (kind, normalized title, date) → one claim (`duplicate_milestones`). Both are post-filters on the stored output, so `rebox-worker replay exa_parse` applies them with no model calls. A replay does not retract claims written before the filter existed (see below).
 - **Privacy:** facts whose quote, title or names contain an email address or a phone number are dropped. People other than the account owner appear only when written as an `@handle`, never by name. The account's own evidence quote is its display name, not its whole bio.
 
 ## Eval
@@ -101,6 +106,8 @@ rebox-worker sync x_parse_posts                                # posts
 rebox-worker sync exa_parse                                    # articles
 rebox-worker replay x_parse                                    # re-extract, no model calls
 ```
+
+A replay writes what extract emits now; it does not retract claims an older extract wrote and the new one no longer emits (e.g. milestones the relevance filter drops). To remove those, retract them as the same worker: for each `public/exa_ai` milestone claim whose `(subject, source_ref)` the current extract no longer produces, write the same claim with `"retract": true` (CONTRACTS §5) as the `exa-parser-*` worker.
 
 Env: `ANTHROPIC_API_KEY` (parsers are disabled without it), `PARSER_MODEL` (default `claude-haiku-5-5`), `PARSER_MAX_CALLS_PER_RUN` (default 2000), `PARSER_BATCH` (optional; overrides the per-connector default).
 

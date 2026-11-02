@@ -20,7 +20,7 @@ entity counts with everything already merged into it). Three phases, in order:
 | phase | finds | decision |
 | --- | --- | --- |
 | **1. shared key** | entities of the same kind sharing a value of `wikidata`, `domain`, `github`, `x_handle`, `x_id` or `hn_user` (groups that share members are unioned) | **merge**, unless two members have *conflicting strong keys* → **review** |
-| **2. name-only companies** | companies with no `wikidata/domain/github/x_handle/x_id/hn_user/website/url` claim at all, by folded name | one keyed company with that name and it is a *safe target* → **merge** into it; one but not safe → **review** (`name_only_unsafe_target`); several → **review** (no merge); none → **merge** the name-only ones into the one with most claims, if the name is distinctive (two words or 6+ characters), else leave them alone |
+| **2. name-only companies** | companies with no `wikidata/domain/github/x_handle/x_id/hn_user/website/url` claim at all, by folded name | **mention-only** ones (every claim in a parser layer): one keyed company with that name and it is a *safe target* → **merge** into it; one but not safe → **review** (`name_only_unsafe_target`); several → **review** (no merge); none → **merge** the mention-only ones into the one with most claims, if the name is distinctive (two words or 6+ characters), else leave them alone. **Structured** ones (any claim from another layer): one safe keyed match → **review** the pair (`name_only_structured`), else leave alone |
 | **3. name + neighbor** | same kind, same folded name, and an edge (either direction) to the same entity | always **review**, reason `name+neighbor` |
 
 **Conflicting strong keys** (phase 1): two members with different values of `wikidata` or `x_id`
@@ -30,6 +30,23 @@ normal and do not block a merge. Two "Figma" entities with different QIDs are re
 **Target** of a merge: the member with a `wikidata` claim, else the one with most claims, tie → the
 oldest `created_at`. Phase 2 merges name-only companies into the keyed one; without one, into the
 name-only company with most claims (tie: oldest).
+
+**Mention-only** (phase 2): a name-only company is merged only when every claim about it (and
+about what is merged into it) is in a parser layer, `layer_id like 'public/%\_ai'`
+(`public/x_ai`, `public/exa_ai`, `public/github_ai`): it exists only because a bio or an article
+mentioned the name ("SWE at Ditto"). A name-only company with a claim from any other layer was
+sourced separately: Hacker News' "Ditto" (YC W20, `yc_batch` + `launched`, no domain) is not the
+same company as ditto.ai, and HN's "Homebase" (W21, rent-to-own in Southeast Asia) is not
+joinhomebase.com. Such a *structured* name-only company is never merged by name:
+
+- exactly one keyed company has the name and it is a safe target → a `possible_duplicate` review
+  of the pair, reason `name_only_structured: ...` (stat `name_only_structured`); merging it from
+  the review page resolves the item;
+- otherwise (no keyed match, several, or one that is not safe) → left alone, no review item
+  (stat `name_only_structured_left`; the dry run lists them).
+
+Mention-only companies with no keyed match converge only among themselves; a structured one of
+the same name is neither their target nor merged into them.
 
 **Safe target** (phase 2): a keyed company only absorbs name-only companies when something says it
 is *the* company of that name, not just an X account that happens to be called "Capital" or "Base":
@@ -46,9 +63,11 @@ converge only on a distinctive name (two words or 6+ characters: "palantir", "lu
 ones ("ramp", "meta", "base") are left alone without a review item (stat
 `name_only_skipped_short`; the dry run lists them).
 
-**Folded name** (phases 2 and 3): lowercase, trimmed, a trailing `(...)` dropped, whitespace
-collapsed; companies also drop trailing legal forms (`inc`, `llc`, `ltd`, `corp`, `corporation`,
-`co`, `gmbh`, `sa`, with or without `.`/`,`). Exact equality only, never trigram similarity. A
+**Folded name** (phases 2 and 3): companies use `names.fold_name` (CONTRACTS §3, the same folding as
+the resolver's company name pass: NFKC, casefold, accents stripped, one trailing `(...)`, trailing
+punctuation, a leading `the `, legal suffixes such as `inc`, `llc`, `ltd`, `corp`, `gmbh`, `plc`,
+`pbc`); other kinds are lowercased, trimmed, accents stripped, whitespace collapsed and a trailing
+`(...)` dropped. Exact equality only, never trigram similarity. A
 name-only company is matched by its main names: the one most of its name claims use, plus any other
 used by at least a third of them (a stray second name such as "Glass" on "Ramp" does not chain two
 companies together). Folded names shorter than two characters are ignored.
@@ -104,6 +123,8 @@ in a run of kind `enrich`, with stats:
 | `name_only_merged` / `name_only_groups` | phase 2 merges / decisions |
 | `name_only_unsafe` | phase 2 matches refused because the one keyed company is not a safe target (reviewed) |
 | `name_only_skipped_short` | phase 2 groups without a keyed match left alone (name too short) |
+| `name_only_structured` | structured name-only companies reviewed against their one safe keyed match (`name_only_structured`) |
+| `name_only_structured_left` | structured name-only companies left alone (no safe keyed match, or several) |
 | `reviews_resolved` | open review items resolved by a merge of exactly their pair |
 | `name_neighbor_groups` | phase-3 groups |
 | `review_opened` / `review_existing` | new review items / ones already open or dismissed |

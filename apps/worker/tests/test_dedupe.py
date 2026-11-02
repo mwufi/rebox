@@ -567,6 +567,65 @@ def test_name_only_safe_targets_and_short_names(db, client, merger, g, owner):
     assert rep2.stats["name_only_unsafe"] == 1 and rep2.stats["review_existing"] == 1
 
 
+def test_name_only_merges_only_mention_only_companies(db, client, merger, g, owner):
+    """S18: a name-only company with facts from a non-parser layer is a real, separately sourced
+    company (HN's "Ditto", YC W20), not a bio mention: reviewed against a safe keyed target, never
+    merged; left alone otherwise. Only mention-only companies (all claims in public/*_ai) merge."""
+    ditto = g.entity("company", "dittoai", "Ditto", layer="public/exa", domain="ditto.ai")
+    hn_ditto = g.entity("company", "dittohn", "Ditto", layer="public/hn", yc_batch="W20")
+    launch = g.entity("launch", "dittolaunch", "Launch HN: Ditto (YC W20)", layer="public/hn")
+    g.edge(hn_ditto, "launched", launch, layer="public/hn")
+    bio_ditto = g.entity("company", "dittobio", "Ditto", layer="public/x_ai")
+    homebase = g.entity(
+        "company", "homebase", "Homebase", layer="public/exa", domain="joinhomebase.com", wikidata="Q777"
+    )
+    hn_homebase = g.entity("company", "homebasehn", "Homebase", layer="public/hn", yc_batch="W21")
+    bio_homebase = g.entity("company", "homebasebio", "Homebase", layer="public/x_ai")
+    # mixed: a parser name plus one structured fact -> structured too
+    mixed = g.entity("company", "dittomix", "Ditto", layer="public/x_ai")
+    g.client.write(
+        "public/hn",
+        [g._claim(mixed, "company", "yc_batch", "S19", "mix:yc")],
+        worker=g.worker,
+    )
+    # no keyed match: mention-only ones converge among themselves, the HN one stays alone
+    q1 = g.entity("company", "q1", "Quillworks Labs", layer="public/x_ai", created="2026-01-01")
+    q2 = g.entity("company", "q2", "Quillworks Labs", layer="public/x_ai", created="2026-01-02")
+    q_hn = g.entity("company", "qhn", "Quillworks Labs", layer="public/hn", yc_batch="S24")
+    # unsafe keyed match: the mention-only one is reviewed (unsafe), the structured one left alone
+    cap = g.entity("company", "cap", "Capital", layer="public/x_spider", x_handle="capital", x_id="9")
+    cap_n = g.entity("company", "capn", "capital", layer="public/x_ai")
+    cap_hn = g.entity("company", "caphn", "Capital", layer="public/hn", yc_batch="W22")
+
+    dry = Dedupe(db, dry_run=True).run()
+    assert dry.stats["name_only_structured"] == 3 and dry.stats["name_only_structured_left"] == 2
+    rep = dedupe(db, client, merger)
+    m = merged(owner)
+    assert m == {bio_ditto: ditto, bio_homebase: homebase, q2: q1}
+    assert rep.stats["name_only_merged"] == 3
+    assert rep.stats["name_only_structured"] == 3
+    assert rep.stats["name_only_structured_left"] == 2
+    assert {i for i, _, _ in rep.structured_left} == {q_hn, cap_hn}
+    rvs = {tuple(r["entity_ids"]): r for r in reviews(owner)}
+    assert set(rvs) == {
+        tuple(sorted([ditto, hn_ditto])),
+        tuple(sorted([ditto, mixed])),
+        tuple(sorted([homebase, hn_homebase])),
+        tuple(sorted([cap, cap_n])),
+    }
+    hn = rvs[tuple(sorted([ditto, hn_ditto]))]
+    assert hn["reason"].startswith("name_only_structured") and hn["kind"] == "possible_duplicate"
+    assert hn["evidence"][0]["structured"] is True and hn["evidence"][0]["safe"] == "domain ditto.ai"
+    assert rvs[tuple(sorted([homebase, hn_homebase]))]["evidence"][0]["safe"] == "wikidata"
+    assert rvs[tuple(sorted([cap, cap_n]))]["reason"].startswith("name_only_unsafe_target")
+    briefs = {b["id"]: b for d in rep.decisions for b in d.as_dict()["members"]}
+    assert briefs[hn_ditto]["mention_only"] is False and briefs[cap_n]["mention_only"] is True
+    # idempotent: nothing merged or reviewed again
+    rep2 = dedupe(db, client, merger)
+    assert rep2.stats["name_only_merged"] == 0 and rep2.stats["review_opened"] == 0
+    assert rep2.stats["review_existing"] == 4
+
+
 def test_merge_resolves_an_open_review_of_exactly_that_pair(db, client, merger, admin, g, owner):
     a = g.entity("company", "ra", "Res", wikidata="Q42", domain="res.com")
     b = g.entity("company", "rb", "Res", layer="public/exa", domain="res.com")

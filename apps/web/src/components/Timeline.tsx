@@ -1,8 +1,8 @@
 /** Entity timeline (CONTRACTS §14): a vertical register grouped by year, newest first. */
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import type { Timeline as TimelineData, TimelineEvent } from '../api';
 import { relativeTime } from '../lib/format';
-import { eventDate, eventKey, groupByYear, isHeadline } from '../lib/timeline';
+import { eventDate, eventKey, eventSources, groupByYear, hostOf, isCluster, isHeadline, sourceCount, type SourcedEvent } from '../lib/timeline';
 import { EntityLink, FactProvenance, SourceBadge } from './bits';
 
 const PREVIEW = 12;
@@ -50,14 +50,31 @@ function Title({ e }: { e: TimelineEvent }) {
   return <>{parts}</>;
 }
 
-function Event({ e }: { e: TimelineEvent }) {
+/** A clustered milestone's "N sources" toggle and the list it opens (S18). */
+function Sources({ e, open, onToggle, listId }: { e: SourcedEvent; open: boolean; onToggle: () => void; listId: string }) {
+  return (
+    <button
+      type="button"
+      className="tl-src-link tl-src-toggle"
+      aria-expanded={open}
+      aria-controls={listId}
+      onClick={onToggle}
+      style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', textDecoration: 'underline dotted' }}
+    >
+      {sourceCount(e)} sources {open ? '▴' : '▾'}
+    </button>
+  );
+}
+
+function Event({ e }: { e: SourcedEvent }) {
   const head = isHeadline(e);
   const date = eventDate(e);
   const fact = e.fact;
-  const milestoneUrl =
-    e.kind === 'milestone' && fact?.value && typeof fact.value === 'object' && typeof (fact.value as { url?: unknown }).url === 'string'
-      ? ((fact.value as { url: string }).url)
-      : null;
+  const cluster = isCluster(e);
+  const sources = eventSources(e);
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+  const milestoneUrl = !cluster && e.kind === 'milestone' ? (sources[0]?.url ?? null) : null;
   return (
     <li className={`tl-event${head ? ' headline' : ''}`} data-kind={e.kind}>
       <span className="tl-mark" aria-hidden="true">
@@ -77,14 +94,32 @@ function Event({ e }: { e: TimelineEvent }) {
               {e.layer ? ` · ${e.layer}` : ''}
             </span>
           ) : null}
-          {milestoneUrl && /^https?:\/\//i.test(milestoneUrl) && (
+          {milestoneUrl && (
             <a href={milestoneUrl} target="_blank" rel="noopener noreferrer nofollow" className="tl-src-link">
               Link ↗
             </a>
           )}
+          {cluster && <Sources e={e} open={open} onToggle={() => setOpen((o) => !o)} listId={listId} />}
           {fact && <FactProvenance fact={fact} />}
           {fact && <SourceBadge fact={fact} />}
         </span>
+        {cluster && open && (
+          <ul
+            id={listId}
+            className="tl-sources"
+            aria-label={`${sources.length} sources`}
+            style={{ flexBasis: '100%', margin: '2px 0 0', padding: 0, listStyle: 'none', fontSize: 12, lineHeight: 1.5 }}
+          >
+            {sources.map((s) => (
+              <li key={s.url} style={{ overflowWrap: 'anywhere' }}>
+                <a href={s.url} target="_blank" rel="noopener noreferrer nofollow" className="tl-src-link">
+                  {hostOf(s.url)} ↗
+                </a>{' '}
+                <span style={{ color: 'var(--ink-3)' }}>{s.title}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </li>
   );

@@ -25,8 +25,14 @@ feed are written by the one place that owns merges. Review items go to ``review_
      oldest ``created_at`` (then the smallest id).
 
 2. **Name-only company convergence** (companies only). A *name-only* company has no
-   ``wikidata, domain, github, x_handle, x_id, hn_user, website, url`` claim at all. By folded
-   name (``fold_name``; exact equality):
+   ``wikidata, domain, github, x_handle, x_id, hn_user, website, url`` claim at all. Only
+   *mention-only* ones are merged: every claim about them is in a parser layer
+   (``public/*_ai``), i.e. they exist because a bio or article mentioned the name. A name-only
+   company with a claim from any other layer (HN's "Ditto" with ``yc_batch`` + ``launched``) is
+   a separately sourced company: with exactly one keyed match that is a safe target it goes to a
+   review of the pair, reason ``name_only_structured``; otherwise it is left alone (stat
+   ``name_only_structured_left``). For the mention-only ones, by folded name (``fold_name``;
+   exact equality):
 
    * exactly one *keyed* company has that name and it is a *safe target* (``safe_target``: a
      ``wikidata`` claim, a ``domain`` whose registrable label is the name without spaces or
@@ -34,8 +40,8 @@ feed are written by the one place that owns merges. Review items go to ``review_
      into it; not safe (an X account named "Capital") -> review, reason
      ``name_only_unsafe_target``;
    * several keyed companies have it -> one review item listing them (no merge);
-   * none -> merge the name-only companies among themselves into the one with most claims
-     (tie: oldest), but only for a distinctive name (two words or 6+ characters); shorter ones
+   * none -> merge the (mention-only) name-only companies among themselves into the one with
+     most claims (tie: oldest), but only for a distinctive name (two words or 6+ characters); shorter ones
      ("ramp", "meta") are left alone, counted as ``name_only_skipped_short``.
 
    A name-only company is matched by its main names (``Profile.main_folds``), so one stray
@@ -54,7 +60,8 @@ longer roots). ``--limit N`` acts on at most N groups (merges or reviews); the r
 
 The run is recorded as worker ``dedupe-enricher-<6 digits>`` (kind ``enricher``, run kind
 ``enrich``) with stats ``{groups, auto_merged, review_opened, skipped_conflict,
-name_only_merged, name_only_unsafe, name_only_skipped_short, reviews_resolved, ...}``.
+name_only_merged, name_only_unsafe, name_only_skipped_short, name_only_structured,
+name_only_structured_left, reviews_resolved, ...}``.
 ``--dry-run`` prints every group, the decision and the target, and writes nothing (no worker,
 run, merge or review item).
 """
@@ -67,7 +74,6 @@ import logging
 import re
 import sys
 import time
-import unicodedata
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -78,6 +84,7 @@ import httpx
 import psycopg
 from psycopg.types.json import Jsonb
 
+from . import names
 from .db import Db
 from .resolve import _canonicalize
 
@@ -91,7 +98,6 @@ STRONG_KEYS: dict[str, tuple[str, ...]] = {"person": ("wikidata", "x_id", "githu
 DEFAULT_STRONG_KEYS = ("wikidata", "x_id")
 DEFAULT_KINDS = ("company", "person")
 REVIEW_KIND = "possible_duplicate"
-LEGAL_FORMS = ("inc", "llc", "ltd", "corp", "corporation", "co", "gmbh", "sa")
 MAX_DEPTH = 20
 MIN_FOLDED_LEN = 2
 # A keyed company is a safe target for name-only merges with this many distinct referrers (phase 2).
@@ -99,6 +105,11 @@ SAFE_MIN_REFERRERS = 5
 # Name-only companies with no keyed match are merged among themselves only for distinctive names:
 # at least two words or this many characters ("palantir" yes, "ramp" / "meta" / "base" no).
 MIN_ORPHAN_NAME_LEN = 6
+# Parser layers (``public/x_ai``, ``public/exa_ai``, ...): an entity whose every claim is in one of
+# these exists only because a parser mentioned it ("SWE at Ditto" in a bio). Phase 2 merges only
+# such *mention-only* companies; a name-only company with any other claim (HN's "Ditto" with
+# ``yc_batch`` and ``launched``) is a separately sourced company and is reviewed, never merged.
+PARSER_LAYER_LIKE = r"public/%\_ai"
 # Two-label public suffixes for ``registrable_label`` (the label left of them is the name).
 TWO_PART_SUFFIXES = frozenset(
     {
@@ -121,27 +132,23 @@ WORKER_LAYERS = ("public/dedupe",)  # writes no claims; the registry requires a 
 # ── names ─────────────────────────────────────────────────────────────────
 
 _PAREN_RE = re.compile(r"\s*\([^()]*\)\s*$")
-_LEGAL_RE = re.compile(r"(?:^|[\s,]+)(?:" + "|".join(LEGAL_FORMS) + r")\.?$")
 
 
 def fold_name(name: str, kind: str) -> str:
-    """The name key for phases 2 and 3: lowercase, trimmed, without a trailing ``(...)``
-    parenthetical, whitespace collapsed; companies also without trailing legal forms
-    (``inc, llc, ltd, corp, corporation, co, gmbh, sa``, with or without a dot or comma).
+    """The name key for phases 2 and 3.
+
+    Companies: ``names.fold_name`` (CONTRACTS §3, the resolver's folding: NFKC, casefold,
+    accents, one trailing ``(...)``, trailing punctuation, a leading ``the``, legal suffixes),
+    so dedupe and the resolver's company name pass agree on what "the same name" is. Other
+    kinds: ``names.fold_base`` plus a trailing ``(...)`` dropped ("Ada Lovelace (she/her)").
 
     ``"Anysphere, Inc."`` -> ``"anysphere"``; ``"Notion (Notion Labs)"`` -> ``"notion"``.
     Never strips a name down to nothing (``"Co"`` stays ``"co"``).
     """
-    s = " ".join(unicodedata.normalize("NFKC", name).casefold().split())
-    stripped = _PAREN_RE.sub("", s).strip()
-    s = stripped or s
     if kind == "company":
-        while True:
-            shorter = _LEGAL_RE.sub("", s).rstrip(" ,.")
-            if not shorter or shorter == s:
-                break
-            s = shorter
-    return s.strip(" ,")
+        return names.fold_name(kind, name)
+    s = names.fold_base(name)
+    return _PAREN_RE.sub("", s).strip() or s
 
 
 def registrable_label(domain: str) -> str | None:
@@ -180,6 +187,8 @@ with recursive d(root, id, depth) as (
 )
 select d.root as id, r.kind, r.created_at,
        count(c.id) as claims,
+       coalesce(bool_and(c.layer_id like %(parser_layers)s) filter (where c.id is not null), false)
+         as mention_only,
        coalesce(jsonb_agg(jsonb_build_array(c.predicate, c.value_text))
                   filter (where c.object_id is null and c.value_text is not null
                             and c.predicate = any(%(keep)s::text[])), '[]'::jsonb) as vals
@@ -240,6 +249,8 @@ class Profile:
     claims: int = 0
     names: dict[str, int] = field(default_factory=dict)  # name -> number of name claims
     keys: dict[str, set[str]] = field(default_factory=dict)
+    # Every claim about it (and what is merged into it) is in a parser layer (PARSER_LAYER_LIKE).
+    mention_only: bool = False
 
     @property
     def keyed(self) -> bool:
@@ -281,13 +292,14 @@ class Profile:
     def absorb(self, other: Profile) -> None:
         """What a merge does to the reads: the target shows the merged entity's facts too."""
         self.claims += other.claims
+        self.mention_only = self.mention_only and other.mention_only
         for n, c in other.names.items():
             self.names[n] = self.names.get(n, 0) + c
         for p, vs in other.keys.items():
             self.keys.setdefault(p, set()).update(vs)
 
     def brief(self) -> dict[str, Any]:
-        return {"id": self.id, "name": self.display, "claims": self.claims}
+        return {"id": self.id, "name": self.display, "claims": self.claims, "mention_only": self.mention_only}
 
 
 def load_profiles(
@@ -300,11 +312,14 @@ def load_profiles(
             "kind": kind,
             "depth": MAX_DEPTH,
             "keep": ["name", *KEY_PREDICATES],
+            "parser_layers": PARSER_LAYER_LIKE,
         },
     ).fetchall()
     out: dict[str, Profile] = {}
     for r in rows:
-        p = Profile(r["id"], r["kind"], r["created_at"], int(r["claims"]))
+        p = Profile(
+            r["id"], r["kind"], r["created_at"], int(r["claims"]), mention_only=bool(r["mention_only"])
+        )
         for pred, value in r["vals"]:
             if pred == "name":
                 p.names[value] = p.names.get(value, 0) + 1
@@ -478,6 +493,8 @@ class Report:
     worker: str | None = None
     run_id: int | None = None
     skipped_short: list[tuple[str, int]] = field(default_factory=list)  # (folded name, companies)
+    # Structured name-only companies phase 2 left alone: (id, name, why).
+    structured_left: list[tuple[str, str, str]] = field(default_factory=list)
     stats: dict[str, int] = field(
         default_factory=lambda: {
             "groups": 0,
@@ -488,6 +505,8 @@ class Report:
             "name_only_groups": 0,
             "name_only_unsafe": 0,
             "name_only_skipped_short": 0,
+            "name_only_structured": 0,
+            "name_only_structured_left": 0,
             "reviews_resolved": 0,
             "name_neighbor_groups": 0,
             "review_existing": 0,
@@ -504,6 +523,7 @@ class Report:
             "stats": self.stats,
             **({"worker": self.worker, "run_id": self.run_id} if self.worker else {}),
             "name_only_skipped_short": [{"folded": f, "companies": n} for f, n in self.skipped_short],
+            "name_only_structured_left": [{"id": i, "name": n, "why": w} for i, n, w in self.structured_left],
             "decisions": [d.as_dict() for d in self.decisions],
         }
 
@@ -675,6 +695,11 @@ class Dedupe:
             x = self.planned[x]
         return x
 
+    def _left_alone(self, p: Profile, why: str) -> None:
+        """A structured name-only company that phase 2 neither merges nor reviews."""
+        self.report.stats["name_only_structured_left"] += 1
+        self.report.structured_left.append((p.id, p.display, why))
+
     def _take(self) -> bool:
         """One more group may be acted on (``--limit``)."""
         if self.limit is not None and self._acted >= self.limit:
@@ -843,9 +868,19 @@ class Dedupe:
         into: dict[str, list[Profile]] = defaultdict(list)  # the one keyed match -> name-only
         ambiguous: dict[tuple[str, ...], list[Profile]] = defaultdict(list)  # several keyed matches
         orphans: dict[str, list[Profile]] = defaultdict(list)  # no keyed match, by primary name
+        # Name-only companies with a claim outside the parser layers (HN's "Ditto" with yc_batch):
+        # separately sourced companies, not mentions. Only reviewed against one safe keyed match.
+        structured: dict[str, list[Profile]] = defaultdict(list)
         for n in name_only:
             hits = sorted(set().union(*(keyed.get(f, set()) for f in n.main_folds())))
-            if len(hits) == 1:
+            if not n.mention_only:
+                if len(hits) == 1:
+                    structured[hits[0]].append(n)
+                else:
+                    self._left_alone(
+                        n, f"{len(hits)} keyed companies have that name" if hits else "no keyed match"
+                    )
+            elif len(hits) == 1:
                 into[hits[0]].append(n)
             elif hits:
                 ambiguous[tuple(hits)].append(n)
@@ -857,7 +892,7 @@ class Dedupe:
             return sorted(fs & within if within is not None else fs)
 
         with self.db.view() as conn:
-            referrers = self._referrers(conn, into)
+            referrers = self._referrers(conn, set(into) | set(structured))
         decisions: list[Decision] = []
         for tid, ns in sorted(into.items()):
             t, fs = profs[tid], label(ns, profs[tid].folds())
@@ -891,6 +926,34 @@ class Dedupe:
                 )
             d.evidence = [ev]
             decisions.append(d)
+        for tid, ns in sorted(structured.items()):
+            t = profs[tid]
+            why = safe_target(t, label(ns, t.folds()), referrers.get(tid, 0))
+            for n in sorted(ns, key=lambda p: p.id):
+                if not why:
+                    self._left_alone(n, f"keyed match {tid} is not a safe target")
+                    continue
+                fs = label([n], t.folds())
+                # A pair per company, so merging it from the review resolves the item (review_id).
+                self.report.stats["name_only_structured"] += 1
+                d = Decision(
+                    "name_only",
+                    kind,
+                    "review",
+                    [t, n],
+                    f"name_only_structured: {n.display!r} has facts from a non-parser source;"
+                    f" same name as {t.display!r} ({why})",
+                )
+                d.evidence = [
+                    {
+                        "folded": fs,
+                        "name_only": [n.id],
+                        "structured": True,
+                        "safe": why,
+                        "referrers": referrers.get(tid, 0),
+                    }
+                ]
+                decisions.append(d)
         for ids, ns in sorted(ambiguous.items()):
             fs = label(ns)
             d = Decision(
@@ -1049,6 +1112,12 @@ def format_summary(report: Report) -> str:
         more = f" (+{len(report.skipped_short) - 30} more)" if len(report.skipped_short) > 30 else ""
         lines.append(
             f"name-only groups left alone (name too short): {len(report.skipped_short)}: {shown}{more}"
+        )
+    if report.structured_left:
+        shown = ", ".join(f"{n!r} ({i})" for i, n, _ in report.structured_left[:30])
+        more = f" (+{len(report.structured_left) - 30} more)" if len(report.structured_left) > 30 else ""
+        lines.append(
+            f"structured name-only companies left alone: {len(report.structured_left)}: {shown}{more}"
         )
     lines.append(("would: " if report.dry_run else "stats: ") + json.dumps(report.stats, sort_keys=True))
     return "\n".join(lines)

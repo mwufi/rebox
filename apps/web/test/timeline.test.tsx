@@ -6,7 +6,8 @@ import { createClient, type Fact, type Timeline, type Wiki } from '../src/api';
 import { factWhen, handleOf } from '../src/lib/format';
 import { ApiContext, clearCache } from '../src/lib/hooks';
 import { Markdown, parseMarkdown } from '../src/lib/markdown';
-import { eventDate, groupByYear } from '../src/lib/timeline';
+import { TimelineView } from '../src/components/Timeline';
+import { eventDate, eventSources, groupByYear, hostOf, isCluster, sourceCount, type SourcedEvent } from '../src/lib/timeline';
 import { EntityPage } from '../src/pages/Entity';
 import { TOKEN_KEY } from '../src/pages/Review';
 import { ODILE, PREDICATES, fact, mockFetch, ref } from './fixtures';
@@ -190,5 +191,71 @@ describe('Avatar', () => {
     rerender(<Avatar entity={{ id: 'rbx:person:a', kind: 'person', name: 'Ada Lovelace', avatar: 'javascript:alert(1)' }} />);
     expect(container.querySelector('img')).toBeNull();
     expect(container.textContent).toBe('AL');
+  });
+});
+
+describe('clustered milestones (S18)', () => {
+  const ms = (url: string, title: string) =>
+    fact({ predicate: 'milestone', value: { title, kind: 'funding', url }, valid_from: '2025-12-18T00:00:00.000Z', layer: 'public/exa_ai', source: 'exa_ai' });
+  const CLUSTER: SourcedEvent = {
+    key: 'milestone-cluster|attr|milestone|a', at: '2025-12-18T00:00:00.000Z', kind: 'milestone', title: 'Known raised $9.7M led by Forerunner Ventures',
+    predicate: 'milestone', other: null, fact: ms('https://vctavern.com/known', 'Known raised $9.7M led by Forerunner Ventures'), precision: 'day', headline: true,
+    support: 3,
+    sources: [
+      { url: 'https://techcrunch.com/known', title: 'Known raised $9.7M from Forerunner, NFX, Pear VC', layer: 'public/exa_ai' },
+      { url: 'https://www.whistlebuzz.com/known', title: 'Known raised $9.7M', layer: 'public/exa_ai' },
+      { url: 'javascript:alert(1)', title: 'never a link', layer: 'public/exa_ai' },
+      { url: 'https://vctavern.com/known', title: 'Known raised $9.7M led by Forerunner Ventures', layer: 'public/exa_ai' },
+    ],
+  };
+  const SINGLE: SourcedEvent = {
+    key: 'attr|milestone|b', at: '2025-12-18T00:00:00.000Z', kind: 'milestone', title: 'Known launched its beta', predicate: 'milestone', other: null,
+    fact: ms('https://linkedin.com/posts/x', 'Known launched its beta'), precision: 'day', headline: true,
+    support: 1, sources: [{ url: 'https://linkedin.com/posts/x', title: 'Known launched its beta', layer: 'public/exa_ai' }],
+  };
+  // a pre-S18 API response: no sources/support on milestones
+  const LEGACY: SourcedEvent = { ...SINGLE, key: 'attr|milestone|c', sources: undefined, support: undefined };
+
+  it('helpers: sources, counts, hosts', () => {
+    expect(isCluster(CLUSTER) && !isCluster(SINGLE) && !isCluster(LEGACY)).toBe(true);
+    expect(sourceCount(CLUSTER)).toBe(3);
+    expect(eventSources(CLUSTER).map((s) => hostOf(s.url))).toEqual(['techcrunch.com', 'whistlebuzz.com', 'vctavern.com']);
+    expect(eventSources(LEGACY)).toEqual([{ url: 'https://linkedin.com/posts/x', title: 'Known launched its beta', layer: 'public/exa_ai' }]);
+    expect(sourceCount(LEGACY)).toBe(1);
+  });
+
+  it('a cluster shows title, date and "N sources" that expands to the links; singles look as before', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <TimelineView data={{ events: [CLUSTER, SINGLE, LEGACY], next: null }} />
+      </MemoryRouter>,
+    );
+    const items = screen.getAllByRole('listitem').filter((li) => li.classList.contains('tl-event'));
+    expect(items).toHaveLength(3);
+    const [cluster, single, legacy] = items as [HTMLElement, HTMLElement, HTMLElement];
+    expect(within(cluster).getByText('Known raised $9.7M led by Forerunner Ventures')).toBeTruthy();
+    expect(within(cluster).getByText('Dec 18')).toBeTruthy();
+    expect(within(cluster).queryByText('Link ↗')).toBeNull();
+    const toggle = within(cluster).getByRole('button', { name: /3 sources/ });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(within(cluster).queryByRole('list', { name: /sources/ })).toBeNull();
+    await user.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    const list = within(cluster).getByRole('list', { name: /sources/ });
+    const links = within(list).getAllByRole('link');
+    expect(links.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
+      ['techcrunch.com ↗', 'https://techcrunch.com/known'],
+      ['whistlebuzz.com ↗', 'https://www.whistlebuzz.com/known'],
+      ['vctavern.com ↗', 'https://vctavern.com/known'],
+    ]);
+    expect(links.every((a) => a.getAttribute('rel')?.includes('noopener'))).toBe(true);
+    expect(within(list).getByText('Known raised $9.7M from Forerunner, NFX, Pear VC')).toBeTruthy();
+    await user.click(toggle);
+    expect(within(cluster).queryByRole('list', { name: /sources/ })).toBeNull();
+    for (const li of [single, legacy]) {
+      expect(within(li).queryByRole('button', { name: /sources/ })).toBeNull();
+      expect(within(li).getByText('Link ↗').getAttribute('href')).toBe('https://linkedin.com/posts/x');
+    }
   });
 });

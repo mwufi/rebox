@@ -343,3 +343,80 @@ def test_fetch_yields_cursor_after_records():
     kinds = ["R" if isinstance(i, RawRecord) else "C" for i in items]
     assert kinds[-1] == "C" and kinds.index("C") == 2  # 2 records, cursor, ...
     assert isinstance(items[-1], CursorUpdate) and items[-1].cursor["after"][2] == "u2"
+
+
+def test_exa_replay_applies_relevance_with_no_model_calls(deps, owner):
+    """S18: the relevance filter is a post-filter on stored model output, so a replay applies it;
+    the run's stats count what it dropped."""
+
+    def stored(ref: str, title: str, text: str, facts: list[dict[str, Any]]) -> RawRecord:
+        payload = {"input_ref": ref, "input_hash": "", "model": "claude-haiku-5-5", "prompt_version": PROMPT_VERSION,
+                   "input": {"kind": "article", "fields": {"title": title, "text": text},
+                             "meta": {"date": "2026-09-05", "url": f"https://news.example/{ref}", "author": "news.example",
+                                      "host": "news.example"}},
+                   "output": {"account": "other", "facts": facts}, "graph": {}}  # fmt: skip
+        return RawRecord.new("exa_parse", ref, payload, fetched_at=T0)
+
+    ms = {"type": "milestone", "kind": "funding", "title": "Known raised $9.7M", "org": "Known", "org_handle": "",
+          "first_person": False, "quote": "Known raised $9.7M"}  # fmt: skip
+    on_topic = stored(
+        "a1", "Known raises $9.7M for voice AI dating", "Known raised $9.7M from Forerunner.", [ms]
+    )
+    listicle = stored("a2", "The Waggle: hot girls in SF this week", "Fog, tacos and parties. " * 30 + "Known raised $9.7M last year.", [ms])  # fmt: skip
+    for rec in (on_topic, listicle):
+        deps.raw.put(rec)
+
+    class NoModel:
+        name = "claude-haiku-5-5"
+
+        def parse(self, docs, usage):
+            raise AssertionError("replay must not call the model")
+
+    stats = run_replay(ExaParse(model=NoModel(), raw=deps.raw), deps)
+    assert stats.fetched == 2 and stats.rejected == 0
+    assert stats.usage["irrelevant_dropped"] == 1 and stats.usage["duplicate_milestones"] == 0
+    rows = owner.execute("select value from claim where predicate = 'milestone'").fetchall()
+    assert [r["value"]["url"] for r in rows] == ["https://news.example/a1"]
+    run = owner.execute("select kind, stats from run order by id desc limit 1").fetchone()
+    assert run["kind"] == "replay" and run["stats"]["irrelevant_dropped"] == 1
+
+
+def test_x_parse_replay_writes_handle_identity_idempotently(deps, owner):
+    """S18 addendum: a company referenced by @handle in a bio gets its x_handle claim, so it is
+    hard-keyed (resolver, dedupe phase 1). Replays are idempotent and make no model calls."""
+    payload = {"input_ref": "x_spider:u:77", "input_hash": "", "model": "claude-haiku-5-5", "prompt_version": PROMPT_VERSION,
+               "input": {"kind": "x_bio", "fields": {"name": "Dana", "location": "", "bio": "building @pally"},
+                         "meta": {"handle": "dana_ex", "x_id": "77", "url": "https://x.com/dana_ex", "author": "@dana_ex",
+                                  "observed": "2026-10-25", "graph_kinds": []}},
+               "output": {"account": "person", "facts": [
+                   {"type": "role", "org": "", "org_handle": "pally", "title": "", "status": "current", "founder": True,
+                    "investor": False, "quote": "building @pally"}]},
+               "graph": {}}  # fmt: skip
+    deps.raw.put(RawRecord.new("x_parse", "x_spider:u:77", payload, fetched_at=T0))
+
+    class NoModel:
+        name = "claude-haiku-5-5"
+
+        def parse(self, docs, usage):
+            raise AssertionError("replay must not call the model")
+
+    first = run_replay(XParse(model=NoModel(), raw=deps.raw), deps)
+    assert first.rejected == 0
+    pally = owner.execute(
+        "select object_id from claim where predicate = 'founded' and not retract"
+    ).fetchone()["object_id"]
+    ident = owner.execute(
+        "select layer_id, value_text, evidence from claim where subject = %s and predicate = 'x_handle'",
+        (pally,),
+    ).fetchall()
+    assert [(r["layer_id"], r["value_text"]) for r in ident] == [("public/x_ai", "pally")]
+    assert ident[0]["evidence"][0]["quote"] == "building @pally"
+    counts = owner.execute(
+        "select (select count(*) from claim) c, (select count(*) from entity) e"
+    ).fetchone()
+    second = run_replay(XParse(model=NoModel(), raw=deps.raw), deps)
+    assert second.minted == 0 and second.rejected == 0
+    assert (
+        owner.execute("select (select count(*) from claim) c, (select count(*) from entity) e").fetchone()
+        == counts
+    )
