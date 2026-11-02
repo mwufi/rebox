@@ -2636,3 +2636,379 @@ a.elink:hover .elink-name {
     white-space: nowrap;
   }
 }
+
+/* ── S10: avatars, handle hints ─────────────────────────────────────────── */
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--k-other) 14%, var(--card));
+  color: var(--k-other);
+  font-family: var(--mono);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 30%, transparent);
+  vertical-align: middle;
+}
+.avatar[data-kind='person'] { color: var(--k-person); background: color-mix(in srgb, var(--k-person) 12%, var(--card)); }
+.avatar[data-kind='company'] { color: var(--k-company); background: color-mix(in srgb, var(--k-company) 12%, var(--card)); border-radius: 22%; }
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.elink .avatar {
+  margin-right: 1px;
+}
+
+.entity-title {
+  display: flex;
+  align-items: center;
+  gap: 14px 18px;
+  flex-wrap: wrap;
+}
+.entity-avatar {
+  box-shadow: 0 0 0 1px var(--rule), 0 0 0 4px var(--paper), 0 0 0 5px var(--rule-2);
+}
+
+.elink-name.is-handle,
+.entity-name.is-handle {
+  font-family: var(--mono);
+  letter-spacing: -0.01em;
+}
+.elink-name.is-handle::before,
+.entity-name.is-handle::before {
+  content: '@';
+  color: var(--ink-4);
+}
+.entity-name.is-handle {
+  font-size: clamp(28px, 4.6vw, 46px);
+  font-weight: 400;
+}
+
+.handle-hint {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 5px;
+  margin-left: 6px;
+  border: 1px dashed var(--rule);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  cursor: help;
+  vertical-align: middle;
+}
+.entity-title .handle-hint {
+  height: 20px;
+  font-size: 10.5px;
+  margin-left: 0;
+}
+
+/* Graph: avatars inside nodes; the kind shape stays as the ring. */
+.g-avatar image {
+  pointer-events: none;
+}
+
+/* ── S10: Wiki ──────────────────────────────────────────────────────────── */
+
+.wiki {
+  margin-bottom: 34px;
+}
+.wiki .section-head .aside {
+  display: inline-flex;
+  align-items: center;
+}
+.wiki-note {
+  margin: 12px 0 0;
+  color: var(--ink-3);
+  font-size: 13.5px;
+  max-width: 62ch;
+}
+.wiki-skel {
+  padding-top: 14px;
+  display: grid;
+}
+.wiki-article {
+  padding-top: 14px;
+  transition: opacity 0.2s;
+}
+.wiki-article.busy {
+  opacity: 0.45;
+}
+
+.md {
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.6;
+  font-variation-settings: 'opsz' 16;
+  color: var(--ink);
+  max-width: 66ch;
+}
+.md > p:first-child::first-letter {
+  float: left;
+  font-size: 3.15em;
+  line-height: 0.82;
+  padding: 0.08em 0.08em 0 0;
+  font-variation-settings: 'opsz' 72;
+  color: var(--accent);
+}
+.md p {
+  margin: 0 0 0.85em;
+  hyphens: auto;
+}
+.md h3,
+.md h4 {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 1.4em 0 0.5em;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--rule-2);
+}
+.md ul {
+  margin: 0 0 0.85em;
+  padding-left: 1.1em;
+}
+.md code {
+  font-family: var(--mono);
+  font-size: 0.82em;
+}
+.md a {
+  color: inherit;
+  text-decoration-color: var(--rule);
+}
+.md .fn-ref {
+  font-family: var(--mono);
+  font-size: 0.6em;
+  line-height: 0;
+  margin-left: 1px;
+}
+.md .fn-ref a {
+  color: var(--accent);
+  text-decoration: none;
+  padding: 0 1px;
+}
+.md .fn-ref a:hover {
+  text-decoration: underline;
+}
+
+.md .footnotes {
+  margin: 1.4em 0 0;
+  padding: 10px 0 0 1.6em;
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--ink-3);
+}
+.md .footnotes li::marker {
+  color: var(--accent);
+}
+.md .footnotes li:target {
+  background: var(--accent-soft);
+}
+.md .footnotes a {
+  color: var(--ink-2);
+  word-break: break-word;
+}
+.md .fn-back {
+  text-decoration: none;
+  color: var(--ink-4) !important;
+}
+
+.wiki-foot {
+  margin: 10px 0 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-4);
+}
+.stale-chip {
+  color: var(--warn);
+}
+
+/* ── S10: Timeline ──────────────────────────────────────────────────────── */
+
+.timeline-section {
+  margin-bottom: 34px;
+}
+.tl-empty {
+  margin-top: 10px;
+}
+
+.tl,
+.tl ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tl {
+  padding-top: 6px;
+}
+
+/* Year in the gutter, events on a hairline spine. */
+.tl-year {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 0 6px;
+  border-bottom: 1px solid var(--rule-2);
+}
+.tl-year:last-child {
+  border-bottom: 0;
+}
+.tl-year-label {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 430;
+  font-variation-settings: 'opsz' 48;
+  letter-spacing: -0.02em;
+  color: var(--ink-2);
+  font-variant-numeric: lining-nums tabular-nums;
+  padding-top: 9px;
+  position: sticky;
+  top: 64px;
+  align-self: start;
+}
+.tl-year > ol {
+  position: relative;
+  padding: 6px 0 8px;
+}
+.tl-year > ol::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--rule);
+}
+
+.tl-event {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px 52px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0 8px;
+  padding: 6px 0;
+}
+.tl-mark {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  color: var(--ink-3);
+  align-self: start;
+  margin-top: -1px;
+}
+.tl-date {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tl-body {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+.tl-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tl-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.tl-src-link {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+
+/* Headline events: launches, funding, foundings, acquisitions. */
+.tl-event.headline .tl-mark {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--paper);
+}
+.tl-event.headline .tl-title {
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 500;
+  font-variation-settings: 'opsz' 24;
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+}
+.tl-event.headline .tl-title .elink-name {
+  font-weight: 560;
+}
+
+/* Exits and bookkeeping recede. */
+.tl-event[data-kind='left'] .tl-title,
+.tl-event[data-kind='ended'] .tl-title {
+  color: var(--ink-2);
+}
+.tl-event[data-kind='first_seen'] .tl-mark {
+  border-style: dashed;
+  color: var(--ink-4);
+}
+.tl-event[data-kind='first_seen'] .tl-title {
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .tl-year {
+    grid-template-columns: 1fr;
+  }
+  .tl-year-label {
+    position: static;
+    font-size: 18px;
+    padding: 10px 0 0;
+  }
+  .tl-event {
+    grid-template-columns: 22px 46px minmax(0, 1fr);
+  }
+  .tl-meta {
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tl-event {
+    animation: tl-in 0.32s var(--ease) both;
+  }
+  .tl-year:nth-child(2) .tl-event { animation-delay: 40ms; }
+  .tl-year:nth-child(3) .tl-event { animation-delay: 80ms; }
+  .tl-year:nth-child(n + 4) .tl-event { animation-delay: 120ms; }
+}
+@keyframes tl-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}

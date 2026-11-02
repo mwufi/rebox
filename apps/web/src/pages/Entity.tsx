@@ -1,9 +1,11 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiError, isRedirect, type EntityView, type Fact } from '../api';
-import { CopyButton, EntityLink, FactProvenance, Icon, KindTag, Skel, SkelRows, SourceBadge, graphPath } from '../components/bits';
+import { Avatar, CopyButton, EntityLink, FactProvenance, HandleHint, Icon, KindTag, Skel, SkelRows, SourceBadge, graphPath } from '../components/bits';
+import { TimelineView } from '../components/Timeline';
+import { WikiSection } from '../components/Wiki';
 import { groupFacts, sourcesOf, type FactGroup, type PredicateIndex } from '../lib/facts';
-import { dateRange, displayName, edgeProps, hrefFor, plural, sourceCode, sourceHue, valueText } from '../lib/format';
+import { avatarOf, displayName, edgeProps, factWhen, handleOf, hrefFor, plural, sourceCode, sourceHue, valueText } from '../lib/format';
 import { primeCache, useApi, useAsync, usePredicates, useTitle } from '../lib/hooks';
 import { NotFound } from './NotFound';
 
@@ -35,7 +37,7 @@ export function EdgeGroup({ group, side }: { group: FactGroup; side: 'object' | 
         {facts.map((f) => {
           const other = side === 'object' ? f.object! : f.subject;
           const props = edgeProps(f.value);
-          const range = dateRange(f.valid_from, f.valid_to);
+          const when = factWhen(f);
           return (
             <li key={`${f.predicate}|${other.id}|${f.layer}`}>
               <span className="main">
@@ -43,7 +45,7 @@ export function EdgeGroup({ group, side }: { group: FactGroup; side: 'object' | 
                 {props && <span className="props">{props}</span>}
                 <FactProvenance fact={f} />
               </span>
-              <span className={`when${range && f.valid_from && !f.valid_to ? ' current' : ''}`}>{range}</span>
+              <span className={`when${when.current ? ' current' : ''}`}>{when.text}</span>
               <SourceBadge fact={f} />
             </li>
           );
@@ -131,6 +133,8 @@ export function EntityBody({ view, preds }: { view: EntityView; preds: Predicate
   const desc = g.key.find((x) => x.predicate === 'description') ?? g.key.find((x) => x.predicate === 'headline');
   const descFact = desc?.facts[0];
   const degree = view.facts.filter((f) => f.object).length + view.incoming.length;
+  const handle = handleOf(view);
+  const hasAvatar = avatarOf(view) !== null;
 
   return (
     <>
@@ -142,7 +146,11 @@ export function EntityBody({ view, preds }: { view: EntityView; preds: Predicate
             <CopyButton text={view.id} label="Copy id" />
           </span>
         </div>
-        <h1 className="entity-name">{displayName(view)}</h1>
+        <div className={`entity-title${hasAvatar ? ' with-avatar' : ''}`}>
+          {hasAvatar && <Avatar entity={view} size={64} className="entity-avatar" />}
+          <h1 className={`entity-name${handle ? ' is-handle' : ''}`}>{displayName(view)}</h1>
+          {handle && <HandleHint kind={handle} />}
+        </div>
         {descFact && (
           <p className="entity-desc">
             <span>{valueText(descFact.value)}</span>
@@ -164,6 +172,8 @@ export function EntityBody({ view, preds }: { view: EntityView; preds: Predicate
 
       <div className="entity-body">
         <div>
+          <WikiSection id={view.id} name={displayName(view)} />
+          <TimelineSection id={view.id} />
           {g.outgoing.length === 0 && g.incoming.length === 0 && <p className="empty">No connections recorded yet.</p>}
           {g.outgoing.map((grp) => (
             <EdgeGroup key={`out:${grp.predicate}`} group={grp} side="object" />
@@ -207,6 +217,37 @@ export function EntityBody({ view, preds }: { view: EntityView; preds: Predicate
         </aside>
       </div>
     </>
+  );
+}
+
+function TimelineSection({ id }: { id: string }) {
+  const client = useApi();
+  const r = useAsync(`timeline:${id}`, (signal) => client.timeline(id, { signal }));
+  const [more, setMore] = useState<{ events: NonNullable<typeof r.data>['events']; next: string | null } | null>(null);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => setMore(null), [id]);
+  const data = r.data ? { ...r.data, events: [...r.data.events, ...(more?.events ?? [])], next: more ? more.next : (r.data.next ?? null) } : null;
+  const loadMore = async () => {
+    if (!data?.next) return;
+    setLoading(true);
+    try {
+      const page = await client.timeline(id, { cursor: data.next });
+      setMore((m) => ({ events: [...(m?.events ?? []), ...page.events], next: page.next ?? null }));
+    } finally {
+      setLoading(false);
+    }
+  };
+  const dated = data ? data.events.filter((e) => e.kind !== 'first_seen').length : 0;
+  return (
+    <section className="timeline-section" aria-labelledby={`tl-h-${id}`}>
+      <div className="section-head">
+        <h2 id={`tl-h-${id}`}>Timeline</h2>
+        {data && <span className="count">{plural(dated, 'event')}</span>}
+      </div>
+      {r.loading && !data && <SkelRows n={3} h={38} />}
+      {r.error && !data && <p className="empty">Could not load the timeline: {r.error.message}</p>}
+      {data && <TimelineView data={data} loadMore={loadMore} loadingMore={loading} />}
+    </section>
   );
 }
 

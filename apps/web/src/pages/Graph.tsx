@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEven
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { isRedirect, type EntityView } from '../api';
 import { Icon, KindGlyph, Skel, entityPath, graphPath } from '../components/bits';
-import { displayName, kindLabel, plural } from '../lib/format';
+import { HANDLE_LABEL, avatarOf, displayName, handleOf, kindLabel, plural } from '../lib/format';
 import { HOP2_MAX_DEGREE, buildGraph, degreeOf, edgesOf, type GLink, type GNode, type Graph } from '../lib/graph';
 import { useApi, useAsync, useTitle } from '../lib/hooks';
 import { labelOf } from '../lib/facts';
@@ -63,6 +63,20 @@ function NodeShape({ n }: { n: GNode }) {
     default:
       return <circle r={r} />;
   }
+}
+
+/** An avatar clipped into the node's circle; the kind shape stays underneath as its ring. */
+function NodeAvatar({ n }: { n: GNode }) {
+  const r = n.hop === 0 ? 12 : n.hop === 1 ? 7 : 4.5;
+  const clip = `av-${n.id.replace(/[^a-z0-9]/gi, '-')}`;
+  return (
+    <g className="g-avatar" aria-hidden="true">
+      <clipPath id={clip}>
+        <circle r={r} />
+      </clipPath>
+      <image href={avatarOf(n)!} x={-r} y={-r} width={r * 2} height={r * 2} clipPath={`url(#${clip})`} preserveAspectRatio="xMidYMid slice" />
+    </g>
+  );
 }
 
 async function fetchSecondHop(client: ReturnType<typeof useApi>, ids: string[], signal: AbortSignal): Promise<EntityView[]> {
@@ -276,7 +290,8 @@ export default function GraphPage() {
             <g>
               {laid.nodes.map((n) => {
                 const kind = n.more ? 'more' : KIND_SET.has(n.kind) ? n.kind : 'other';
-                const label = n.more ? `+${n.more.count}` : displayName(n);
+                const handle = n.more ? null : handleOf(n);
+                const label = n.more ? `+${n.more.count}` : handle ? `@${displayName(n).replace(/^@/, '')}` : displayName(n);
                 const short = label.length > 26 ? `${label.slice(0, 25)}…` : label;
                 return (
                   <g
@@ -300,6 +315,7 @@ export default function GraphPage() {
                     onBlur={() => setHover(null)}
                   >
                     <NodeShape n={n} />
+                    {!n.more && avatarOf(n) && <NodeAvatar n={n} />}
                     {n.more ? (
                       <text textAnchor="middle" dy="3.5">
                         {short}
@@ -352,6 +368,7 @@ export default function GraphPage() {
           <div className="graph-hover">
             <b>{displayName(hoverNode)}</b>
             <span style={{ opacity: 0.7 }}>
+              {handleOf(hoverNode) ? `${HANDLE_LABEL[handleOf(hoverNode)!]} · ` : ''}
               {hoverNode.kind}
               {hoverEdges.length ? ` · ${hoverEdges.join(', ')}` : ''}
             </span>

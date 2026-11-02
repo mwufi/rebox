@@ -99,3 +99,20 @@ describe('indexes under RLS (rebox_app)', () => {
     expect(plan).not.toMatch(/Seq Scan on search_name/);
   });
 });
+
+describe('S10 plans under RLS (rebox_app)', () => {
+  it('timeline "first seen" reads change through change_subject_seq_idx (0007)', async () => {
+    const plans = await plansFor('GET', '/v0/entities/rbx%3Acompany%3Abulk-1234/timeline');
+    const probe = plans.find((p) => p.includes('change'))!;
+    expect(probe, plans.join('\n----\n')).toMatch(/change_subject_seq_idx/);
+    expect(probe).not.toMatch(/Seq Scan on change/);
+  });
+
+  it('an edge-only query is driven by its candidate set, not a hash join over every entity', async () => {
+    const plans = await plansFor('POST', '/v0/query', { find: 'company', where: [{ attr: { predicate: 'yc_batch', gte: 'W30' } }], limit: 5 });
+    const plan = plans.find((p) => p.includes('cand_0'))!;
+    expect(plan, plans.join('\n----\n')).toMatch(/CTE cand_0/);
+    expect(plan).toMatch(/Index Scan using entity_pkey on entity/);
+    expect(plan).not.toMatch(/Seq Scan on entity/);
+  });
+});
