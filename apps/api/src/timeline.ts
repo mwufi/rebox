@@ -10,6 +10,9 @@
  * - for companies: dated launches posted by its founders that the company itself has no
  *   `launched` edge for;
  * - "first seen in Rebox": the first visible insert in the change feed.
+ *
+ * Milestones are clustered (S18, `clusterMilestones`): the same "$9.7M raise" reported by ten
+ * outlets over three weeks is one event with ten `sources`, not ten events.
  */
 import type { Tx } from './db.js';
 import type { EntityRef } from './entities.js';
@@ -53,6 +56,19 @@ export interface TimelineEvent {
   others?: EntityRef[];
   /** first_seen only: the layer of the first claim. */
   layer?: string;
+  /**
+   * `milestone` events only: every article/post behind the event, oldest first, one per url
+   * (a cluster of reports of the same milestone, or the one source of a single milestone).
+   */
+  sources?: EventSource[];
+  /** `milestone` events only: number of distinct sources (urls) reporting it; 1 for a single one. */
+  support?: number;
+}
+
+export interface EventSource {
+  url: string;
+  title: string;
+  layer: string;
 }
 
 /** Edge predicates that happen at one moment: one event, never a range. */
@@ -357,7 +373,178 @@ export async function buildTimeline(tx: Tx, id: string, kind: string, vocab: Voc
       layer: f.layer_id,
     });
   }
-  return events.sort(compareEvents);
+  return clusterMilestones(events).sort(compareEvents);
+}
+
+// ── milestone clustering (S18) ────────────────────────────────────────────
+
+/** Members of a cluster are dated within this many days of its first (earliest) member. */
+export const CLUSTER_DAYS = 45;
+/** Token Jaccard at or above this makes two milestone titles "similar". */
+export const CLUSTER_JACCARD = 0.3;
+/** Titles longer than this are only picked when no shorter one qualifies. */
+const MAX_TITLE = 120;
+const DAY_MS = 86_400_000;
+
+const STOPWORDS: ReadonlySet<string> = new Set(
+  (
+    'a an the and or of for to in on at by with from as is are was were be been being its it this that these ' +
+    'their our we us his her has have had into after over about than via up out its new more first'
+  ).split(' '),
+);
+
+const MULT: Record<string, number> = {
+  k: 1e3, thousand: 1e3,
+  m: 1e6, mm: 1e6, mn: 1e6, million: 1e6, mio: 1e6,
+  b: 1e9, bn: 1e9, billion: 1e9,
+}; // prettier-ignore
+
+// "$9.7M", "$ 9.7 million", "€5m", "$3,499", "9.7 million", "1.2bn" (no currency: a multiplier is required).
+const AMOUNT_RE =
+  /([$€£¥])\s?(\d+(?:[.,]\d+)*)(?:\s?(k|mm|mn|m|bn|b|thousand|million|mio|billion)\b)?|(?<![\w.$€£¥])(\d+(?:[.,]\d+)?)(?:\s?(thousand|million|mio|billion)\b|(mn|m|bn|b)\b)/gi;
+
+function parseNumber(raw: string): number {
+  // "3,499" / "1,250,000": thousands separators; "9,7": a decimal comma.
+  if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(raw)) return Number(raw.replace(/,/g, ''));
+  return Number(raw.replace(',', '.'));
+}
+
+/** Money amounts in a title, normalized to whole units: "$9.7M" and "9.7 million" -> "amt:9700000". */
+export function amountTokens(title: string): string[] {
+  const out: string[] = [];
+  for (const m of title.matchAll(AMOUNT_RE)) {
+    const num = parseNumber(m[2] ?? m[4] ?? '');
+    const mult = MULT[(m[3] ?? m[5] ?? m[6] ?? '').toLowerCase()] ?? 1;
+    if (Number.isFinite(num) && num > 0) out.push(`amt:${Math.round(num * mult)}`);
+  }
+  return out;
+}
+
+/** Lowercased word tokens without stopwords (light stemming: raises/raised/raising -> rais), plus amounts. */
+export function titleTokens(title: string): Set<string> {
+  const amounts = amountTokens(title);
+  const words = title
+    .replace(AMOUNT_RE, ' ')
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length > 1 && !STOPWORDS.has(w))
+    .map((w) => (w.length > 4 ? w.replace(/(ing|ed|es|s)$/, '') : w));
+  return new Set([...words, ...amounts]);
+}
+
+export function jaccard(a: ReadonlySet<string>, b: ReadonlySet<string>): number {
+  if (!a.size && !b.size) return 0;
+  let both = 0;
+  for (const x of a) if (b.has(x)) both++;
+  return both / (a.size + b.size - both);
+}
+
+/** Same milestone, by title: token Jaccard >= 0.3, or a money amount in common. */
+export function similarTitles(a: string, b: string): boolean {
+  const ta = titleTokens(a);
+  const tb = titleTokens(b);
+  for (const x of ta) if (x.startsWith('amt:') && tb.has(x)) return true;
+  return jaccard(ta, tb) >= CLUSTER_JACCARD;
+}
+
+const TRUST: Record<string, number> = { connector: 0.8, spider: 0.8, parser: 0.6, enricher: 0.5, external: 0.3 };
+
+/** Default trust of the fact's worker (CONTRACTS §12), from its id `<name>-<kind>-<digits>`; else by layer. */
+function trustOf(f: Fact | null): number {
+  const kind = f?.worker?.split('-').at(-2);
+  if (kind && kind in TRUST) return TRUST[kind]!;
+  return f?.layer.endsWith('_ai') ? TRUST.parser! : TRUST.connector!;
+}
+
+function milestoneUrl(e: TimelineEvent): string | null {
+  const url = milestoneValue(e.fact?.value).url ?? e.fact?.evidence?.[0]?.url ?? null;
+  return url && /^https?:\/\//i.test(url) ? url : null;
+}
+
+const milestoneKind = (e: TimelineEvent) => (milestoneValue(e.fact?.value).kind ?? 'other').toLowerCase();
+
+/** Best title of a cluster: most trusted source, then one with an amount, then the longest <= 120 chars. */
+function pickTitle(members: TimelineEvent[]): TimelineEvent {
+  const rank = (e: TimelineEvent) => [
+    -trustOf(e.fact),
+    amountTokens(e.title).length ? 0 : 1,
+    e.title.length <= MAX_TITLE ? 0 : 1,
+    e.title.length <= MAX_TITLE ? -e.title.length : e.title.length,
+  ];
+  let best = members[0]!;
+  let bestRank = rank(best);
+  for (const e of members.slice(1)) {
+    const r = rank(e);
+    const i = r.findIndex((x, j) => x !== bestRank[j]);
+    if (i >= 0 && r[i]! < bestRank[i]!) {
+      best = e;
+      bestRank = r;
+    }
+  }
+  return best;
+}
+
+function sourcesOf(members: TimelineEvent[]): { sources: EventSource[]; support: number } {
+  const sources: EventSource[] = [];
+  const seen = new Set<string>();
+  let urlless = 0;
+  for (const e of members) {
+    const url = milestoneUrl(e);
+    if (!url) {
+      urlless++;
+      continue;
+    }
+    if (seen.has(url)) continue;
+    seen.add(url);
+    sources.push({ url, title: e.title, layer: e.fact?.layer ?? '' });
+  }
+  return { sources, support: Math.max(1, sources.length + urlless) };
+}
+
+/**
+ * Groups `milestone` events of the same milestone kind (launch, funding, hire, ...) dated within
+ * CLUSTER_DAYS of the cluster's first event and with similar titles (`similarTitles` with any
+ * member) into one event: date and key from the earliest member (`milestone-cluster|<its key>`),
+ * the title of `pickTitle`, `sources` from every member (one per url) and `support` = distinct
+ * urls. A milestone without a match stays as it is (with `sources` and `support: 1`). Other
+ * events are untouched. Deterministic: members are visited oldest first, ties by key, and join
+ * the first cluster that fits.
+ */
+export function clusterMilestones(events: TimelineEvent[]): TimelineEvent[] {
+  const rest: TimelineEvent[] = [];
+  const ms: TimelineEvent[] = [];
+  for (const e of events) (e.kind === 'milestone' && e.predicate === 'milestone' ? ms : rest).push(e);
+  if (!ms.length) return events;
+  ms.sort((a, b) => (a.at !== b.at ? (a.at < b.at ? -1 : 1) : a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+  const clusters: { kind: string; start: number; members: TimelineEvent[] }[] = [];
+  for (const e of ms) {
+    const kind = milestoneKind(e);
+    const t = Date.parse(e.at);
+    const hit = clusters.find(
+      (c) => c.kind === kind && t - c.start <= CLUSTER_DAYS * DAY_MS && c.members.some((m) => similarTitles(m.title, e.title)),
+    );
+    if (hit) hit.members.push(e);
+    else clusters.push({ kind, start: t, members: [e] });
+  }
+  for (const c of clusters) {
+    const first = c.members[0]!;
+    const { sources, support } = sourcesOf(c.members);
+    if (c.members.length === 1) {
+      rest.push({ ...first, sources, support });
+      continue;
+    }
+    const best = pickTitle(c.members);
+    rest.push({
+      ...first,
+      key: `milestone-cluster|${first.key}`,
+      title: best.title,
+      fact: best.fact,
+      headline: c.members.some((m) => m.headline),
+      sources,
+      support,
+    });
+  }
+  return rest;
 }
 
 /** Cuts `all` back into consecutive slices the size of each group. */
