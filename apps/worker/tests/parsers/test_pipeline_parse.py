@@ -274,15 +274,25 @@ def test_replay_makes_zero_model_calls(deps, owner, s7_compat):
 
 def test_posts_link_to_accounts_already_in_the_graph(deps, owner, s7_compat):
     """A company posting about itself lands on the entity the spider made (by x_id/x_handle)."""
-    # The company account exists from a deterministic connector (as x_spider would make it).
-    from rebox_worker.resolve import Resolver
 
-    company = ClaimInput(subject={"kind": "company", "identity": {"x_handle": "tallyhq_ex"}, "name": "Tally"},
-                         predicate="name", value="Tally", source_ref="x_spider:test:name")  # fmt: skip
-    r = Resolver(deps.db, source="x_spider", layer="public/x_spider")
-    res = r.resolve([company])
-    deps.client.write("public/x_spider", res.claims)
-    tally = res.claims[0].subject_id
+    # The company account exists from a deterministic connector (as x_spider would make it).
+    class Spider:
+        name, layer, interval_s = "x_spider", "public/x_spider", 3600
+
+        def fetch(self, ctx, cursor):
+            yield RawRecord.new(
+                "x_spider", "test:tally", {"handle": "tallyhq_ex"}, fetched_at=T0 - timedelta(days=2)
+            )
+
+        def extract(self, rec):
+            ref = {"kind": "company", "identity": {"x_handle": "tallyhq_ex"}, "name": "Tally"}
+            return [ClaimInput(subject=ref, predicate="name", value="Tally", source_ref="x_spider:test:name"),
+                    ClaimInput(subject=ref, predicate="x_handle", value="tallyhq_ex", source_ref="x_spider:test:h")]  # fmt: skip
+
+    run_sync(Spider(), deps)
+    tally = owner.execute("select subject from claim where source_ref = 'x_spider:test:name'").fetchone()[
+        "subject"
+    ]
 
     seed_upstream(deps, "x_spider", [(ext, p) for s, ext, p in fixture_inputs("x_parse/posts.json")])
     run_sync(XParsePosts(model=recorded_model("x_parse/posts.json"), raw=deps.raw), with_env(deps))
