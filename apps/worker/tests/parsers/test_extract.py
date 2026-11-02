@@ -506,3 +506,19 @@ def test_homepage_results_are_not_parsed():
 def test_x_following_records_are_not_parsed():
     payload = {"type": "x_following", "users": [{"id": "1", "username": "a", "description": "CEO @b"}]}
     assert doc_for(RawRecord.new("x_spider", "f", payload, fetched_at=FETCHED)) is None
+
+
+def test_thread_continuations_are_parsed_replies_to_others_are_not():
+    base = {"id": "11", "text": "Welcome to the team @dana_ex and everyone at Sprocket!", "author_id": "7",
+            "created_at": "2026-10-01T00:00:00Z", "referenced_tweets": [{"type": "replied_to", "id": "10"}]}  # fmt: skip
+    author = {"id": "7", "username": "gridly_ex"}
+    own = {"type": "x_post", "post": {**base, "in_reply_to_user_id": "7"}, "author": author}
+    other = {"type": "x_post", "post": {**base, "in_reply_to_user_id": "99"}, "author": author}
+    rt = {
+        "type": "x_post",
+        "post": {**base, "referenced_tweets": [{"type": "retweeted", "id": "1"}]},
+        "author": author,
+    }
+    assert doc_for(RawRecord.new("x_spider", "a", own, fetched_at=FETCHED)) is not None
+    assert doc_for(RawRecord.new("x_spider", "b", other, fetched_at=FETCHED)) is None
+    assert doc_for(RawRecord.new("x_spider", "c", rt, fetched_at=FETCHED)) is None

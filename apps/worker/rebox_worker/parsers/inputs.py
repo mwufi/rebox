@@ -150,9 +150,11 @@ def _x_post(rec: RawRecord) -> InputDoc | None:
     t = x_post_of(rec.payload) or {}
     text = clean(t.get("text"))
     refs = {r.get("type") for r in t.get("referenced_tweets") or [] if isinstance(r, dict)}
-    if len(text) < POST_MIN_CHARS or text.startswith("RT @") or refs & {"retweeted", "replied_to"}:
-        return None
     author = post_author_of(rec.payload, t) or {}
+    if len(text) < POST_MIN_CHARS or text.startswith("RT @") or "retweeted" in refs:
+        return None
+    if "replied_to" in refs and not _self_thread(t, author):
+        return None  # a reply to someone else; the author's own thread continuations are kept
     handle = str(author.get("username") or rec.payload.get("author_username") or "").lower() or None
     if handle and not _HANDLE_X.match(handle):
         handle = None
@@ -170,6 +172,14 @@ def _x_post(rec: RawRecord) -> InputDoc | None:
             "author": f"@{handle}" if handle else None,
         },
     )
+
+
+def _self_thread(t: dict[str, Any], author: dict[str, Any]) -> bool:
+    """A reply that continues the author's own thread (X: in_reply_to_user_id = author_id; the
+    spider's ``exclude=replies`` already drops replies to others, so a missing field counts)."""
+    to = t.get("in_reply_to_user_id")
+    me = t.get("author_id") or author.get("id")
+    return to is None or (me is not None and str(to) == str(me))
 
 
 def _github(rec: RawRecord) -> InputDoc | None:
