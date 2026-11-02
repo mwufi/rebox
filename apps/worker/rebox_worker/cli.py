@@ -9,6 +9,7 @@ rebox-worker status                connector_state table
 rebox-worker workers list          worker identities with claim and run counts
 rebox-worker workers register <c>  resolve (create on first use) a connector's worker id
 rebox-worker workers show <id>     one worker and its recent runs
+rebox-worker coverage FILE.csv     which rows of a list Rebox knows (S14)
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ from collections.abc import Sequence
 from contextlib import contextmanager
 from typing import Any
 
-from . import __version__, identity, jobs
+from . import __version__, coverage, identity, jobs
 from .client import ClaimsClient
 from .config import ConfigError, Settings
 from .connectors import REGISTRY, Ctx, UnknownConnector, get_connector
@@ -337,6 +338,8 @@ def build_parser() -> argparse.ArgumentParser:
     ws.add_argument("--runs", type=int, default=10, help="how many recent runs to show")
     ws.add_argument("--json", action="store_true")
     ws.set_defaults(func=cmd_workers_show)
+
+    coverage.add_parser(sub)  # rebox-worker coverage FILE.csv (S14)
     return p
 
 

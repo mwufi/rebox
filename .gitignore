@@ -12,4 +12,5 @@ apps/api/public/
 *.tfstate.*
 *.tfplan
 coverage/
+!fixtures/coverage/
 .screens/

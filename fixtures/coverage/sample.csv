@@ -1,0 +1,31 @@
+kind,name,x,github,website,domain,company,linkedin,wikidata,list_owner,expect
+company,Ditto,,,https://www.ditto.ai/,,,,,deal team,matched
+company,Stripe,,,,stripe.com,,,,deal team,matched
+company,Stripe (by QID),,,,,,,https://www.wikidata.org/wiki/Q7624104,deal team,matched
+,Stripe guessed,,,https://www.stripe.com/about,,,,,deal team,matched
+company,Acme Old Brand,,,,acme-old.example,,,,deal team,matched
+company,Figma,,,https://figma.com,,,,,deal team,matched
+company,Vercel,,,,,,,,deal team,matched_name
+company,Northwind,,,,,,,,deal team,matched_name
+company,Contoso (Fabrikam),,,,,,,,deal team,matched_name
+company,Mercury,,,,,,,,deal team,ambiguous
+company,Linear,,,https://linear.app,,,,,deal team,missing
+company,Retool,,,,retool.com,,,,deal team,missing
+company,Rippling,,,https://www.rippling.com/,,,https://www.linkedin.com/company/rippling,,deal team,missing
+company,Deel,,,,,,,,deal team,missing
+company,Gusto,,,https://x.com/gustohq,,,,,deal team,missing
+person,Ada Quill,https://x.com/AdaQuill,,,,,https://www.linkedin.com/in/ada-quill-0,,events,matched
+person,Bram Okonkwo,@BramO,,,,,,,events,matched
+person,Cleo Vance,,https://github.com/CleoVance,,,,,,events,matched
+person,dov marchetti,,,,,,,,events,matched_name
+person,Elisa Thornbury,,,,,,,,events,matched_name
+person,Zoe Lindgren,,,,,,,,events,matched_name
+person,Jon Rivera,,,,,,,,events,ambiguous
+person,Mira Castell,,,,,Ditto,,,events,matched_name
+person,Mira Castell,,,,,"Stripe, Inc.",,,events,matched_name
+person,Mira Castell,,,,,,,,events,ambiguous
+,Ada Quill,,,,,Initech,,,events,matched_name
+person,Pip Harlow,pipharlow,,,,,,,events,matched
+person,Theo Brandt,theob_real,,,,,,,events,missing
+person,Nobody Known,ghost_handle_404,,,,,,,events,missing
+person,Wren Calloway,,,,,,https://www.linkedin.com/in/wren-calloway,,events,missing
