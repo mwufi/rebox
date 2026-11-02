@@ -34,8 +34,6 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from pydantic import ConfigDict
-
 from ..models import ClaimInput, EntityRef
 from ..normalize import normalize_name
 from .places import canonical_city
@@ -49,16 +47,6 @@ INVESTING_TITLE = re.compile(r"(?i)investing|investor|angel|backing")
 FOUNDER_PREFIX = re.compile(r"(?i)^(co-?\s?founder|cofounder|founder)\s*(&|and|/|,)\s*")
 FOUNDER_TITLE = re.compile(r"(?i)(co-?\s?)?founder|founding (ceo|team)|cofounder")
 _HANDLE_RE = re.compile(r"^[A-Za-z0-9_-]{1,39}$")
-
-
-if "evidence" in ClaimInput.model_fields:  # CONTRACTS §12: ClaimInput carries evidence
-    ParsedClaim = ClaimInput
-else:  # until the worker models gain it (S7), parsers use this subclass
-
-    class ParsedClaim(ClaimInput):  # type: ignore[no-redef]
-        model_config = ConfigDict(extra="forbid")
-
-        evidence: list[dict[str, Any]] | None = None
 
 
 def has_private_data(*texts: str) -> bool:
@@ -247,7 +235,7 @@ class Extraction:
         if any(c.source_ref == ref and c.subject == subject for c in self.claims):
             return  # the same fact from two model facts (e.g. a hire and a role): keep the first
         self.claims.append(
-            ParsedClaim(
+            ClaimInput(
                 subject=subject,
                 predicate=predicate,
                 source_ref=f"{self.source}:{self.doc.ref}:{predicate}:{key}",

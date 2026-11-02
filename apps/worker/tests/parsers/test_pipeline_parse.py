@@ -2,12 +2,12 @@
 """Parser connectors through the real pipeline: upstream raw records -> fetch (recorded model) ->
 raw store -> extract -> resolver -> fake writer -> Postgres. Replay makes zero model calls.
 
-Until S7's resolver/writer changes merge (ClaimInput.evidence, JSON values for ``value_type
-json`` predicates — CONTRACTS §1, §12), ``s7_compat`` patches exactly those two seams.
+The fake writer enforces CONTRACTS §12 (workers, runs, evidence required for parser workers).
 """
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -24,46 +24,6 @@ from rebox_worker.parsers.prompt import PROMPT_VERSION
 from rebox_worker.pipeline import run_replay, run_sync
 
 T0 = datetime(2026, 10, 25, 12, tzinfo=UTC)
-
-
-@pytest.fixture
-def s7_compat(monkeypatch):
-    """Evidence on ClaimWrite + JSON-object attribute values, as S7 implements them (no-op after)."""
-    from rebox_worker import models, resolve
-
-    if "evidence" in models.ClaimInput.model_fields:
-        yield
-        return
-    sent: list[dict[str, Any]] = []
-    orig_resolve_claim = resolve.Resolver._resolve_claim
-    orig_check = resolve.Resolver._check
-
-    def resolve_claim(self, batch, record, c):
-        w = orig_resolve_claim(self, batch, record, c)
-        sent.append({"source_ref": c.source_ref, "evidence": getattr(c, "evidence", None)})
-        return w
-
-    def check(self, c):
-        pred = self.predicates.get(c.predicate)
-        if pred is not None and pred.meta.get("value_type") == "json" and isinstance(c.value, dict):
-            return pred
-        return orig_check(self, c)
-
-    monkeypatch.setattr(resolve.Resolver, "_resolve_claim", resolve_claim)
-    monkeypatch.setattr(resolve.Resolver, "_check", check)
-
-    import fake_writer
-
-    orig_validate = fake_writer.FakeWriter._validate
-
-    def validate(c, preds, layer, mints):
-        p = preds.get(c.get("predicate")) if isinstance(c, dict) else None
-        if p is not None and p["meta"].get("value_type") == "json" and isinstance(c.get("value"), dict):
-            c = {**c, "value": "json"}  # validate the rest of the claim as usual
-        return orig_validate(c, preds, layer, mints)
-
-    monkeypatch.setattr(fake_writer.FakeWriter, "_validate", staticmethod(validate))
-    yield sent
 
 
 def seed_upstream(
@@ -119,7 +79,7 @@ def test_disabled_without_key():
 # ── fetch ──
 
 
-def test_fetch_batches_and_stores_model_output(deps, owner, s7_compat):
+def test_fetch_batches_and_stores_model_output(deps, owner):
     seed_upstream(
         deps, "x_spider", [(ext, p) for s, ext, p in fixture_inputs("x_parse/bios.json") if s == "x_spider"]
     )
@@ -150,7 +110,7 @@ def test_fetch_batches_and_stores_model_output(deps, owner, s7_compat):
     assert cursor["last_run"]["api_calls"] == 2
 
 
-def test_claims_land_with_evidence(deps, owner, writer, s7_compat):
+def test_claims_land_with_evidence(deps, owner, writer):
     seed_upstream(
         deps, "x_spider", [(ext, p) for s, ext, p in fixture_inputs("x_parse/bios.json") if s == "x_spider"]
     )
@@ -162,10 +122,17 @@ def test_claims_land_with_evidence(deps, owner, writer, s7_compat):
     # Every claim the parser sent carried evidence (CONTRACTS §12: required for parser workers).
     sent = [c for body in writer.requests for c in body["claims"]]
     with_ev = {c["source_ref"] for c in sent if c.get("evidence")}
-    if isinstance(s7_compat, list):  # pre-S7: the resolver drops evidence; check what extract gave it
-        with_ev = {s["source_ref"] for s in s7_compat if s["evidence"]}
     parser_refs = {c["source_ref"] for c in sent if c["source_ref"].startswith("x_parse:")}
     assert parser_refs and parser_refs <= with_ev
+    # Written as a parser worker xbio-parser-NNNNNN, in a run whose stats carry the model usage.
+    workers = {body["worker"] for body in writer.requests}
+    assert len(workers) == 1 and re.fullmatch(r"xbio-parser-\d{6}", workers.pop())
+    w = owner.execute("select kind, layers from worker where id like 'xbio-parser-%'").fetchone()
+    assert w["kind"] == "parser" and w["layers"] == ["public/x_ai"]
+    run = owner.execute("select status, stats from run order by id desc limit 1").fetchone()
+    assert run["status"] == "ok" and run["stats"]["api_calls"] == 1 and run["stats"]["cost_usd"] > 0
+    stored = owner.execute("select count(*) n from claim where layer_id = 'public/x_ai' and evidence is null")
+    assert stored.fetchone()["n"] == 0
     # resolver-made name claims (no evidence) never happen: extract names every new entity itself
     assert not [c for c in sent if not c["source_ref"].startswith("x_parse:")]
     # SF is one place, matched by its Wikidata id across bios
@@ -179,7 +146,7 @@ def test_claims_land_with_evidence(deps, owner, writer, s7_compat):
     assert places["n"] == 1
 
 
-def test_resync_skips_parsed_and_reparses_changed(deps, owner, s7_compat):
+def test_resync_skips_parsed_and_reparses_changed(deps, owner):
     inputs = [(ext, p) for s, ext, p in fixture_inputs("x_parse/bios.json") if s == "x_spider"]
     seed_upstream(deps, "x_spider", inputs)
     model = recorded_model("x_parse/bios.json")
@@ -204,7 +171,7 @@ def test_resync_skips_parsed_and_reparses_changed(deps, owner, s7_compat):
     assert model.calls[-1] == [f"x_spider:{ext}"]
 
 
-def test_prompt_version_change_reparses(deps, owner, monkeypatch, s7_compat):
+def test_prompt_version_change_reparses(deps, owner, monkeypatch):
     seed_upstream(
         deps, "x_spider", [(ext, p) for s, ext, p in fixture_inputs("x_parse/bios.json") if s == "x_spider"]
     )
@@ -217,7 +184,7 @@ def test_prompt_version_change_reparses(deps, owner, monkeypatch, s7_compat):
     assert sum(len(c) for c in model.calls) == 12
 
 
-def test_budget_and_limit(deps, owner, s7_compat):
+def test_budget_and_limit(deps, owner):
     seed_upstream(
         deps, "x_spider", [(ext, p) for s, ext, p in fixture_inputs("x_parse/bios.json") if s == "x_spider"]
     )
@@ -236,7 +203,7 @@ def test_budget_and_limit(deps, owner, s7_compat):
     assert sum(len(c) for c in model.calls) == 6  # the rest, nothing twice
 
 
-def test_replay_makes_zero_model_calls(deps, owner, s7_compat):
+def test_replay_makes_zero_model_calls(deps, owner):
     seed_upstream(deps, "x_spider", [(ext, p) for s, ext, p in fixture_inputs("x_parse/posts.json")])
     seed_upstream(deps, "x_spider", [(ext, p) for s, ext, p in fixture_inputs("x_parse/bios.json") if s == "x_spider"],
                   start=T0 - timedelta(days=1))  # fmt: skip
@@ -272,7 +239,7 @@ def test_replay_makes_zero_model_calls(deps, owner, s7_compat):
     }
 
 
-def test_posts_link_to_accounts_already_in_the_graph(deps, owner, s7_compat):
+def test_posts_link_to_accounts_already_in_the_graph(deps, owner):
     """A company posting about itself lands on the entity the spider made (by x_id/x_handle)."""
 
     # The company account exists from a deterministic connector (as x_spider would make it).
@@ -306,7 +273,7 @@ def test_posts_link_to_accounts_already_in_the_graph(deps, owner, s7_compat):
     assert n == 1
 
 
-def test_github_and_exa_parsers(deps, owner, s7_compat):
+def test_github_and_exa_parsers(deps, owner):
     data = load_recorded("x_parse/bios.json")
     gh = [
         (f"user:{it['payload']['user']['login']}", it["payload"])

@@ -6,7 +6,7 @@ output -> claims step with the evidence, privacy and grounding guards.
 """
 
 from .base import ParserConnector
-from .extract import ParsedClaim, extract_claims
+from .extract import extract_claims
 from .llm import AnthropicModel, Usage
 from .prompt import PROMPT_VERSION, InputDoc
 
@@ -14,7 +14,6 @@ __all__ = [
     "PROMPT_VERSION",
     "AnthropicModel",
     "InputDoc",
-    "ParsedClaim",
     "ParserConnector",
     "Usage",
     "extract_claims",
