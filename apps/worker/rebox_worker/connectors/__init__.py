@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from .base import Connector, Ctx, fixtures_root, is_enabled, is_scheduled
 from .exa import Exa
+from .exa_parse import ExaParse
 from .example import Example
 from .github import GitHub
+from .github_parse import GitHubParse
 from .hn import Hn
 from .wikidata import Wikidata
 from .x import X
+from .x_parse import XParse, XParsePosts
 from .x_spider import XSpider
 
 
@@ -25,6 +28,10 @@ REGISTRY: dict[str, type] = {
     X.name: X,
     XSpider.name: XSpider,
     Exa.name: Exa,
+    XParse.name: XParse,
+    XParsePosts.name: XParsePosts,
+    GitHubParse.name: GitHubParse,
+    ExaParse.name: ExaParse,
 }
 
 
