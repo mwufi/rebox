@@ -1,0 +1,10 @@
+# Local tool binaries (terraform) downloaded for verification; never commit.
+.bin/
+# Terraform working state
+terraform/.terraform/
+terraform/.terraform.lock.hcl.bak
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfplan
+terraform/backend.hcl
+terraform/*.auto.tfvars
