@@ -677,20 +677,24 @@ class HttpGiveUp(RuntimeError):
 
 
 def retry_after_s(resp: httpx.Response) -> float | None:
-    """Seconds to wait from ``Retry-After`` or ``x-rate-limit-reset`` (epoch seconds), capped."""
+    """Seconds the server asked us to wait (``Retry-After``, or ``x-ratelimit-reset`` /
+    ``x-rate-limit-reset`` epoch seconds on 403/429). Not capped: see ``MAX_WAIT_S``."""
     v = resp.headers.get("Retry-After")
     if v is not None:
         try:
-            return min(900.0, max(0.0, float(v)))
+            return max(0.0, float(v))
         except ValueError:
             return None
     reset = resp.headers.get("x-ratelimit-reset") or resp.headers.get("x-rate-limit-reset")
     if reset and resp.status_code in (403, 429):
         try:
-            return min(900.0, max(0.0, float(reset) - time.time()) + 1.0)
+            return max(0.0, float(reset) - time.time()) + 1.0
         except ValueError:
             return None
     return None
+
+
+MAX_WAIT_S = 300.0  # a longer requested wait ends the run; the job queue retries it later
 
 
 def get_json(
@@ -698,21 +702,31 @@ def get_json(
     url: str,
     *,
     params: dict[str, str] | None = None,
+    data: dict[str, str] | None = None,
     headers: dict[str, str] | None = None,
     log: Any,
     sleep: Callable[[float], None] = time.sleep,
     min_interval_s: float = 1.0,
     max_retries: int = MAX_RETRIES,
     retry_statuses: tuple[int, ...] = (429,),
+    max_wait_s: float = MAX_WAIT_S,
 ) -> Any:
-    """GET -> JSON. Sleeps ``min_interval_s`` before every request; retries 429 (and 5xx,
-    network errors) with ``Retry-After`` / rate-limit-reset or exponential backoff (2s, 4s, ...,
-    60s). Other 4xx raise ``httpx.HTTPStatusError`` immediately."""
+    """GET (or form POST when ``data`` is given) -> JSON.
+
+    Sleeps ``min_interval_s`` before every request. Retries 429 / ``retry_statuses``, 5xx and
+    network errors, waiting as long as ``Retry-After`` / rate-limit-reset asks, else with
+    exponential backoff (2s, 4s, ..., 60s). Never retries earlier than the server asked: a
+    requested wait longer than ``max_wait_s`` raises ``HttpGiveUp`` (the job is retried later
+    by the queue's backoff). Other 4xx raise ``httpx.HTTPStatusError`` immediately.
+    """
     error = ""
     for attempt in range(max_retries + 1):
         sleep(min_interval_s)
         try:
-            resp = client.get(url, params=params, headers=headers)
+            if data is not None:
+                resp = client.post(url, params=params, data=data, headers=headers)
+            else:
+                resp = client.get(url, params=params, headers=headers)
         except httpx.TransportError as e:
             error, wait = repr(e), None
         else:
@@ -721,9 +735,11 @@ def get_json(
             if resp.status_code < 500 and resp.status_code not in retry_statuses:
                 resp.raise_for_status()
             error, wait = f"HTTP {resp.status_code}", retry_after_s(resp)
+            if wait is not None and wait > max_wait_s:
+                raise HttpGiveUp(f"{url}: {error}, server asks to wait {wait:.0f}s (> {max_wait_s:.0f}s)")
         if attempt == max_retries:
             break
         delay = wait if wait is not None else min(60.0, 2.0 * 2**attempt)
-        log.warning("GET %s: %s; retry %d/%d in %.0fs", url, error, attempt + 1, max_retries, delay)
+        log.warning("%s: %s; retry %d/%d in %.0fs", url, error, attempt + 1, max_retries, delay)
         sleep(delay)
-    raise HttpGiveUp(f"GET {url}: giving up after {max_retries + 1} attempts: {error}")
+    raise HttpGiveUp(f"{url}: giving up after {max_retries + 1} attempts: {error}")

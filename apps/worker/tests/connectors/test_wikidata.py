@@ -184,7 +184,10 @@ def _sparql_from_fixtures():
         return {k: {"type": "literal", "value": v} for k, v in kw.items()}
 
     def handler(request: httpx.Request) -> httpx.Response:
-        q = request.url.params["query"]
+        assert request.method == "POST"
+        from urllib.parse import parse_qs
+
+        q = parse_qs(request.content.decode())["query"][0]
         calls.append(q)
         assert request.headers["Accept"] == "application/sparql-results+json"
         rows: list[dict] = []
@@ -255,3 +258,16 @@ def test_fetch_backs_off_on_429():
     conn = Wikidata(transport=httpx.MockTransport(handler), sleep=slept.append, min_interval_s=2.0)
     assert list(conn.fetch(ctx(), None)) == []
     assert slept[:3] == [2.0, 5.0, 2.0]
+
+
+def test_fetch_gives_up_instead_of_retrying_early():
+    """WDQS answered 429 with Retry-After: 1000 during an outage: never retry sooner than asked;
+    end the run (the job queue retries it later) instead of sleeping for a quarter of an hour."""
+    from rebox_worker.connectors.hn import HttpGiveUp
+
+    slept: list[float] = []
+    resp = httpx.Response(429, headers={"Retry-After": "1000"})
+    conn = Wikidata(transport=httpx.MockTransport(lambda r: resp), sleep=slept.append, min_interval_s=2.0)
+    with pytest.raises(HttpGiveUp, match="wait 1000s"):
+        list(conn.fetch(ctx(), None))
+    assert slept == [2.0]

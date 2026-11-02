@@ -16,7 +16,8 @@ fetch
     One RawRecord per organization, ``external_id = <QID>``, whose payload groups all of its
     bindings (and those of its people) in a canonical order, so an unchanged item hashes the
     same and is skipped. No cursor: a full refresh weekly. Requests are spaced
-    ``MIN_INTERVAL_S`` apart, with backoff on 429/5xx.
+    ``MIN_INTERVAL_S`` apart (form POST, as WDQS recommends for long queries), with backoff on
+    429/5xx; a Retry-After longer than 5 minutes ends the run instead (the queue retries later).
 
 extract (pure)
     company  identity ``wikidata`` (+ ``domain``, ``github``, ``x_handle`` so other sources'
@@ -40,12 +41,13 @@ import time
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
 from ..models import ClaimInput, CursorUpdate, EntityRef, RawRecord
 from .base import Ctx
-from .hn import get_json, site_domain
+from .hn import get_json, name_matches_host, site_domain
 
 ENDPOINT = "https://query.wikidata.org/sparql"
 ENTITY = "http://www.wikidata.org/entity/"
@@ -257,10 +259,11 @@ class Wikidata:
         with ctx.http(transport=self.transport) as client:
 
             def sparql(query: str) -> list[Binding]:
+                # POST: WDQS recommends it for long queries (50-QID VALUES lists).
                 data = get_json(
                     client,
                     ENDPOINT,
-                    params={"query": query, "format": "json"},
+                    data={"query": query, "format": "json"},
                     headers={"Accept": "application/sparql-results+json"},
                     log=ctx.log,
                     sleep=self.sleep,
@@ -539,10 +542,6 @@ def company_domain(website: str, name: str) -> str | None:
     """The website's domain if it is the company's own site: the site root (``https://stripe.com/``,
     also a platform's own root such as ``https://github.com``), or a page on a host that matches
     the company name. ``https://books.google.com/x`` for a Google imprint is not its domain."""
-    from urllib.parse import urlsplit
-
-    from .hn import name_matches_host
-
     d = site_domain(website, allow_platform_root=True)
     if d is None:
         return None

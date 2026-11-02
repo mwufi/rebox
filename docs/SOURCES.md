@@ -24,7 +24,7 @@ One raw record per organization (`external_id = <QID>`), holding all of its bind
 
 **License / terms.** Data is CC0. The query service asks for a descriptive User-Agent and for clients to avoid parallel heavy queries.
 
-**Rate.** One query at a time, 2 s between requests, backoff on 429/5xx. A full refresh is about 2 + 2 × ⌈orgs/50⌉ ≈ 100 queries.
+**Rate.** One query at a time, sent as form POST (which WDQS recommends for long queries), 2 s between requests, backoff on 429/5xx/timeouts. A full refresh is about 2 + 2 × ⌈orgs/50⌉ ≈ 95 queries and took about 6 minutes live (2,290 organizations). During a WDQS outage the endpoint answered GET requests with `429 Retry-After: 1000` ("rate-limiting to 1 req / min"). The connector never retries sooner than asked: a requested wait over 5 minutes ends the run, and the job queue retries it later.
 
 **Predicates.**
 - company: `name`, `wikidata`, `description`, `website`, `domain`, `x_handle`, `github`, `founded_year` (earliest P571 year), `headcount` (best-ranked, latest P1128), `based_in` → place

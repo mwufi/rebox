@@ -45,6 +45,7 @@ BATCH = 100
 USER_FIELDS = "name,description,location,url,public_metrics,entities"
 MIN_INTERVAL_S = 1.0
 MAX_RETRIES = 5
+X_MAX_WAIT_S = 16 * 60.0  # X windows are 15 minutes; waiting one out is expected
 
 HANDLES_SQL = """
 select c.value_text as handle, e.kind,
@@ -133,6 +134,8 @@ class X:
                 if resp.status_code < 500 and resp.status_code != 429:
                     resp.raise_for_status()
                 error, wait = f"HTTP {resp.status_code}", retry_after_s(resp)
+                if wait is not None and wait > X_MAX_WAIT_S:
+                    raise HttpGiveUp(f"x: {error}, server asks to wait {wait:.0f}s; resume next run")
             if attempt == MAX_RETRIES:
                 break
             delay = wait if wait is not None else min(60.0, 2.0 * 2**attempt)
@@ -208,7 +211,7 @@ def expanded_url(user: dict[str, Any]) -> str | None:
 
 def _until_reset(resp: httpx.Response) -> float | None:
     try:
-        return min(900.0, max(0.0, float(resp.headers["x-rate-limit-reset"]) - time.time()) + 1.0)
+        return min(X_MAX_WAIT_S, max(0.0, float(resp.headers["x-rate-limit-reset"]) - time.time()) + 1.0)
     except (KeyError, ValueError):
         return None
 
