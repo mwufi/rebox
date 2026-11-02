@@ -35,6 +35,7 @@ from rebox_worker.exchange import (
     iter_claims,
     read_header,
 )
+from rebox_worker.ids import mint_id
 from rebox_worker.models import ClaimInput, EntityRef, Evidence
 from rebox_worker.resolve import Resolver
 
@@ -641,8 +642,11 @@ def test_shared_and_weak_hints_never_merge_distinct_entities(tmp_path, tgt_db, t
     assert report.hints_dropped["x_handle (shared by several origin entities)"] == 2
     assert report.hints_dropped["website (weak key)"] == 2
     assert report.workers[0].action == "register (new)"
-    # Only x_id is left, which is not a minting key: they keep their origin ids (stable across batches).
-    assert {o.target for o in report.outcomes.values()} == {"rbx:person:aaaa", "rbx:person:bbbb"}
+    # Only x_id is left; it is a minting key (CONTRACTS §3), so each mints its deterministic x_id id.
+    assert {o.target for o in report.outcomes.values()} == {
+        mint_id("person", {"x_id": "10"}, "x", "x"),
+        mint_id("person", {"x_id": "11"}, "x", "x"),
+    }
     # A website (unique in the bundle) matches Carol only when asked to.
     c = _ref("rbx:person:cccc", "C", x_handle="c", website="https://a16z.com")
     _write_bundle(path, [{**claims[0], "subject": c, "value": "C", "source_ref": "s:C:name"}], [worker])

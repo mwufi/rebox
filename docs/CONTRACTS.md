@@ -41,8 +41,10 @@ Under RLS, Postgres uses an index only when the operator is leakproof. `value #>
 
 - Format: `rbx:<kind>:<id>` where `<id>` matches `[a-z0-9-]+`. Private, unshared entities use `local:<kind>:<id>` (not used in v0).
 - Ids are minted by the **worker resolver** and are deterministic, so retries never create duplicates:
-  - `id = base32_lower_nopad(sha256(f"{kind}|{key}|{normalized_value}"))[:20]`, using the entity's strongest identity key in this order: `wikidata`, `domain`, `github`, `x_handle`, `hn_user`, `hn_story`, `url`, `website`, `email`.
-  - With no identity key: `sha256(f"{kind}|src|{source}|{source_ref}")`.
+  - `id = base32_lower_nopad(sha256(f"{kind}|{key}|{normalized_value}"))[:20]`, using the entity's strongest identity key in this order: `wikidata`, `domain`, `github`, `x_handle`, `x_id`, `hn_user`, `hn_story`, `url`, `website`, `email`, then — for minting only — `name`.
+  - `name` applies only to a `company` with no identity key whose folded name is not a placeholder ("stealth", "self-employed", …) and has ≥ 2 tokens or ≥ 6 characters; value = the folded name. `name` is never an identity key.
+  - Any other entity with no key: `sha256(f"{kind}|src|{source}|{record}#{kind}:{normalize_name(name)}")`, where `record` is the raw record's external_id.
+  - Folded name: NFKC, casefold, strip accents, trim, collapse whitespace; companies also drop one trailing `(...)`, trailing punctuation except closing brackets, a leading `the `, and trailing legal suffixes (`inc, llc, l.l.c., ltd, corp, corporation, co, gmbh, s.a., sa, plc, pbc`) repeatedly, never down to nothing. Reference: `apps/worker/rebox_worker/names.py`.
 - Seeded fixed ids are allowed for well-known entities, e.g. `rbx:place:san-francisco`.
 
 ## 4. Normalizers (identity values are stored normalized)
@@ -82,7 +84,7 @@ Name matching (resolver fuzzy pass): lowercase, strip punctuation and accents, c
 - Optional per claim: `valid_from`, `valid_to` (ISO dates/timestamps), `retract` (bool).
 - Validation per claim: predicate exists; edge/attribute shape matches; subject kind ∈ `subject_kinds`; object kind = `object_kind`; predicates with `meta.private = true` are rejected in `public/*` layers; identity predicates have normalized values.
 - Semantics: one transaction for the whole batch (max 1000 claims). Upsert on (layer, source_ref, subject, predicate, object): same key = same claim, latest write wins.
-- Response `200`: `{"written": n, "minted": m}`. Response `400`: `{"error": "validation", "details": [{"index": i, "message": "..."}]}` and nothing is written.
+- Response `200`: `{"written": n, "minted": m}`. Response `400`: `{"error": "validation", "details": [{"index": i, "message": "..."}]}` and nothing is written. `index` is the claim's position in the request, also for claims the database refuses (a failed batch is re-checked claim by claim; for a duplicated key, the last occurrence). `index: -1` only for request-level problems: body, worker, layer, run, permissions, or a database error no single claim causes. Clients drop the named claims and resend the rest.
 
 ## 6. Read API v0 (public, anonymous)
 
@@ -175,7 +177,8 @@ Extractors emit identity facts as ordinary claims too (e.g. a `wikidata` claim),
 **Resolver** (worker, reads DB as `rebox_app` with all public layers visible): for each unresolved EntityRef, in order:
 1. **hard keys**: normalized identity value matches an existing identity claim → that entity (following `merged_into`). Several distinct entities → open a `review_item` (`ambiguous_match`) and use the oldest.
 2. **scoped fuzzy**: if `context` entities resolved, a same-kind entity with equal normalized name that has any edge to a context entity → match (confidence 0.8).
-3. **mint**: deterministic id (section 3).
+3. **company name** (`company` refs with no identity key; never persons): un-merged companies with a visible public `name` that folds equal (candidates via `search_name`). A keyed candidate is a target only if *safe*: a `wikidata` claim, or a `domain` whose registrable label equals the folded name without spaces/punctuation, or ≥ 5 distinct subjects with non-`follows` edges to it. One keyed and safe → match (0.7). Several keyed with a safe one → the oldest safe one, plus a `possible_duplicate` review item (once per entity set). Else, if the name converges (§3) → the name-only company with the most claims, tie oldest (0.6).
+4. **mint**: deterministic id (section 3).
 Every decision writes `resolution_log`. Batch-local cache so one batch resolves consistently.
 
 **Jobs**: table `job`, claimed with `FOR UPDATE SKIP LOCKED`; kinds `sync` (`{"source"}`) and `replay` (`{"source"}`: re-extract from raw store, no fetch). `connector_state` holds cursor and schedule.

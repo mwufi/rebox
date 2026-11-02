@@ -4,7 +4,7 @@
  * write names the worker that made it (and optionally its run); claims may carry evidence.
  */
 import { z } from 'zod';
-import type { Db, Tx } from './db.js';
+import type { Db, Tx, View } from './db.js';
 import { isIsoDate, isoToMs } from './dates.js';
 import { forbidden } from './auth.js';
 import { ApiError, validation, type ErrorDetail } from './errors.js';
@@ -333,9 +333,43 @@ async function checkReferences(tx: Tx, claims: ClaimIn[]): Promise<void> {
   if (details.length) throw validation(details);
 }
 
+interface ClaimRow {
+  /** Index of the claim in the request (the last occurrence of its key). */
+  index: number;
+  row: Record<string, unknown>;
+}
+
 /**
- * Upserts claims on the claim_identity_uq key. Duplicate keys within one batch keep the last
+ * The rows to upsert, one per claim_identity_uq key. Duplicate keys within one batch keep the last
  * occurrence (latest write wins) since ON CONFLICT cannot touch a row twice in one statement.
+ */
+function claimRows(claims: ClaimIn[]): ClaimRow[] {
+  const byKey = new Map<string, ClaimRow>();
+  claims.forEach((c, index) => {
+    const subject = refId(c.subject);
+    const object = c.object ? refId(c.object) : null;
+    const key = JSON.stringify([c.source_ref, subject, c.predicate, object ?? '']);
+    byKey.delete(key); // keep insertion order = last occurrence
+    byKey.set(key, {
+      index,
+      row: {
+        subject,
+        predicate: c.predicate,
+        object_id: object,
+        value: c.value === undefined ? null : c.value,
+        valid_from: c.valid_from ?? null,
+        valid_to: c.valid_to ?? null,
+        retract: c.retract ?? false,
+        source_ref: c.source_ref,
+        evidence: c.evidence && c.evidence.length ? c.evidence.map(compactEvidence) : null,
+      },
+    });
+  });
+  return [...byKey.values()];
+}
+
+/**
+ * Upserts claim rows on the claim_identity_uq key (see claimRows for duplicates in one batch).
  * Re-sending an unchanged claim is a no-op: no updated_at bump (which would reorder the fold's
  * "newest wins" tie-break) and no `change` row. A changed claim takes the writing worker and run.
  * An unchanged re-send by another worker of the same layer keeps the original attribution (so
@@ -343,32 +377,13 @@ async function checkReferences(tx: Tx, claims: ClaimIn[]): Promise<void> {
  * (worker_id null) are attributed to the first worker that re-sends them. Returns the number of
  * rows inserted or changed.
  */
-async function upsertClaims(tx: Tx, layer: string, worker: string, runId: string | null, claims: ClaimIn[]): Promise<number> {
-  const byKey = new Map<string, Record<string, unknown>>();
-  for (const c of claims) {
-    const subject = refId(c.subject);
-    const object = c.object ? refId(c.object) : null;
-    const key = JSON.stringify([c.source_ref, subject, c.predicate, object ?? '']);
-    byKey.delete(key); // keep insertion order = last occurrence
-    byKey.set(key, {
-      subject,
-      predicate: c.predicate,
-      object_id: object,
-      value: c.value === undefined ? null : c.value,
-      valid_from: c.valid_from ?? null,
-      valid_to: c.valid_to ?? null,
-      retract: c.retract ?? false,
-      source_ref: c.source_ref,
-      evidence: c.evidence && c.evidence.length ? c.evidence.map(compactEvidence) : null,
-    });
-  }
-  const rows = [...byKey.values()];
+async function upsertClaims(tx: Tx, layer: string, worker: string, runId: string | null, rows: ClaimRow[]): Promise<number> {
   const result = await tx`
     insert into claim (layer_id, subject, predicate, object_id, value, valid_from, valid_to, retract, source_ref,
                        worker_id, run_id, evidence)
     select ${layer}, x.subject, x.predicate, x.object_id, x.value, x.valid_from, x.valid_to,
            coalesce(x.retract, false), x.source_ref, ${worker}, ${runId}::bigint, x.evidence
-    from jsonb_to_recordset(${tx.json(rows as never)}::jsonb) as x(
+    from jsonb_to_recordset(${tx.json(rows.map((r) => r.row) as never)}::jsonb) as x(
       subject text, predicate text, object_id text, value jsonb,
       valid_from timestamptz, valid_to timestamptz, retract boolean, source_ref text, evidence jsonb)
     on conflict (layer_id, source_ref, subject, predicate, coalesce(object_id, ''))
@@ -412,13 +427,14 @@ export function createWriter(db: Db, vocabCache: VocabCache): Writer {
       // CONTRACTS §2: the ingest token sees all public layers (read fresh, inside the same
       // statement) plus the target layer, and writes only the target layer.
       const view = { visible: [layer.id], writable: [layer.id], allPublic: true };
+      const rows = claimRows(claims);
       try {
         const result = await db.withView(view, async (tx) => {
           await checkProvenance(tx, actor, parsed);
           const created = await ensureLayer(tx, layer);
           const minted = await mintEntities(tx, layer.id, mints);
           await checkReferences(tx, claims);
-          const written = await upsertClaims(tx, layer.id, parsed.worker, parsed.runId, claims);
+          const written = await upsertClaims(tx, layer.id, parsed.worker, parsed.runId, rows);
           await tx`update worker set last_seen_at = now() where id = ${parsed.worker}`;
           return { written, minted, created };
         });
@@ -426,10 +442,74 @@ export function createWriter(db: Db, vocabCache: VocabCache): Writer {
         return { written: result.written, minted: result.minted };
       } catch (err) {
         if (err instanceof ApiError) throw err;
+        if (isClaimDataError(err)) {
+          const details = await attributeClaimErrors(db, view, actor, parsed, mints, rows);
+          if (details.length) throw validation(details);
+        }
         throw mapDbError(err);
       }
     },
   };
+}
+
+/** Thrown inside the diagnostic transaction so it always rolls back. */
+class Diagnosed extends Error {
+  constructor(readonly details: ErrorDetail[]) {
+    super('diagnosed');
+  }
+}
+
+const dbErrorCode = (err: unknown): string => String((err as { code?: unknown })?.code ?? '');
+
+/**
+ * Database errors that a single claim's data can cause (CONTRACTS §5 "rejected by database"):
+ * data exceptions (22xxx: bad dates, NUL bytes in text, ...), integrity violations (23xxx: an
+ * entity deleted by a concurrent merge/split) and program limits (54000: a value too large for
+ * the value_text index). Permission errors (42501) and everything else are about the batch.
+ */
+function isClaimDataError(err: unknown): boolean {
+  const code = dbErrorCode(err);
+  return code.startsWith('22') || code.startsWith('23') || code === '54000';
+}
+
+/**
+ * After a batch failed with a claim data error: replays the same steps in a fresh transaction,
+ * upserting the claims one by one, each in a savepoint, and collects the ones the database
+ * refuses with their request index. The transaction is always rolled back (a 400 writes nothing).
+ * Returns [] when no single claim fails on its own (e.g. a race that has passed); the caller
+ * then reports the original error at index -1.
+ */
+async function attributeClaimErrors(
+  db: Db,
+  view: View,
+  actor: Actor,
+  parsed: ParsedBody,
+  mints: Map<string, MintRequest>,
+  rows: ClaimRow[],
+): Promise<ErrorDetail[]> {
+  try {
+    await db.withView(view, async (tx) => {
+      await checkProvenance(tx, actor, parsed);
+      await ensureLayer(tx, parsed.layer);
+      await mintEntities(tx, parsed.layer.id, mints);
+      await checkReferences(tx, parsed.claims);
+      const details: ErrorDetail[] = [];
+      for (const r of rows) {
+        try {
+          await tx.savepoint((sp) => upsertClaims(sp, parsed.layer.id, parsed.worker, parsed.runId, [r]));
+        } catch (err) {
+          if (!isClaimDataError(err)) throw err;
+          const e = err as { message?: string };
+          details.push({ index: r.index, message: `rejected by database: ${e.message ?? dbErrorCode(err)}` });
+        }
+      }
+      throw new Diagnosed(details);
+    });
+  } catch (err) {
+    if (err instanceof Diagnosed) return err.details;
+    return []; // the diagnosis itself failed before reaching the claims: report the original error
+  }
+  return [];
 }
 
 /** Maps constraint violations that slip past validation (e.g. races) to a 400, never a 500. */

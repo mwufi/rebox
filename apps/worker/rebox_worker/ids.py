@@ -2,9 +2,12 @@
 
     id = "rbx:<kind>:" + base32_lower_nopad(sha256(f"{kind}|{key}|{normalized_value}"))[:20]
 
-using the strongest identity key in ``IDENTITY_KEY_ORDER``. With no identity key:
-``sha256(f"{kind}|src|{source}|{source_ref}")``. Retries and replays therefore never
-mint duplicates.
+using the strongest identity key in ``IDENTITY_KEY_ORDER``. A company the resolver mints from a
+name alone (its unscoped name pass) passes ``{"name": fold_name(kind, name)}``: ``name`` is the
+last entry of the *mint* key order (``MINT_KEY_ORDER``) so later mentions of the same name
+converge on one id. ``name`` is never an identity key anywhere else (``strongest_key`` ignores
+it). With no key at all: ``sha256(f"{kind}|src|{source}|{source_ref}")``. Retries and replays
+therefore never mint duplicates.
 """
 
 from __future__ import annotations
@@ -18,12 +21,18 @@ IDENTITY_KEY_ORDER: tuple[str, ...] = (
     "domain",
     "github",
     "x_handle",
+    "x_id",
     "hn_user",
     "hn_story",
     "url",
     "website",
     "email",
 )
+
+
+# Minting only: a folded company name, weaker than every identity key (CONTRACTS §3).
+NAME_KEY = "name"
+MINT_KEY_ORDER: tuple[str, ...] = (*IDENTITY_KEY_ORDER, NAME_KEY)
 
 
 def _digest_id(material: str) -> str:
@@ -35,8 +44,13 @@ def strongest_key(identity: Mapping[str, str | list[str]]) -> tuple[str, str] | 
     """(predicate, value) of the strongest identity key present, or None.
 
     For multi-valued keys the smallest value is used, so the choice is order independent.
+    ``name`` is not an identity key and is ignored here (see ``mint_id``).
     """
-    for key in IDENTITY_KEY_ORDER:
+    return _first_key(identity, IDENTITY_KEY_ORDER)
+
+
+def _first_key(identity: Mapping[str, str | list[str]], order: tuple[str, ...]) -> tuple[str, str] | None:
+    for key in order:
         value = identity.get(key)
         if isinstance(value, list):
             value = min(value) if value else None
@@ -46,8 +60,9 @@ def strongest_key(identity: Mapping[str, str | list[str]]) -> tuple[str, str] | 
 
 
 def mint_id(kind: str, identity: Mapping[str, str | list[str]], source: str, source_ref: str) -> str:
-    """Deterministic id for a new entity. ``identity`` values must already be normalized."""
-    strongest = strongest_key(identity)
+    """Deterministic id for a new entity. ``identity`` values must already be normalized
+    (``name``: folded with ``names.fold_name``)."""
+    strongest = _first_key(identity, MINT_KEY_ORDER)
     if strongest is not None:
         key, value = strongest
         material = f"{kind}|{key}|{value}"
