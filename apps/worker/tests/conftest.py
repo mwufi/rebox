@@ -30,7 +30,10 @@ from rebox_worker.rawstore import FileRawStore  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[3]
 TEST_DB = os.environ.get("S2_TEST_DB", "s2_pytest")
-TABLES = "claim, entity, change, job, connector_state, raw_record, resolution_log, review_item, merge_log"
+TABLES = (
+    "claim, entity, change, job, connector_state, raw_record, resolution_log, review_item, merge_log,"
+    " run, worker"
+)
 SEEDED_LAYERS = ("public/manual", "public/wikidata", "public/hn", "public/github", "public/x")
 
 

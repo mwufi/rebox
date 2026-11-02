@@ -121,6 +121,20 @@ class EntityRef(BaseModel):
         return self
 
 
+class Evidence(BaseModel):
+    """Why we believe a claim (CONTRACTS §12): where it was observed, by whom, the exact quote."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    url: str = Field(pattern=r"^https?://", max_length=2000)
+    author: str | None = Field(default=None, max_length=300)
+    quote: str | None = Field(default=None, max_length=2000)
+    observed_at: str | None = None
+
+    def to_request(self) -> dict[str, Any]:
+        return self.model_dump(exclude_none=True)
+
+
 class ClaimInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -132,6 +146,7 @@ class ClaimInput(BaseModel):
     valid_to: str | None = None
     retract: bool = False
     source_ref: str = Field(min_length=1)
+    evidence: list[Evidence] | None = None
 
 
 # ── resolved (writer request shape, CONTRACTS §5) ─────────────────────────
@@ -167,6 +182,7 @@ class ClaimWrite(BaseModel):
     valid_to: str | None = None
     retract: bool = False
     source_ref: str
+    evidence: list[Evidence] | None = None
 
     @property
     def subject_id(self) -> str:
@@ -195,6 +211,8 @@ class ClaimWrite(BaseModel):
             out["valid_to"] = self.valid_to
         if self.retract:
             out["retract"] = True
+        if self.evidence:
+            out["evidence"] = [e.to_request() for e in self.evidence]
         return out
 
 

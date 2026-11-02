@@ -6,6 +6,9 @@ rebox-worker replay <source>       re-extract a source from the raw store
 rebox-worker schedule-due          enqueue syncs for connectors that are due
 rebox-worker enqueue <source>      queue a sync (or --kind replay)
 rebox-worker status                connector_state table
+rebox-worker workers list          worker identities with claim and run counts
+rebox-worker workers register <c>  resolve (create on first use) a connector's worker id
+rebox-worker workers show <id>     one worker and its recent runs
 """
 
 from __future__ import annotations
@@ -21,7 +24,7 @@ from collections.abc import Sequence
 from contextlib import contextmanager
 from typing import Any
 
-from . import __version__, jobs
+from . import __version__, identity, jobs
 from .client import ClaimsClient
 from .config import ConfigError, Settings
 from .connectors import REGISTRY, Ctx, UnknownConnector, get_connector
@@ -180,6 +183,95 @@ def cmd_status(args: argparse.Namespace, settings: Settings) -> int:
     return 0
 
 
+def cmd_workers_list(args: argparse.Namespace, settings: Settings) -> int:
+    with Db(settings.database_url, max_size=1) as db, db.view() as conn:
+        rows = conn.execute(
+            """select w.id, w.kind, w.source, w.owner, w.trust, w.status, w.last_seen_at,
+                      (select count(*) from change ch
+                        where ch.worker_id = w.id and ch.op = 'insert') as claims,
+                      (select count(*) from run r where r.worker_id = w.id and r.status = 'ok') as runs_ok,
+                      (select count(*) from run r
+                        where r.worker_id = w.id and r.status = 'failed') as runs_failed
+                 from worker w order by w.last_seen_at desc nulls last, w.id"""
+        ).fetchall()
+    if args.json:
+        print(json.dumps(rows, default=str, indent=1))
+        return 0
+    if not rows:
+        print("no workers yet (they register on their first sync, or `rebox-worker workers register <c>`)")
+        return 0
+    _table(
+        rows,
+        [
+            "id",
+            "kind",
+            "source",
+            "owner",
+            "trust",
+            "status",
+            "last_seen_at",
+            "claims",
+            "runs_ok",
+            "runs_failed",
+        ],
+    )
+    return 0
+
+
+def cmd_workers_register(args: argparse.Namespace, settings: Settings) -> int:
+    connector = get_connector(args.connector)
+    api_url, token = settings.require_writer()
+    client = ClaimsClient(api_url, token, user_agent=settings.user_agent)
+    try:
+        spec = identity.spec_for(connector, Ctx(user_agent=settings.user_agent, env=settings.extra))
+        print(identity.register(client, spec))
+    finally:
+        client.close()
+    return 0
+
+
+def cmd_workers_show(args: argparse.Namespace, settings: Settings) -> int:
+    with Db(settings.database_url, max_size=1) as db, db.view() as conn:
+        w = conn.execute(
+            """select id, kind, source, owner, trust, status, layers, config, description, created_at,
+                      last_seen_at from worker where id = %s""",
+            (args.id,),
+        ).fetchone()
+        if w is None:
+            print(f"rebox-worker: no worker {args.id!r}", file=sys.stderr)
+            return 1
+        runs = conn.execute(
+            """select id, kind, status, started_at, finished_at,
+                      round(extract(epoch from (coalesce(finished_at, now()) - started_at))::numeric, 1)
+                        as duration_s,
+                      stats, error
+                 from run where worker_id = %s order by started_at desc, id desc limit %s""",
+            (args.id, args.runs),
+        ).fetchall()
+    if args.json:
+        print(json.dumps({**w, "runs": runs}, default=str, indent=1))
+        return 0
+    for k, v in w.items():
+        print(f"{k:>13}: {_cell(v)}")
+    print()
+    if runs:
+        _table(runs, ["id", "kind", "status", "started_at", "duration_s", "error"])
+        for r in runs:
+            if r["stats"]:
+                print(f"run {r['id']} stats: {json.dumps(r['stats'], sort_keys=True)}")
+    else:
+        print("no runs yet")
+    return 0
+
+
+def _table(rows: Sequence[dict[str, Any]], cols: list[str]) -> None:
+    table = [[_cell(r[c]) for c in cols] for r in rows]
+    widths = [max(len(c), *(len(row[i]) for row in table)) for i, c in enumerate(cols)]
+    print("  ".join(c.ljust(w) for c, w in zip(cols, widths, strict=True)).rstrip())
+    for row in table:
+        print("  ".join(v.ljust(w) for v, w in zip(row, widths, strict=True)).rstrip())
+
+
 def _cell(v: Any) -> str:
     if v is None:
         return "-"
@@ -231,6 +323,20 @@ def build_parser() -> argparse.ArgumentParser:
     st = sub.add_parser("status", help="show connector_state")
     st.add_argument("--json", action="store_true")
     st.set_defaults(func=cmd_status)
+
+    w = sub.add_parser("workers", help="worker identities and their runs (CONTRACTS §12)")
+    wsub = w.add_subparsers(dest="workers_command", required=True, metavar="subcommand")
+    wl = wsub.add_parser("list", help="list workers with claim and run counts")
+    wl.add_argument("--json", action="store_true")
+    wl.set_defaults(func=cmd_workers_list)
+    wr = wsub.add_parser("register", help="resolve (and create on first use) a connector's worker id")
+    wr.add_argument("connector")
+    wr.set_defaults(func=cmd_workers_register)
+    ws = wsub.add_parser("show", help="one worker and its recent runs")
+    ws.add_argument("id")
+    ws.add_argument("--runs", type=int, default=10, help="how many recent runs to show")
+    ws.add_argument("--json", action="store_true")
+    ws.set_defaults(func=cmd_workers_show)
     return p
 
 

@@ -282,6 +282,7 @@ class Resolver:
             valid_to=c.valid_to,
             retract=c.retract,
             source_ref=c.source_ref,
+            evidence=c.evidence,
         )
 
     def _check(self, c: ClaimInput) -> Predicate:
@@ -296,7 +297,7 @@ class Resolver:
         if pred.is_edge:
             if c.object is None:
                 raise RejectedClaim(f"edge {pred.id!r} needs an object")
-            if _kind_of(c.object) != pred.object_kind:
+            if pred.object_kind != "*" and _kind_of(c.object) != pred.object_kind:  # '*' = any kind
                 raise RejectedClaim(f"edge {pred.id!r} needs a {pred.object_kind} object")
             if c.value is not None and not isinstance(c.value, dict):
                 raise RejectedClaim(f"edge {pred.id!r} value must be an object of props or null")
@@ -305,7 +306,10 @@ class Resolver:
                 raise RejectedClaim(f"attribute {pred.id!r} must not have an object")
             if c.value is None:
                 raise RejectedClaim(f"attribute {pred.id!r} needs a value")
-            if isinstance(c.value, dict):
+            if pred.meta.get("value_type") == "json":  # e.g. milestone {title, kind, url}
+                if not isinstance(c.value, dict):
+                    raise RejectedClaim(f"attribute {pred.id!r} value must be a JSON object")
+            elif isinstance(c.value, dict):
                 raise RejectedClaim(f"attribute {pred.id!r} value must be a scalar or array")
         return pred
 
