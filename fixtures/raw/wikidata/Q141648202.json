@@ -1,0 +1,47 @@
+{
+ "content_hash": "sha256:3a2487218b90f86b23782b2bab2caf08c0519fa70080481b5f256eda2adf7c2a",
+ "external_id": "Q141648202",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "American body care brand founded in San Francisco in 2026"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Pithos"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q431289"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-01-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://pithosbeauty.com"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q141648202"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q141648202"
+}

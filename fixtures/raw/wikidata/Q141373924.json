@@ -1,0 +1,47 @@
+{
+ "content_hash": "sha256:fb8394dbb8d600d6bfbf92137cbf20a5e7af5b1f6973877fc0ef54a6b6877328",
+ "external_id": "Q141373924",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "San Francisco AI engineering firm founded in 2026"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Modeo"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q2089936"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-01-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://modeo.io/"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q141373924"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q141373924"
+}

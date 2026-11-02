@@ -1,0 +1,472 @@
+{
+ "content_hash": "sha256:85f959f6c8a63e756016f0430c40dc6e8a9d8edc6f1ff79caf769c546042c3f8",
+ "external_id": "Q21708200",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "end": "2023-11-17T00:00:00Z",
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2019-03-01T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q7407093"
+   },
+   {
+    "end": "2023-11-19T00:00:00Z",
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2023-11-17T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q116706551"
+   },
+   {
+    "end": "2023-11-21T00:00:00Z",
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2023-11-19T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q5373565"
+   },
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "American artificial intelligence research organization"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "OpenAI"
+   },
+   {
+    "lang": "mul",
+    "prop": "label",
+    "value": "OpenAI"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q100604534"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q103236782"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q128804411"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q135493411"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q21712134"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q27733815"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q29022624"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q317521"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q4088422"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q56037405"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q7407093"
+   },
+   {
+    "prop": "P1128",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "time": "2026-03-21T00:00:00Z",
+    "value": "4500"
+   },
+   {
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#PreferredRank",
+    "start": "2023-11-22T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q7407093"
+   },
+   {
+    "prop": "P2002",
+    "value": "OpenAI"
+   },
+   {
+    "prop": "P2037",
+    "value": "openai"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q6881511"
+   },
+   {
+    "prop": "P571",
+    "value": "2015-12-08T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://openai.com/"
+   }
+  ],
+  "domain_shared_with": [
+   "Q116374474"
+  ],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {
+   "Q100604534": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American entrepreneur, investor, and software developer"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Greg Brockman"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Greg Brockman"
+    },
+    {
+     "prop": "P2002",
+     "value": "gdb"
+    },
+    {
+     "prop": "P2037",
+     "value": "gdb"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://gregbrockman.com/"
+    }
+   ],
+   "Q103236782": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American computer scientist"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "John Schulman"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "John Schulman"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "http://joschu.net/"
+    }
+   ],
+   "Q116706551": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "Albanian-American business executive (born 1988)"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Mira Murati"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Mira Murati"
+    },
+    {
+     "prop": "P2002",
+     "value": "miramurati"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ],
+   "Q128804411": [
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Vicki Cheung"
+    },
+    {
+     "prop": "P2002",
+     "value": "vmcheung"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://vickicheung.com/"
+    }
+   ],
+   "Q135493411": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "computer scientist and venture capitalist, co-founder of Pebblebed"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Pamela Vagata"
+    },
+    {
+     "prop": "P2002",
+     "value": "pam_vagata"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://vagata.space/"
+    }
+   ],
+   "Q21712134": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "Canadian-Israeli AI researcher"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Ilya Sutskever"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Ilya Sutskever"
+    },
+    {
+     "prop": "P2002",
+     "value": "ilyasut"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ],
+   "Q27733815": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "Polish mathematician and computer scientist"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Wojciech Zaremba"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Wojciech Zaremba"
+    },
+    {
+     "prop": "P2037",
+     "value": "wojzaremba"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://wojzaremba.com/"
+    }
+   ],
+   "Q29022624": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "research scientist"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Diederik P. Kingma"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "http://dpkingma.com/"
+    }
+   ],
+   "Q317521": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American businessman (born 1971)"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Elon Musk"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Elon Musk"
+    },
+    {
+     "prop": "P2002",
+     "value": "elonmusk"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ],
+   "Q4088422": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "Canadian programmer"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Trevor Blackwell"
+    },
+    {
+     "prop": "P2002",
+     "value": "tlbtlbtlb"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "http://tlb.org/"
+    }
+   ],
+   "Q5373565": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American businessperson"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Emmett Shear"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Emmett Shear"
+    },
+    {
+     "prop": "P2002",
+     "value": "eshear"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ],
+   "Q56037405": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "Slovakian-Canadian AI researcher (born 1986)"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Andrej Karpathy"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Andrej Karpathy"
+    },
+    {
+     "prop": "P2002",
+     "value": "karpathy"
+    },
+    {
+     "prop": "P2037",
+     "value": "karpathy"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://karpathy.ai/"
+    }
+   ],
+   "Q7407093": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American entrepreneur and investor (born 1985)"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Sam Altman"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Sam Altman"
+    },
+    {
+     "prop": "P2002",
+     "value": "sama"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://blog.samaltman.com/"
+    }
+   ]
+  },
+  "qid": "Q21708200"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q21708200"
+}

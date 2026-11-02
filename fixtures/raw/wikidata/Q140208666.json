@@ -1,0 +1,43 @@
+{
+ "content_hash": "sha256:b8159892a341a9bd79395f630118f6d187a163f45b646f09f31bb4330dce45ff",
+ "external_id": "Q140208666",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "American digital media company operating astrology websites"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Stellar Content Inc."
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-03-16T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://stellarcontentinc.com/"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q140208666"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q140208666"
+}

@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from .base import Connector, Ctx, fixtures_root, is_enabled
 from .example import Example
+from .github import GitHub
+from .hn import Hn
+from .wikidata import Wikidata
+from .x import X
 
 
 class UnknownConnector(KeyError):
@@ -13,6 +17,10 @@ class UnknownConnector(KeyError):
 
 REGISTRY: dict[str, type] = {
     Example.name: Example,
+    Wikidata.name: Wikidata,
+    Hn.name: Hn,
+    GitHub.name: GitHub,
+    X.name: X,
 }
 
 

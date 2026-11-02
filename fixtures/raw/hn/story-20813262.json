@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:e544937d8603beeb19db36b616ed554dbe9e531634b55a371b7e2649221847ba",
+ "external_id": "story:20813262",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_ejag",
+   "story_20813262",
+   "launch_hn"
+  ],
+  "author": "ejag",
+  "created_at": "2019-08-27T18:58:54Z",
+  "created_at_i": 1566932334,
+  "num_comments": 0,
+  "objectID": "20813262",
+  "points": 1,
+  "story_text": "Hi everyone! We’re Robert and Aljaz, co-founders of ZERO CARBON ( https:&#x2F;&#x2F;www.zerro.xyz&#x2F; ). We build a water refill station where users can refill water on-the-go. Anywhere and anytime!  \nWe are a father and son team from Slovenia. Aljaz is a mechanical engineering student at the University of Ljubljana, and I&#x27;ve had more than 30 years of experience in solving other people problems.<p>We started this at Startup school in 2018.  When travelling, we always question about local water quality and usually decide to buy water single-use plastic bottles. But this is not sustainable and normal to produce more waste than we get benefits. We said it must be a better way to stay hydrated on-the-go then buying bottles. But as we all know, there is few or none access to really good quality water when out of home or travelling. So we started ZERO CARBON.<p>The myWater refill station device is serving each time fresh and purified drinking water.  No hidden surprises (like Chlorine, sand, bacteria, viruses, nitrates, microplastic, etc.), and it is available to all public as the refill. Bring your bottle and refill it! We launched in Slovenia, users refilling non-stop in recreational grounds. It has been amazing to see the interest of users to refill the bottle they already own. Our next milestone is to deliver the first five pre-ordered units and taking reservations for next year.<p>We are interested to hear the HN community&#x27;s thoughts on our solution. We are looking for a new city to launch. If this product sounds interesting, please give us ideas and nominate a city that needs this solution. If it&#x27;s confusing or if you have any question, please let us know. Thx Robert Slavec",
+  "title": "Launch HN: Zero Carbon (SS2019) – Water Refill Station"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=20813262"
+}

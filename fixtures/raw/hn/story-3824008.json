@@ -1,0 +1,24 @@
+{
+ "content_hash": "sha256:6df37054bbbb1490abdbb65767bbac37d3148a670e5626987b6f66f07f406e00",
+ "external_id": "story:3824008",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_tstegart",
+   "story_3824008",
+   "launch_hn"
+  ],
+  "author": "tstegart",
+  "created_at": "2012-04-10T19:42:09Z",
+  "created_at_i": 1334086929,
+  "num_comments": 2,
+  "objectID": "3824008",
+  "points": 8,
+  "story_text": "Hello HN,\nI've been here a while but this is my first HN launch. I'm pretty excited to move beyond the ideas stage for the first time in my life.<p>Our app is a free iPad only travel magazine featuring long-form travel essays and personal narratives. Basically, something to read and relax with when you're looking to really fall into a story about a place. My favorite article is the story about Rwanda, but please check it out and let me know what you think.<p>The direct app store link is: http://itunes.apple.com/us/app/overnight-buses-magazine/id493329039?ls=1&#38;mt=8<p>Our website is www.overnightbuses.com, if you want to check us out later.<p>Thanks to everyone who checks us out. If you're interested in the backend stuff, our app is based on the open source framework Baker. http://bakerframework.com/<p>Sincerely,\nTom",
+  "title": "Launch HN - Overnight Buses Travel Magazine for the iPad",
+  "url": ""
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=3824008"
+}

@@ -1,0 +1,86 @@
+{
+ "content_hash": "sha256:e6a3c3b247fac8a35dd02d0e2ce1de00ff126847d6d47727a7d7460cd0d4c11f",
+ "external_id": "Q141761515",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "creator and journalism platform"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Zyaku"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q141761514"
+   },
+   {
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2026-03-02T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q141761514"
+   },
+   {
+    "prop": "P2002",
+    "value": "ZyakuOfficial"
+   },
+   {
+    "prop": "P2037",
+    "value": "zyakuhq"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-03-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://zyaku.com"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {
+   "Q141761514": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "entrepreneur, founder of Zyaku and TAMVEL"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Rohit Kashyap"
+    },
+    {
+     "prop": "P2002",
+     "value": "RomeeKashyap"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://zyaku.com/founder"
+    }
+   ]
+  },
+  "qid": "Q141761515"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q141761515"
+}

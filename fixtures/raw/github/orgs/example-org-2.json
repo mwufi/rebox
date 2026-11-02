@@ -1,0 +1,11 @@
+{
+ "_fixture": "Synthetic fixture: fake GitHub data (no real person or organization).",
+ "login": "example-org-2",
+ "id": 990002,
+ "name": null,
+ "blog": "https://github.com/example-org-2",
+ "location": null,
+ "description": null,
+ "twitter_username": null,
+ "created_at": "2017-01-01T00:00:00Z"
+}

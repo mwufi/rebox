@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:569db1ef8c030606fd72416ed97d47c513e61b137dba359f75ad60da1ef0ff6a",
+ "external_id": "story:35613215",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_foolishbard",
+   "story_35613215",
+   "launch_hn"
+  ],
+  "author": "foolishbard",
+  "created_at": "2023-04-18T12:41:26Z",
+  "created_at_i": 1681821686,
+  "num_comments": 1,
+  "objectID": "35613215",
+  "points": 1,
+  "story_text": "Hey HN,<p>We&#x27;re thrilled to announce the launch of our Prompt Engineering Service, a platform specifically designed for startups looking to harness the capabilities of state-of-the-art Natural Language Processing (NLP) models like GPT-4.<p>We know that HN can be cynical about the hand-waving done with prompt engineering, but it is hard to deny the quality of results of LLMs these days. We base our work on quantitative analysis from data that we have seen in the last three years as founders in the generative AI space, and from active research in the field of In Context Learning. In fact, I&#x27;m writing the course on the topic.<p>Our goal is to enable startups with any amount of NLP experience, from zero to an entire team, to craft effective and efficient prompts. We can handle a wide range of NLP prompts tailored to your specific needs whether it&#x27;s content generation, customer support, data extraction, or anything in between, our expertly crafted prompts are here to help you make the most of GPT-4 and other cutting-edge NLP models.<p>Here&#x27;s what makes our Prompt Engineering Service stand out:<p>1. Expertly Crafted Prompts: Our team of NLP specialists carefully design each prompt to ensure optimal performance and results for your specific use case.<p>2. Scalable Solutions: As your startup grows, our platform will grow with you. Easily expand your range of prompts and adapt to new challenges as your business evolves.<p>3. Ongoing Support: Our team is dedicated to helping startups succeed. We provide continuous support and prompt updates to ensure you stay ahead of the curve in the ever-evolving world of NLP.<p>To get started, check out our pitch (https:&#x2F;&#x2F;pister.dev&#x2F;prompt). This is still early days for us and for the field, but we are excited to experiment and grow with you.<p>Thank you,\nKaiser &amp; Kish",
+  "title": "Launch HN: Prompt Engineering as a Service"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=35613215"
+}

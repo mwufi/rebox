@@ -1,0 +1,29 @@
+{
+ "_fixture": "Synthetic fixture: fake X profiles (no real accounts).",
+ "handles": {
+  "example_octo_1": [
+   {
+    "kind": "person",
+    "named": true
+   }
+  ],
+  "example_org_1": [
+   {
+    "kind": "company",
+    "named": true
+   }
+  ],
+  "example_x_only": [
+   {
+    "kind": "person",
+    "named": false
+   }
+  ],
+  "example_missing": [
+   {
+    "kind": "person",
+    "named": true
+   }
+  ]
+ }
+}

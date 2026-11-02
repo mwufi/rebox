@@ -1,0 +1,298 @@
+{
+ "content_hash": "sha256:6a4ee969edab48c16efa90eb0b682a217c9899af8aa4612bdb9eae49f3f71fd1",
+ "external_id": "Q169925",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "end": "2008-01-08T00:00:00Z",
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2005-08-03T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q445250"
+   },
+   {
+    "end": "2010-05-01T00:00:00Z",
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2008-01-01T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q454092"
+   },
+   {
+    "end": "2013-04-01T00:00:00Z",
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2010-01-01T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q3916015"
+   },
+   {
+    "end": "2014-04-03T00:00:00Z",
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2014-03-24T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q92648"
+   },
+   {
+    "end": "2019-01-01T00:00:00Z",
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2014-04-01T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q16334560"
+   },
+   {
+    "end": "2024-02-08T00:00:00Z",
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2020-04-08T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q445250"
+   },
+   {
+    "end": "2025-12-01T00:00:00Z",
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2024-02-01T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q124463276"
+   },
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "American software company"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Mozilla Corporation"
+   },
+   {
+    "lang": "mul",
+    "prop": "label",
+    "value": "Mozilla Corporation"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q55672"
+   },
+   {
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2025-12-01T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q137423339"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q1058914"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q6881511"
+   },
+   {
+    "prop": "P571",
+    "value": "2005-09-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://www.mozilla.org"
+   }
+  ],
+  "domain_shared_with": [
+   "Q9661"
+  ],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {
+   "Q124463276": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American chief executive officer"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Laura Chambers"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Laura Chambers"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ],
+   "Q137423339": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "technology executive"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Anthony Enzor-DeMeo"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ],
+   "Q16334560": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "Canadian business leader"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Chris Beard"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Chris Beard"
+    },
+    {
+     "prop": "P2002",
+     "value": "cbeard"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ],
+   "Q3916015": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "Canadian businessman"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Gary Kovacs"
+    },
+    {
+     "prop": "P2002",
+     "value": "gary_kovacs"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ],
+   "Q445250": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "Chairwoman; former CEO (born 1957)"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Mitchell Baker"
+    },
+    {
+     "prop": "P2002",
+     "value": "mitchellbaker"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ],
+   "Q454092": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American venture capitalist"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "John Lilly"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ],
+   "Q55672": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American non-profit organization that manages the Mozilla community"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Mozilla Foundation"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Mozilla Foundation"
+    },
+    {
+     "prop": "P2002",
+     "value": "mozilla"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q163740"
+    },
+    {
+     "prop": "P856",
+     "value": "https://www.mozillafoundation.org"
+    }
+   ],
+   "Q92648": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American computer programmer and technology executive"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Brendan Eich"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Brendan Eich"
+    },
+    {
+     "prop": "P2002",
+     "value": "BrendanEich"
+    },
+    {
+     "prop": "P2037",
+     "value": "BrendanEich"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://brendaneich.com/"
+    }
+   ]
+  },
+  "qid": "Q169925"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q169925"
+}

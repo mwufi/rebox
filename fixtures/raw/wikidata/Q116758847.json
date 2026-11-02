@@ -1,0 +1,298 @@
+{
+ "content_hash": "sha256:cbdd8d2dc0a9681e119cf5e2aef52ce4001a5025f97a64a7cfcf27b93d50ae93",
+ "external_id": "Q116758847",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "American artificial intelligence corporation"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Anthropic"
+   },
+   {
+    "lang": "mul",
+    "prop": "label",
+    "value": "Anthropic"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q102649624"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q103335665"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q105285886"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q115662131"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q119721378"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q135111322"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q50358648"
+   },
+   {
+    "prop": "P1128",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "time": "2026-01-01T00:00:00Z",
+    "value": "2500"
+   },
+   {
+    "prop": "P1128",
+    "rank": "http://wikiba.se/ontology#PreferredRank",
+    "time": "2026-09-30T00:00:00Z",
+    "value": "5300"
+   },
+   {
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "start": "2021-02-01T00:00:00Z",
+    "value": "http://www.wikidata.org/entity/Q103335665"
+   },
+   {
+    "prop": "P2002",
+    "value": "AnthropicAI"
+   },
+   {
+    "prop": "P2037",
+    "value": "anthropics"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q18388277"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4887441"
+   },
+   {
+    "prop": "P571",
+    "value": "2021-01-26T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://www.anthropic.com/"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {
+   "Q102649624": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "artificial intelligence researcher"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Jared Kaplan"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Jared Kaplan"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ],
+   "Q103335665": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "CEO and co-founder of Anthropic"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Dario Amodei"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Dario Amodei"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://darioamodei.com/"
+    }
+   ],
+   "Q105285886": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "artificial intelligence researcher"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Sam McCandlish"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Sam McCandlish"
+    },
+    {
+     "prop": "P2002",
+     "value": "samsamoa"
+    },
+    {
+     "prop": "P2037",
+     "value": "samsamoa"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ],
+   "Q115662131": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American artificial intelligence researcher and businessperson"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Tom B. Brown"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Tom B. Brown"
+    },
+    {
+     "prop": "P2002",
+     "value": "nottombrown"
+    },
+    {
+     "prop": "P2037",
+     "value": "nottombrown"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ],
+   "Q119721378": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "president and co-founder of Anthropic"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Daniela Amodei"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Daniela Amodei"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ],
+   "Q135111322": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "British AI policy expert and entrepreneur"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Jack Clark"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Jack Clark"
+    },
+    {
+     "prop": "P2002",
+     "value": "jackclarkSF"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://jack-clark.net/"
+    }
+   ],
+   "Q50358648": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "artificial intelligence researcher"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Chris Olah"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Christopher Olah"
+    },
+    {
+     "prop": "P2002",
+     "value": "ch402"
+    },
+    {
+     "prop": "P2037",
+     "value": "colah"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://colah.github.io."
+    }
+   ]
+  },
+  "qid": "Q116758847"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q116758847"
+}

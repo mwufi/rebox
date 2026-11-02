@@ -1,0 +1,47 @@
+{
+ "content_hash": "sha256:73353b199807853434f9a6e6e952fc611917fc542490b4676b3cec449ac1f61e",
+ "external_id": "Q139659917",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "Artificial intelligence email assistant software company"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "BrainFlow AI"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q6881511"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q7397"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-01-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://brain-flow.ai"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q139659917"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q139659917"
+}

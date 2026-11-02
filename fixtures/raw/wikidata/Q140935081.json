@@ -1,0 +1,81 @@
+{
+ "content_hash": "sha256:e3b91e332af3de6ec00a9372c766a0efced79a6a4c2a3419612563014bd7b110",
+ "external_id": "Q140935081",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "American human data and enterprise workflow company"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "AuraOne"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q3120942"
+   },
+   {
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "value": "http://www.wikidata.org/entity/Q3120942"
+   },
+   {
+    "prop": "P2002",
+    "value": "AuraOneLabs"
+   },
+   {
+    "prop": "P2037",
+    "value": "auraoneai"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-01-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://auraone.ai"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {
+   "Q3120942": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American businessman"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Gurbaksh Chahal"
+    },
+    {
+     "prop": "P2002",
+     "value": "gchahal"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ]
+  },
+  "qid": "Q140935081"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q140935081"
+}

@@ -1,0 +1,74 @@
+{
+ "content_hash": "sha256:f6e149ab3ee9321a0790c1a8946c269c3d4644461aa875e725274ffb920363b2",
+ "external_id": "Q141493762",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "American customer intelligence software company"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "PAI"
+   },
+   {
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "value": "http://www.wikidata.org/entity/Q1311751"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-03-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://www.pai.company/"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {
+   "Q1311751": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "unisex given name"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Gigi"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Gigi"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q1130279"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q3409032"
+    }
+   ]
+  },
+  "qid": "Q141493762"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q141493762"
+}

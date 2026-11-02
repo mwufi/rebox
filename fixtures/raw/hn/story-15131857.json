@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:f5cfce69557217c55f4da59b8d65b700c82745c6d7bdd0b915a80016117fbd63",
+ "external_id": "story:15131857",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_samanthajill",
+   "story_15131857",
+   "launch_hn"
+  ],
+  "author": "samanthajill",
+  "created_at": "2017-08-30T13:17:05Z",
+  "created_at_i": 1504099025,
+  "num_comments": 0,
+  "objectID": "15131857",
+  "points": 4,
+  "story_text": "My name is Samantha Friedman, and I’m one of the co-founders of FairFunders (<a href=\"https:&#x2F;&#x2F;fairfunders.com\" rel=\"nofollow\">https:&#x2F;&#x2F;fairfunders.com</a>). We are building the FairFunders List – it’s a “Yelp for VCs” where diverse founders can rate and review investors.<p>Inspired by the bravery of women who shared their experiences of unfair treatment at the hands of venture capitalists and well-established companies, seven female founders and I joined forces to start a nonprofit - FairFunders - with a mission to make the fundraising environment more equitable for everyone.<p>Over the past two months, we worked with the incredible founders of YouMeWho (Vivienne Lee and Luping Lin) to bring the FairFunders List to life on their platform.<p>We at FairFunders want all founders to know they are valued, and that they have a voice – right here on the FairFunders List.<p>We aspire to create a culture where VCs hold themselves and their colleagues to high standards of professional behavior. We want to hear the good stories as well as the bad, and shine a light on role models for the VC industry.<p>But we need your help. We want to hear your feedback so that we can improve the platform and enable it to better serve you. Please rate your investors, and let us know what you think of the platform! Thank you, and we’ll be here to answer your questions.",
+  "title": "Launch HN: FairFunders"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=15131857"
+}

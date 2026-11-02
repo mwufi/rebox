@@ -1,0 +1,82 @@
+{
+ "content_hash": "sha256:c056a299a8b17716d12fd429fba2382beac434f24b193dd38dedd864381fd980",
+ "external_id": "Q139576273",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "American technology company specialized in grid digitization and wildfire detection for electric utilities"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Nyquis"
+   },
+   {
+    "lang": "mul",
+    "prop": "label",
+    "value": "Nyquis"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q139934710"
+   },
+   {
+    "prop": "P2002",
+    "value": "nyquishq"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q783794"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-02-24T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://www.nyquis.com/"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {
+   "Q139934710": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "American entrepreneur"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Daniel J. Hunter"
+    },
+    {
+     "lang": "mul",
+     "prop": "label",
+     "value": "Daniel J. Hunter"
+    },
+    {
+     "prop": "P2002",
+     "value": "DanJohnHunter"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ]
+  },
+  "qid": "Q139576273"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q139576273"
+}

@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:f39e594083352014b3918cf95f0674a5df23f54e58b87985538f82bac209c52a",
+ "external_id": "story:25056893",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_veebuv",
+   "story_25056893",
+   "launch_hn"
+  ],
+  "author": "veebuv",
+  "created_at": "2020-11-11T09:29:18Z",
+  "created_at_i": 1605086958,
+  "num_comments": 1,
+  "objectID": "25056893",
+  "points": 4,
+  "title": "Launch HN: Remoteworkly (Not YC Yet) – Async Video Meetings for Remote Teams",
+  "url": "https://remoteworkly.co"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=25056893"
+}

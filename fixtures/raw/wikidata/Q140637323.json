@@ -1,0 +1,47 @@
+{
+ "content_hash": "sha256:ddc2dfbdc7381a91c7cc5f5a6dfbe769f8b28e7a89aa8eb52a4b726e6dc51085",
+ "external_id": "Q140637323",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "AI sales software company based in San Francisco"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Starlight"
+   },
+   {
+    "prop": "P2002",
+    "value": "StarlightxAI"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q1058914"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-01-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://joinstarlight.com"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q140637323"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q140637323"
+}

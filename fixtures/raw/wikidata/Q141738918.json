@@ -1,0 +1,55 @@
+{
+ "content_hash": "sha256:4d583d53e39c145d1dec39b965056c1be38ed7e04b2b8789994a8dea014a28f9",
+ "external_id": "Q141738918",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "American AI-powered freight brokerage company"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "LinkLane"
+   },
+   {
+    "prop": "P2002",
+    "value": "LinkLaneInc"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q129238"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q65090774"
+   },
+   {
+    "prop": "P571",
+    "value": "2026-01-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://linklane.ai/"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q141738918"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q141738918"
+}

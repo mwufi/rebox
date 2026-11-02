@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:a8d957266e47edb452eefe30de31385d343f2e5d17359311443c9fa3b71f2a56",
+ "external_id": "story:27563271",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_EnlightenedBro",
+   "story_27563271",
+   "ask_hn"
+  ],
+  "author": "EnlightenedBro",
+  "created_at": "2021-06-19T18:55:21Z",
+  "created_at_i": 1624128921,
+  "num_comments": 3,
+  "objectID": "27563271",
+  "points": 2,
+  "story_text": "Does one need to be accepted into YC to be allowed to create a &quot;Launch HN&quot; post on here?<p>Browsed &quot;launches&quot; tab several months back, and haven&#x27;t seen one without (YC XXX) in the title.",
+  "title": "Ask HN: Can you do a Launch HN without being a YC startup?"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=27563271"
+}

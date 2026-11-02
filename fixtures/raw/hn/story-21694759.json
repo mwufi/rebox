@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:8090f5352830f5d5297fb14020b7a00b8651a8edc1c947166c56523bda751324",
+ "external_id": "story:21694759",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_jijosunny",
+   "story_21694759",
+   "launch_hn"
+  ],
+  "author": "jijosunny",
+  "created_at": "2019-12-03T17:59:33Z",
+  "created_at_i": 1575395973,
+  "num_comments": 179,
+  "objectID": "21694759",
+  "points": 206,
+  "story_text": "Hi HN!<p>We’re Joseph, Aleesha, and Jijo, the founders of Buy Me A Coffee (<a href=\"https:&#x2F;&#x2F;www.buymeacoffee.com\" rel=\"nofollow\">https:&#x2F;&#x2F;www.buymeacoffee.com</a>). We make it super easy to accept contributions and recurring memberships from your audience.<p>A bit of backstory - Joseph and I grew up in India. When I was 12, I started making a little bit of money from my blog, and it had a huge impact on my life. I got to buy books and gadgets, pay for web hosting, none of which I could’ve afforded otherwise. We built our first product in 2010. It was an ad network for bloggers called AdIndigo. There were a bunch of Adsense alternatives doing well at that time, and it grew to serve 6 million impressions at its peak. We later had to shut it down because of the expenses. Buy Me A Coffee is our third (and only successful) attempt at building for the creators.<p>When we started working on Buy Me A Coffee as a side project, it was a quick way to spin up a page or a button to accept one-time contributions. For artists, OSS developers, and YouTubers, it was an unobtrusive way to monetize their work. They appreciated the simplicity and friendly branding and started requesting more features. Some even noticed that they’re getting more contributions compared to a Patreon or PayPal button. It’s probably because of the no-signup-required payment flow. Supporters also get to leave a note after the payment, and it ends up becoming this ‘wall of love’ for creators.<p>Today, you can do a lot more with Buy Me A Coffee. You can accept recurring payments and give rewards in return. For e.g. Maria Shriver is using Buy Me A Coffee to monetize her newsletter ‘The Sunday Paper’ (<a href=\"https:&#x2F;&#x2F;thesundaypaper.buymeacoffee.com&#x2F;\" rel=\"nofollow\">https:&#x2F;&#x2F;thesundaypaper.buymeacoffee.com&#x2F;</a>) with a link in the footer of every edition. Slowly (<a href=\"https:&#x2F;&#x2F;slowly.buymeacoffee.com&#x2F;\" rel=\"nofollow\">https:&#x2F;&#x2F;slowly.buymeacoffee.com&#x2F;</a>) is a self-funded team using Buy Me A Coffee to accept contributions and feedback from their users. We also built Widgets that allow you to accept payments right from your website. Built-in email features let you share updates and rewards with your audience. We’re also working on a community feature to create a group chat with your supporters. Creators are already doing this with Discord and Slack, and we&#x27;re excited to build something more focused.<p>We believe anyone, anywhere in the world who creates something that people find useful or entertaining, should have the option to get paid for their work.<p>We’re excited to hear all your questions and thoughts about Buy Me A Coffee :) Thank you!",
+  "title": "Launch HN: Buy Me a Coffee (YC W19) – Give your audience a way to thank you"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=21694759"
+}

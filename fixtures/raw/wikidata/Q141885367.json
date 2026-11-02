@@ -1,0 +1,109 @@
+{
+ "content_hash": "sha256:4d8a423091949ce3c048ff7afa6a75787f7aacbcdf4abdf7a3288931a401e0c6",
+ "external_id": "Q141885367",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "identity verification and fraud prevention company"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Didit"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q141885342"
+   },
+   {
+    "prop": "P112",
+    "value": "http://www.wikidata.org/entity/Q141885356"
+   },
+   {
+    "prop": "P169",
+    "rank": "http://wikiba.se/ontology#NormalRank",
+    "value": "http://www.wikidata.org/entity/Q141885342"
+   },
+   {
+    "prop": "P2002",
+    "value": "didit"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P571",
+    "value": "2023-01-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://didit.me/"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {
+   "Q141885342": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "Spanish entrepreneur, co-founder and CEO of Didit"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Alberto Rosas"
+    },
+    {
+     "prop": "P2002",
+     "value": "albertorosasg"
+    },
+    {
+     "prop": "P2037",
+     "value": "rosasalberto"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    },
+    {
+     "prop": "P856",
+     "value": "https://rosasalberto.com/"
+    }
+   ],
+   "Q141885356": [
+    {
+     "lang": "en",
+     "prop": "description",
+     "value": "Spanish entrepreneur, co-founder and CTO of Didit"
+    },
+    {
+     "lang": "en",
+     "prop": "label",
+     "value": "Alejandro Rosas"
+    },
+    {
+     "prop": "P2002",
+     "value": "_arosasg"
+    },
+    {
+     "prop": "P31",
+     "value": "http://www.wikidata.org/entity/Q5"
+    }
+   ]
+  },
+  "qid": "Q141885367"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q141885367"
+}

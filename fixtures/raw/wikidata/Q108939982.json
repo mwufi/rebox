@@ -1,0 +1,48 @@
+{
+ "content_hash": "sha256:804cddbcd4d53a1d88570d7c98f8f2442693c42611e383dfd985a7a434478e91",
+ "external_id": "Q108939982",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "American crowdfunding website created in 2018"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "Buy Me a Coffee"
+   },
+   {
+    "lang": "mul",
+    "prop": "label",
+    "value": "Buy Me a Coffee"
+   },
+   {
+    "prop": "P2002",
+    "value": "buymeacoffee"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q42337018"
+   },
+   {
+    "prop": "P856",
+    "value": "https://buymeacoffee.com/"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q108939982"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q108939982"
+}

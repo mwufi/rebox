@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:31063a2ab9a1ba61642496fb80b9b7aa102ef8e85d71c40aec50f418a225b8a6",
+ "external_id": "story:13578658",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_tonguglya",
+   "story_13578658",
+   "launch_hn"
+  ],
+  "author": "tonguglya",
+  "created_at": "2017-02-06T12:03:06Z",
+  "created_at_i": 1486382586,
+  "num_comments": 0,
+  "objectID": "13578658",
+  "points": 2,
+  "title": "Launch HN Healbe GoBe 2 (automatic calorie intake tracker) on ProductHunt",
+  "url": "https://www.producthunt.com/posts/healbe-gobe-2"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=13578658"
+}

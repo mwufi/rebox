@@ -1,0 +1,23 @@
+{
+ "content_hash": "sha256:306c2291982b680d4b19b53f1cfc5b2e4adf5a2e3a9713a93c78ef5566b0f78c",
+ "external_id": "story:17410030",
+ "fetched_at": "2026-11-02T07:29:32Z",
+ "payload": {
+  "_tags": [
+   "story",
+   "author_dchhugani",
+   "story_17410030",
+   "launch_hn"
+  ],
+  "author": "dchhugani",
+  "created_at": "2018-06-27T17:23:51Z",
+  "created_at_i": 1530120231,
+  "num_comments": 160,
+  "objectID": "17410030",
+  "points": 208,
+  "story_text": "Hi HN! I’m Deepak, founder of The Lobby, from YC’s W18 batch. We’re building a marketplace where you can buy mock interviews, resume reviews, and coaching calls from company insiders, starting with top finance roles. (<a href=\"https:&#x2F;&#x2F;www.thelobby.io&#x2F;\" rel=\"nofollow\">https:&#x2F;&#x2F;www.thelobby.io&#x2F;</a>)<p>I went to a school where the big banks, consulting shops, and tech companies didn’t come to recruit on campus. As a result, it was really hard not only to get interviews and job offers, but also to figure out what these companies were looking for in candidates in the first place.<p>I got lucky and landed jobs at big banks and it was always because I somehow found someone on the inside who was willing to coach and mentor me in a very personalized way. I used that experience to help 50+ friends from similar backgrounds land jobs at top firms, and that’s what inspired the idea for The Lobby.<p>We have some incredibly happy users who’ve already landed jobs, and a very high repeat purchase rate both amongst students and career switchers because of the value in speaking to people in the specific teams and companies they&#x27;re interested in vs. generic company-wide advice.<p>It has, however, been challenging to get everyone receptive to our new approach. Even though people spend hundreds of thousands of dollars on college (to ultimately land a good job), it&#x27;s controversial to build a recruiting-focused company that charges job seekers instead of just the companies.<p>We’ve had 2 schools buy packages of calls where they subsidize the costs for their students, and are thinking through ideas to pass the cost away from students, even though this service is not just meant for college (our best users are career switchers). We’ve also received a lot of interest from companies who are interested in getting access to our best-rated candidates because they’ve been pre-screened by real humans who’ve done the job, vs. recruiters who have not.<p>Any feedback and ideas from the HN community on how to convey the cost&#x2F;benefit of what we’re offering to students, recent grads, career switchers, parents, and even schools is much appreciated.",
+  "title": "Launch HN: The  Lobby (YC W18) – 1-on-1 calls with company insiders to get hired"
+ },
+ "source": "hn",
+ "url": "https://news.ycombinator.com/item?id=17410030"
+}

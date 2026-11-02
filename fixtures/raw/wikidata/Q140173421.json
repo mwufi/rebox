@@ -1,0 +1,48 @@
+{
+ "content_hash": "sha256:28552ff401741042e705efe5025fc7fb8a73118dfb95043914dec069e46cb52b",
+ "external_id": "Q140173421",
+ "fetched_at": "2026-11-02T07:33:05Z",
+ "payload": {
+  "bindings": [
+   {
+    "lang": "en",
+    "prop": "description",
+    "value": "open source analytics software company"
+   },
+   {
+    "lang": "en",
+    "prop": "label",
+    "value": "nao Labs"
+   },
+   {
+    "lang": "mul",
+    "prop": "label",
+    "value": "nao Labs"
+   },
+   {
+    "prop": "P31",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   {
+    "prop": "P571",
+    "value": "2024-01-01T00:00:00Z"
+   },
+   {
+    "prop": "P856",
+    "value": "https://getnao.io"
+   }
+  ],
+  "domain_shared_with": [],
+  "handles_shared": [],
+  "hq": [
+   {
+    "label": "San Francisco",
+    "qid": "Q62"
+   }
+  ],
+  "people": {},
+  "qid": "Q140173421"
+ },
+ "source": "wikidata",
+ "url": "https://www.wikidata.org/wiki/Q140173421"
+}
