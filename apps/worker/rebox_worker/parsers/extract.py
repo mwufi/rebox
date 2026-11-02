@@ -42,6 +42,10 @@ from .schema import Acquisition, Hire, Location, Milestone, Role, parse_facts
 
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
 PHONE_RE = re.compile(r"(?<![\w$€£])\+?\(?\d{1,4}\)?(?:[\s.-]?\(?\d{2,4}\)?){2,5}(?![\w%])")
+URL_RE = re.compile(
+    r"(?:https?://)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|ai|io|co|dev|app|so|xyz|org|net|tech|inc|hq|health|bio)\b[^\s)\]]*",
+    re.I,
+)
 # "NYC → SF", "LA to SF": two short place-like phrases around an arrow or "to"
 MOVE_RE = re.compile(r"([A-Za-z][A-Za-z ]{0,24}?)\s*(?:→|->|=>|>|\bto\b)\s*([A-Za-z][A-Za-z ]{0,24})")
 INVESTING_TITLE = re.compile(r"(?i)investing|investor|angel|backing")
@@ -167,25 +171,41 @@ class Extraction:
             return self._drop("org name not in text", quote) if name else None
         if self.is_own_name(name):
             return self.subject if self.subject is not None and self.subject.kind == "company" else None
-        ids = self.graph.get(f"name:{normalize_name(name)}") or []
-        if len(ids) == 1:
-            return EntityRef(id=ids[0])
+        cands = [c if isinstance(c, dict) else {"id": c, "domains": []}
+                 for c in self.graph.get(f"name:{normalize_name(name)}") or []]  # fmt: skip
+        domain = self._own_domain(name)
+        if domain is not None:
+            hit = [c for c in cands if domain in c["domains"]]
+            if len(hit) == 1:
+                return EntityRef(id=hit[0]["id"])
+            ref = EntityRef(kind="company", identity={"domain": domain}, name=name)
+            self._name(ref, name, quote, key=f"domain={domain}")
+            return ref
+        if len(cands) == 1:
+            return EntityRef(id=cands[0]["id"])
+        if len(cands) > 1:
+            return self._drop("ambiguous company name", quote)  # several same-named companies
         ctx = [self.subject] if self.subject is not None else None
-        if self.doc.kind == "article" and self.doc.meta.get("host"):
-            from ..connectors.hn import name_matches_host
-
-            host = str(self.doc.meta["host"])
-            if name_matches_host(name, host):
-                ref = EntityRef(kind="company", identity={"domain": host}, name=name)
-                self._name(ref, name, quote, key=f"domain={host}")
-                return ref
-        if ctx is None and self.doc.kind != "article":
-            return self._drop("unknown company without context", quote)
-        # Unknown name-only company: minted from this record (the resolver keys identity-less
-        # mints by record + name), so one article mentioning it twice gives one entity.
+        # A company new to the graph, known only by name: minted from this record (the resolver
+        # keys identity-less mints by record + name). Articles have no account to scope it, so
+        # the same new name in two articles is two entities until a later source gives it a key.
         ref = EntityRef(kind="company", name=name, context=ctx)
         self._name(ref, name, quote, key=f"name={normalize_name(name)}")
         return ref
+
+    def _own_domain(self, name: str) -> str | None:
+        """A domain in the article that is the company's own site: the article's host or a link
+        in its text ("Acme (acme.ai)", "https://getacme.com"), matched by name."""
+        if self.doc.kind != "article":
+            return None
+        from ..connectors.hn import name_matches_host, site_domain
+
+        hosts = [str(self.doc.meta.get("host") or "")]
+        hosts += [d for u in URL_RE.findall(self.text) if (d := site_domain(u))]
+        for h in hosts:
+            if h and name_matches_host(name, h):
+                return h
+        return None
 
     def is_own_name(self, name: str) -> bool:
         """``name`` is the account itself: its display name, or its handle ("Quillworks" for

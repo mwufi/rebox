@@ -68,7 +68,10 @@ select c.predicate, c.value_text as value, array_agg(distinct e.kind) as kinds
 
 # exact (case-insensitive) public names of companies; trigram index on search_name serves ilike
 NAME_SQL = """
-select s.name, s.entity_id
+select s.name, s.entity_id,
+       coalesce((select array_agg(distinct d.value_text) from claim d
+                  where d.subject = s.entity_id and d.predicate = 'domain'
+                    and d.object_id is null and not d.retract), '{}') as domains
   from search_name s join entity e on e.id = s.entity_id and e.merged_into is null
  where e.kind = 'company' and s.name ilike any(%s::text[])
 """
@@ -300,11 +303,11 @@ class ParserConnector:
                     out[f"{r['predicate']}:{r['value']}"] = sorted(r["kinds"])
             if names:
                 rows = conn.execute(NAME_SQL, ([_like_escape(n) for n in sorted(names)],)).fetchall()
-                ids: dict[str, set[str]] = {}
+                ids: dict[str, dict[str, list[str]]] = {}
                 for r in rows:
-                    ids.setdefault(normalize_name(r["name"]), set()).add(r["entity_id"])
-                for key, s in ids.items():
-                    out[f"name:{key}"] = sorted(s)
+                    ids.setdefault(normalize_name(r["name"]), {})[r["entity_id"]] = sorted(r["domains"] or [])
+                for key, cands in ids.items():
+                    out[f"name:{key}"] = [{"id": i, "domains": d} for i, d in sorted(cands.items())]
         return out
 
     # ── extract ──

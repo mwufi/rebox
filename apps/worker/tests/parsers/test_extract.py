@@ -537,3 +537,33 @@ def test_founder_tense_needs_a_past_marker():
             "founder": True, "investor": False, "quote": "co-founder @tinyrocket-ex"}  # fmt: skip
     claims = run("github", payload, [role])
     assert [c.predicate for c in claims if c.object] == ["founded"]  # not an ended role
+
+
+def _article_claims(graph: dict[str, Any], text: str, url: str = "https://news.example/2026/10/x") -> list:
+    payload = {"type": "exa_result", "url": url, "title": "Ditto raises seed", "published_date": "2026-10-02",
+               "homepage": False, "text": text}  # fmt: skip
+    doc = _doc("exa", payload)
+    facts = [{"type": "milestone", "kind": "funding", "title": "Ditto raised $9M seed", "org": "Ditto",
+              "org_handle": "", "first_person": False, "quote": "Ditto raised a $9M seed"}]  # fmt: skip
+    return extract_claims("exa_parse", parsed(doc, {"account": "other", "facts": facts}, graph))
+
+
+def test_article_company_name_resolution():
+    two = {
+        "name:ditto": [
+            {"id": "rbx:company:aaa", "domains": ["ditto.ai"]},
+            {"id": "rbx:company:bbb", "domains": []},
+        ]
+    }
+    # a link to the company's own site picks the entity with that domain
+    (m,) = by_pred(_article_claims(two, "Ditto raised a $9M seed. See ditto.ai for more."), "milestone")
+    assert m.subject.id == "rbx:company:aaa"
+    # several same-named companies and nothing to tell them apart: dropped, not guessed
+    assert _article_claims(two, "Ditto raised a $9M seed.") == []
+    # one company of that name: that one
+    one = {"name:ditto": [{"id": "rbx:company:bbb", "domains": []}]}
+    (m,) = by_pred(_article_claims(one, "Ditto raised a $9M seed."), "milestone")
+    assert m.subject.id == "rbx:company:bbb"
+    # unknown, but the article links its site: a company with that domain identity
+    (m,) = by_pred(_article_claims({}, "Ditto raised a $9M seed (https://www.getditto.com)."), "milestone")
+    assert m.subject.identity == {"domain": "getditto.com"}
